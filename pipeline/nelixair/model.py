@@ -1,8 +1,8 @@
 """Format interne source-agnostique (« nelixair-nav v1 »).
 
 Chaque source (FAA CIFP, OpenAIP, plus tard une source mondiale sous licence)
-produit uniquement des `Fix` et des `Airway`. Tout l'aval (fusion, export
-GeoJSON, tuiles, index de recherche) ne connaît que ces types.
+produit uniquement des `Fix`, `Airway`, `Airport`, `Airspace` et `MoraCell`.
+Tout l'aval (fusion, export GeoJSON, tuiles, index de recherche) ne connaît que ces types.
 
 Sérialisation : NDJSON, un objet par ligne, champ `kind` = "fix" | "airway".
 Voir docs/FORMAT.md pour la spécification complète.
@@ -101,7 +101,79 @@ class Airway:
             raise ValueError(f"voie {self.ident} avec moins de 2 points")
 
 
-Record = "Fix | Airway"
+# Catégories d'aéroport (pilotent le zoom d'apparition et le symbole).
+AIRPORT_KINDS = ("large", "medium", "small", "heliport", "seaplane")
+
+
+@dataclass
+class Airport:
+    ident: str                 # code OACI si disponible, sinon identifiant local
+    category: str              # une valeur de AIRPORT_KINDS
+    lat: float
+    lon: float
+    src: str
+    name: str = ""
+    iata: str = ""
+    elev_ft: Optional[int] = None
+    rwy_ft: Optional[int] = None   # piste la plus longue
+    rwy_surface: str = ""          # "hard", "soft", "water", ""
+    ifr: bool = False
+    military: bool = False
+    country: str = ""
+    region: str = ""
+    cycle: str = ""
+    kind_rec: str = field(default="airport", init=False, repr=False)
+
+    def validate(self) -> None:
+        if self.category not in AIRPORT_KINDS:
+            raise ValueError(f"catégorie d'aéroport inconnue {self.category!r} pour {self.ident}")
+        if not (-90 <= self.lat <= 90 and -180 <= self.lon <= 180):
+            raise ValueError(f"coordonnées hors bornes pour {self.ident}")
+
+
+# Groupes d'espaces aériens (affichage et filtres).
+AIRSPACE_GROUPS = ("controlled", "special", "fir", "other")
+
+
+@dataclass
+class Airspace:
+    name: str
+    type: str                  # code normalisé : CTR, TMA, CTA, ATZ, R, P, D, FIR, UIR, TRA, TSA, ...
+    group: str                 # une valeur de AIRSPACE_GROUPS
+    rings: list                # [[ [lon, lat], ... ], ...] : anneau extérieur puis trous
+    src: str
+    icao_class: str = ""       # "A".."G" ou ""
+    lower: str = ""            # libellé : "SFC", "2500 ft MSL", "FL115"
+    upper: str = ""
+    lower_ft: Optional[int] = None
+    upper_ft: Optional[int] = None
+    country: str = ""
+    cycle: str = ""
+    kind_rec: str = field(default="airspace", init=False, repr=False)
+
+    def validate(self) -> None:
+        if self.group not in AIRSPACE_GROUPS:
+            raise ValueError(f"groupe inconnu {self.group!r} pour {self.name}")
+        if not self.rings or len(self.rings[0]) < 4:
+            raise ValueError(f"polygone invalide pour {self.name}")
+
+
+@dataclass
+class MoraCell:
+    """Grid MORA : altitude minimale hors route d'un carré de 1°×1° (coin sud-ouest lat/lon)."""
+    lat: int
+    lon: int
+    mora_ft: int
+    src: str
+    cycle: str = ""
+    kind_rec: str = field(default="mora", init=False, repr=False)
+
+    def validate(self) -> None:
+        if not (-90 <= self.lat < 90 and -180 <= self.lon < 180):
+            raise ValueError(f"cellule MORA hors bornes {self.lat},{self.lon}")
+
+
+_KIND_OF = {Fix: "fix", Airway: "airway", Airport: "airport", Airspace: "airspace", MoraCell: "mora"}
 
 
 def dump_ndjson(records: Iterable, path: str) -> int:
@@ -110,7 +182,10 @@ def dump_ndjson(records: Iterable, path: str) -> int:
         fh.write(json.dumps({"kind": "header", "format": "nelixair-nav", "version": FORMAT_VERSION}) + "\n")
         for r in records:
             r.validate()
-            fh.write(json.dumps(asdict(r), ensure_ascii=False, separators=(",", ":")) + "\n")
+            d = asdict(r)
+            d.pop("kind_rec", None)
+            d["kind"] = _KIND_OF[type(r)]
+            fh.write(json.dumps(d, ensure_ascii=False, separators=(",", ":")) + "\n")
             n += 1
     return n
 
@@ -132,5 +207,11 @@ def load_ndjson(path: str) -> Iterator:
             elif kind == "airway":
                 obj["points"] = [AirwayPoint(**p) for p in obj["points"]]
                 yield Airway(**obj)
+            elif kind == "airport":
+                yield Airport(**obj)
+            elif kind == "airspace":
+                yield Airspace(**obj)
+            elif kind == "mora":
+                yield MoraCell(**obj)
             else:
                 raise ValueError(f"kind inconnu {kind!r}")
