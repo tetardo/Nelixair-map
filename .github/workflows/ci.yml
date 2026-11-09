@@ -28,6 +28,8 @@ jobs:
         run: |
           scripts/build.sh
           test -s web/data/nav.pmtiles
+          test -s web/data/airspaces.pmtiles
+          test -s web/data/mora.geojson
           head -c 7 web/data/nav.pmtiles | grep -q PMTiles
       - name: Syntaxe JS
         run: for f in web/*.js; do node --check "$f"; done

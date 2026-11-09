@@ -63,6 +63,42 @@ def leg_feature(airway, a, fa, b, fb) -> dict:
             "geometry": geom, "properties": props}
 
 
+APT_MINZOOM = {"large": 3, "medium": 6, "small": 8, "seaplane": 8, "heliport": 9}
+
+
+def airport_feature(a) -> dict:
+    props = {"ident": a.ident, "cls": "airport", "kind": a.category, "src": a.src, "ifr": a.ifr, "mil": a.military}
+    for k in ("name", "iata", "elev_ft", "rwy_ft", "rwy_surface", "country", "region", "cycle"):
+        v = getattr(a, k)
+        if v not in ("", None):
+            props[k] = v
+    # tri d'affichage : plus la piste est longue, plus le terrain est prioritaire
+    props["rank"] = -(a.rwy_ft or 0)
+    return {"type": "Feature", "tippecanoe": {"minzoom": APT_MINZOOM.get(a.category, 8)},
+            "geometry": {"type": "Point", "coordinates": [_r(a.lon), _r(a.lat)]}, "properties": props}
+
+
+ASP_MINZOOM = {"fir": 2, "controlled": 5, "special": 5, "other": 7}
+
+
+def airspace_feature(s) -> dict:
+    props = {"name": s.name, "type": s.type, "group": s.group, "src": s.src}
+    for k in ("icao_class", "lower", "upper", "lower_ft", "upper_ft", "country"):
+        v = getattr(s, k)
+        if v not in ("", None):
+            props[k] = v
+    return {"type": "Feature", "tippecanoe": {"minzoom": ASP_MINZOOM.get(s.group, 6)},
+            "geometry": {"type": "Polygon", "coordinates": s.rings}, "properties": props}
+
+
+def mora_features(c):
+    """Un carré (quadrillage) + un point au centre (étiquette : milliers en grand, centaines en petit)."""
+    ring = [[c.lon, c.lat], [c.lon + 1, c.lat], [c.lon + 1, c.lat + 1], [c.lon, c.lat + 1], [c.lon, c.lat]]
+    props = {"mora": c.mora_ft, "th": str(c.mora_ft // 1000), "hu": str((c.mora_ft % 1000) // 100)}
+    yield {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [ring]}, "properties": props}
+    yield {"type": "Feature", "geometry": {"type": "Point", "coordinates": [c.lon + 0.5, c.lat + 0.5]}, "properties": props}
+
+
 def _write_fc(path: str, features) -> int:
     n = 0
     with open(path, "w", encoding="utf-8") as fh:
@@ -94,12 +130,27 @@ def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
                     bb[2], bb[3] = max(bb[2], f.lon), max(bb[3], f.lat)
     n_leg = _write_fc(os.path.join(out_dir, "airways.geojson"), legs)
 
+    n_apt = _write_fc(os.path.join(out_dir, "airports.geojson"), (airport_feature(a) for a in ds.airports))
+    n_asp = _write_fc(os.path.join(out_dir, "airspaces.geojson"), (airspace_feature(a) for a in ds.airspaces))
+    _write_fc(os.path.join(out_dir, "mora.geojson"), (f for c in ds.mora.values() for f in mora_features(c)))
+    n_mora = len(ds.mora)
+    asp_types: dict[str, int] = {}
+    for a in ds.airspaces:
+        asp_types[a.type] = asp_types.get(a.type, 0) + 1
+    apt_kinds: dict[str, int] = {}
+    for a in ds.airports:
+        apt_kinds[a.category] = apt_kinds.get(a.category, 0) + 1
+    ds.stats["airspace_types"] = dict(sorted(asp_types.items(), key=lambda kv: -kv[1]))
+    ds.stats["airport_kinds"] = apt_kinds
+
     # Index de recherche compact, chargé à la demande par le front.
     search = {
         "v": 1,
         "fixes": [[f.ident, f.cls, _r(f.lon, 4), _r(f.lat, 4),
                    "" if f.name == f.ident else f.name, f.region or f.country]
-                  for f in ds.fixes],
+                  for f in ds.fixes]
+                 + [[a.ident, "airport", _r(a.lon, 4), _r(a.lat, 4), a.name, a.country or a.region]
+                    for a in ds.airports],
         "airways": {k: [_r(x, 3) for x in v] for k, v in awy_bbox.items()},
     }
     with open(os.path.join(out_dir, "search.json"), "w", encoding="utf-8") as fh:
@@ -112,7 +163,8 @@ def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
     meta = {
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "sources": sources_meta,
-        "counts": {"fixes": n_fix, "airway_legs": n_leg, "airways": len(awy_bbox)},
+        "counts": {"fixes": n_fix, "airway_legs": n_leg, "airways": len(awy_bbox),
+                   "airports": n_apt, "airspaces": n_asp, "mora_cells": n_mora},
         "stats": ds.stats,
     }
     with open(os.path.join(out_dir, "meta.json"), "w", encoding="utf-8") as fh:

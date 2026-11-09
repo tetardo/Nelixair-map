@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import itertools
 import logging
 import os
 import re
@@ -34,10 +35,10 @@ CIFP_RE = re.compile(r"https://aeronav\.faa\.gov/[^\"']*?/CIFP_(\d{6})\.zip")
 SOURCE_META = {
     "faa-cifp": {"name": "FAA CIFP", "license": "Domaine public (U.S. Government)",
                  "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/",
-                 "coverage": "États-Unis : waypoints, navaids, voies aériennes"},
+                 "coverage": "États-Unis : waypoints, navaids, voies aériennes, aéroports, Grid MORA"},
     "openaip": {"name": "OpenAIP", "license": "CC BY-NC 4.0",
                 "url": "https://www.openaip.net",
-                "coverage": "Monde : navaids (VOR, DME, TACAN, NDB)"},
+                "coverage": "Monde : navaids, aéroports, espaces aériens, FIR"},
 }
 
 # Ordre de priorité par défaut (le premier gagne lors de la déduplication).
@@ -70,8 +71,9 @@ def cmd_fetch(a) -> None:
         fh.write(_get(url))
     key = a.openaip_key or os.environ.get("OPENAIP_API_KEY")
     if key:
-        n = openaip.fetch(key, os.path.join(a.raw, "openaip_navaids.json"))
-        log.info("OpenAIP : %d navaids", n)
+        for ep in openaip.ENDPOINTS:
+            n = openaip.fetch(key, os.path.join(a.raw, f"openaip_{ep}.json"), endpoint=ep)
+            log.info("OpenAIP %s : %d", ep, n)
     else:
         log.warning("OPENAIP_API_KEY absent : navaids mondiaux ignorés (US uniquement)")
 
@@ -84,8 +86,18 @@ def cmd_ingest(a) -> None:
     if os.path.exists(cifp):
         jobs.append(("faa-cifp", faa_cifp.parse(cifp)))
     oa = a.openaip or os.path.join(a.raw, "openaip_navaids.json")
+    oa_dir = os.path.dirname(oa)
+    oa_apt = a.openaip_airports or os.path.join(oa_dir, "openaip_airports.json")
+    oa_asp = a.openaip_airspaces or os.path.join(oa_dir, "openaip_airspaces.json")
+    oa_parts = []
     if os.path.exists(oa):
-        jobs.append(("openaip", openaip.parse(oa)))
+        oa_parts.append(openaip.parse(oa))
+    if os.path.exists(oa_apt):
+        oa_parts.append(openaip.parse_airports(oa_apt))
+    if os.path.exists(oa_asp):
+        oa_parts.append(openaip.parse_airspaces(oa_asp))
+    if oa_parts:
+        jobs.append(("openaip", itertools.chain(*oa_parts)))
     if not jobs:
         sys.exit("aucune source brute trouvée (lancer `fetch` ou passer --cifp/--openaip)")
     for name, records in jobs:
@@ -107,6 +119,11 @@ def cmd_export(a) -> None:
     meta = export(ds, a.out, [dict(SOURCE_META.get(s, {"name": s}), id=s, cycle=cycles.get(s, ""))
                               for s in present])
     log.info("export : %s", meta["counts"])
+    # Contrôle de cohérence Grid MORA : le carré du mont Whitney (36.58N 118.29W, 14 505 ft)
+    # doit dépasser 15 000 ft. Sinon l'orientation des carrés est fausse.
+    w = ds.mora.get((36, -119))
+    if ds.mora:
+        log.info("contrôle MORA Whitney (36N 119W) : %s ft", w.mora_ft if w else "absent")
     if ds.stats:
         log.info("stats : %s", ds.stats)
 
@@ -119,6 +136,8 @@ def main(argv=None) -> None:
     p.add_argument("--cifp", help="chemin vers CIFP_YYMMDD.zip ou FAACIFP18")
     p.add_argument("--cifp-url", help="forcer l'URL du zip CIFP")
     p.add_argument("--openaip", help="chemin vers le JSON brut OpenAIP")
+    p.add_argument("--openaip-airports", help="JSON brut OpenAIP des aéroports (défaut : à côté de --openaip)")
+    p.add_argument("--openaip-airspaces", help="JSON brut OpenAIP des espaces (défaut : à côté de --openaip)")
     p.add_argument("--openaip-key", help="clé API OpenAIP (sinon $OPENAIP_API_KEY)")
     p.add_argument("--priority", help="ordre des sources, ex. faa-cifp,openaip")
     p.add_argument("-v", "--verbose", action="store_true")

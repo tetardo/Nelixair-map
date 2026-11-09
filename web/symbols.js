@@ -80,6 +80,40 @@
     },
   };
 
+  // Aéroports : couleur IFR (bleu) / VFR (magenta), forme selon la catégorie
+  const APT = {
+    large: [18, (ctx, s, c, bg) => {
+      dot(ctx, s / 2, s / 2, s / 2 - 2, c);
+      ctx.strokeStyle = bg; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(5, s - 5); ctx.lineTo(s - 5, 5); ctx.stroke();
+    }],
+    medium: [18, (ctx, s, c, bg) => {
+      ctx.strokeStyle = c; ctx.lineWidth = 2.2; ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(s / 2, s / 2, 5.5, 0, 7); ctx.fill(); ctx.stroke();
+      for (let k = 0; k < 4; k++) {
+        const a = Math.PI / 4 + k * Math.PI / 2;
+        ctx.beginPath(); ctx.moveTo(s / 2 + Math.cos(a) * 6.5, s / 2 + Math.sin(a) * 6.5);
+        ctx.lineTo(s / 2 + Math.cos(a) * 8.5, s / 2 + Math.sin(a) * 8.5); ctx.stroke();
+      }
+    }],
+    small: [12, (ctx, s, c, bg) => {
+      ctx.strokeStyle = c; ctx.lineWidth = 1.8; ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(s / 2, s / 2, s / 2 - 2, 0, 7); ctx.fill(); ctx.stroke();
+    }],
+    heliport: [16, (ctx, s, c, bg) => {
+      ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(s / 2, s / 2, s / 2 - 1.5, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = 1.8; ctx.beginPath();
+      ctx.moveTo(5.5, 4.5); ctx.lineTo(5.5, s - 4.5); ctx.moveTo(s - 5.5, 4.5); ctx.lineTo(s - 5.5, s - 4.5);
+      ctx.moveTo(5.5, s / 2); ctx.lineTo(s - 5.5, s / 2); ctx.stroke();
+    }],
+    seaplane: [16, (ctx, s, c, bg) => {
+      ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(s / 2, s / 2, s / 2 - 1.5, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4, s / 2 + 1);
+      ctx.quadraticCurveTo(6, s / 2 - 2, 8, s / 2 + 1); ctx.quadraticCurveTo(10, s / 2 + 4, 12, s / 2 + 1); ctx.stroke();
+    }],
+  };
+
   // Cartouche étirable pour les idents (icon-text-fit)
   function labelBox(map, name, stroke, fill) {
     const w = 16;
@@ -104,6 +138,13 @@
         const ctx = canvas(s);
         draw[k](ctx, s, T);
         map.addImage(`${theme}-sym-${k}`, ctx.getImageData(0, 0, s * PR, s * PR), { pixelRatio: PR });
+      }
+      for (const [kind, [sz, fn]] of Object.entries(APT)) {
+        for (const [rule, color] of [["ifr", T.aptIfr], ["vfr", T.aptVfr]]) {
+          const ctx = canvas(sz);
+          fn(ctx, sz, color, T.boxFill);
+          map.addImage(`${theme}-apt-${kind}-${rule}`, ctx.getImageData(0, 0, sz * PR, sz * PR), { pixelRatio: PR });
+        }
       }
       labelBox(map, `${theme}-box-H`, T.high, T.boxFill);
       labelBox(map, `${theme}-box-L`, T.low, T.boxFill);

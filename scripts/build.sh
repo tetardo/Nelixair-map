@@ -37,8 +37,23 @@ tippecanoe \
   --drop-densest-as-needed \
   --no-tile-stats \
   -L fixes:"$OUT/fixes.geojson" \
-  -L airways:"$OUT/airways.geojson"
+  -L airways:"$OUT/airways.geojson" \
+  -L airports:"$OUT/airports.geojson"
+
+# Espaces aériens : fichier séparé (polygones, réglages différents, chargé seulement si affiché).
+# --detect-longitude-wraparound : polygones qui traversent l'antiméridien (FIR du Pacifique).
+tippecanoe \
+  --force --quiet \
+  -o "$OUT/airspaces.pmtiles" \
+  -n "nelixair-airspaces" \
+  -A "OpenAIP (CC BY-NC 4.0)" \
+  -Z2 -z10 \
+  --detect-longitude-wraparound \
+  --drop-densest-as-needed \
+  --no-tile-stats \
+  -L airspaces:"$OUT/airspaces.geojson"
 
 mkdir -p "$SITE_DATA"
-cp "$OUT/nav.pmtiles" "$OUT/search.json" "$OUT/routes.json" "$OUT/meta.json" "$SITE_DATA/"
-echo "OK : $(du -h "$OUT/nav.pmtiles" | cut -f1) de tuiles -> $SITE_DATA/"
+cp "$OUT/nav.pmtiles" "$OUT/airspaces.pmtiles" "$OUT/search.json" "$OUT/routes.json" \
+   "$OUT/mora.geojson" "$OUT/meta.json" "$SITE_DATA/"
+echo "OK : $(du -h "$OUT/nav.pmtiles" | cut -f1) navigation, $(du -h "$OUT/airspaces.pmtiles" | cut -f1) espaces -> $SITE_DATA/"

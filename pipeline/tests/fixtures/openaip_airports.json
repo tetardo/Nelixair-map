@@ -1,0 +1,130 @@
+{
+ "fetched": "2026-11-09",
+ "items": [
+  {
+   "name": "PARIS CHARLES DE GAULLE",
+   "icaoCode": "LFPG",
+   "iataCode": "CDG",
+   "type": 3,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.5479,
+     49.0097
+    ]
+   },
+   "elevation": {
+    "value": 119,
+    "unit": 0
+   },
+   "runways": [
+    {
+     "designator": "09L",
+     "dimension": {
+      "length": {
+       "value": 4215,
+       "unit": 0
+      }
+     },
+     "surface": {
+      "mainComposite": 0
+     }
+    },
+    {
+     "designator": "08R",
+     "dimension": {
+      "length": {
+       "value": 2700,
+       "unit": 0
+      }
+     },
+     "surface": {
+      "mainComposite": 1
+     }
+    }
+   ]
+  },
+  {
+   "name": "ALBUQUERQUE",
+   "icaoCode": "KABQ",
+   "type": 3,
+   "country": "US",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -106.609,
+     35.04
+    ]
+   }
+  },
+  {
+   "name": "TOUSSUS LE NOBLE",
+   "icaoCode": "LFPN",
+   "type": 2,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.1119,
+     48.7519
+    ]
+   },
+   "elevation": {
+    "value": 164,
+    "unit": 0
+   },
+   "runways": [
+    {
+     "dimension": {
+      "length": {
+       "value": 1100,
+       "unit": 0
+      }
+     },
+     "surface": {
+      "mainComposite": 0
+     }
+    }
+   ]
+  },
+  {
+   "name": "HELIPORT DE PARIS",
+   "icaoCode": "LFPI",
+   "type": 7,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.2733,
+     48.8333
+    ]
+   }
+  },
+  {
+   "name": "SYNTH GLIDER",
+   "type": 1,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     3.0,
+     48.0
+    ]
+   }
+  },
+  {
+   "name": "CLOSED",
+   "icaoCode": "LFZZ",
+   "type": 8,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     3.1,
+     48.1
+    ]
+   }
+  }
+ ]
+}

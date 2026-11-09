@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 from .geo import haversine_nm
-from .model import Airway, Fix, fix_family
+from .model import Airport, Airspace, Airway, Fix, MoraCell, fix_family
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 class Dataset:
     fixes: list[Fix] = field(default_factory=list)
     airways: list[Airway] = field(default_factory=list)
+    airports: list[Airport] = field(default_factory=list)
+    airspaces: list[Airspace] = field(default_factory=list)
+    mora: dict[tuple[int, int], MoraCell] = field(default_factory=dict)
     # clé (ident|region|famille) -> Fix
     index: dict[str, Fix] = field(default_factory=dict)
     stats: dict = field(default_factory=dict)
@@ -32,11 +35,30 @@ def merge(sources: Iterable[Iterable], dedup_nm: float = 3.0) -> Dataset:
     ds = Dataset()
     by_ident: dict[tuple[str, str], list[Fix]] = defaultdict(list)
     dropped = 0
+    apt_by_ident: dict[str, list[Airport]] = defaultdict(list)
+    apt_dropped = 0
     for records in sources:
         for r in records:
             if isinstance(r, Airway):
                 r.validate()
                 ds.airways.append(r)
+                continue
+            if isinstance(r, Airport):
+                r.validate()
+                near = apt_by_ident[r.ident]
+                if any(a.src != r.src and haversine_nm(a.lat, a.lon, r.lat, r.lon) <= 5 for a in near):
+                    apt_dropped += 1
+                    continue
+                near.append(r)
+                ds.airports.append(r)
+                continue
+            if isinstance(r, Airspace):
+                r.validate()
+                ds.airspaces.append(r)
+                continue
+            if isinstance(r, MoraCell):
+                r.validate()
+                ds.mora.setdefault((r.lat, r.lon), r)  # première source (prioritaire) gagne
                 continue
             r.validate()
             fam = fix_family(r.cls)
@@ -54,6 +76,7 @@ def merge(sources: Iterable[Iterable], dedup_nm: float = 3.0) -> Dataset:
             ds.fixes.append(r)
             ds.index.setdefault(r.key, r)
     ds.stats["fixes_dropped_as_duplicates"] = dropped
+    ds.stats["airports_dropped_as_duplicates"] = apt_dropped
     return ds
 
 

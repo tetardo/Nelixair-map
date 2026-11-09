@@ -8,6 +8,8 @@ Enregistrements exploités (colonnes 1-indexées, ARINC 424-18) :
   D_  aides VHF (VOR, VOR/DME, VORTAC, TACAN, DME)
   DB  NDB en route
   ER  voies aériennes en route
+  PA  aéroports (section P, sous-section 'A' en colonne 13)
+  AS  Grid MORA (altitudes minimales hors route par carré de 1°)
 Les enregistrements de continuation (n° > 1) sont ignorés.
 """
 from __future__ import annotations
@@ -17,7 +19,7 @@ import zipfile
 from collections import defaultdict
 from typing import Iterable, Iterator, Optional
 
-from ..model import Airway, AirwayPoint, Fix
+from ..model import Airport, Airway, AirwayPoint, Fix, MoraCell
 
 SRC = "faa-cifp"
 
@@ -110,6 +112,59 @@ def _parse_ndb(line: str, cycle: str) -> Optional[Fix]:
                freq=int(f) / 10 if f.isdigit() else None, cycle=cycle)
 
 
+_SURFACE = {"H": "hard", "S": "soft", "W": "water"}
+
+
+def airport_kind(rwy_ft: Optional[int], surface: str, ident: str) -> str:
+    if surface == "water":
+        return "seaplane"
+    if rwy_ft is None:
+        return "small"
+    if rwy_ft >= 8000:
+        return "large"
+    if rwy_ft >= 5000:
+        return "medium"
+    return "small"
+
+
+def _parse_pa(line: str, cycle: str) -> Optional[Airport]:
+    if not _is_primary(line[21]):
+        return None
+    lat, lon = parse_lat(col(line, 33, 41)), parse_lon(col(line, 42, 51))
+    if lat is None or lon is None:
+        return None
+    ident = col(line, 7, 10)
+    rwy = col(line, 28, 30)
+    rwy_ft = int(rwy) * 100 if rwy.isdigit() and int(rwy) > 0 else None
+    surface = _SURFACE.get(line[31], "")
+    elev = col(line, 57, 61)
+    try:
+        elev_ft = int(elev)
+    except ValueError:
+        elev_ft = None
+    return Airport(ident=ident, category=airport_kind(rwy_ft, surface, ident), lat=lat, lon=lon, src=SRC,
+                   name=col(line, 94, 123), iata=col(line, 14, 16), elev_ft=elev_ft, rwy_ft=rwy_ft,
+                   rwy_surface=surface, ifr=line[30] == "Y", military=line[81] == "M",
+                   country="US", region=col(line, 11, 12), cycle=cycle)
+
+
+def _parse_as(line: str, cycle: str) -> Iterator[MoraCell]:
+    """Une ligne = 30 carrés consécutifs vers l'est depuis le coin sud-ouest (lat, lon) de départ."""
+    slat, slon = col(line, 14, 16), col(line, 17, 20)
+    if len(slat) != 3 or slat[0] not in "NS" or not slat[1:].isdigit():
+        return
+    if len(slon) != 4 or slon[0] not in "EW" or not slon[1:].isdigit():
+        return
+    lat = int(slat[1:]) * (-1 if slat[0] == "S" else 1)
+    lon0 = int(slon[1:]) * (-1 if slon[0] == "W" else 1)
+    for i in range(30):
+        v = line[30 + 3 * i: 33 + 3 * i]
+        if not v.isdigit():
+            continue  # "UNK" ou vide
+        lon = (lon0 + i + 180) % 360 - 180
+        yield MoraCell(lat=lat, lon=lon, mora_ft=int(v) * 100, src=SRC, cycle=cycle)
+
+
 # Section+sous-section d'un fix référencé dans un ER -> classe de jointure
 _REF_CLS = {"EA": "waypoint", "D ": "vor", "DB": "ndb"}
 
@@ -162,6 +217,12 @@ def parse_lines(lines: Iterable[str]) -> Iterator:
             fx = _parse_ndb(line, cycle)
             if fx:
                 yield fx
+        elif sec == "P" and line[12] == "A":
+            ap = _parse_pa(line, cycle)
+            if ap:
+                yield ap
+        elif sec == "A" and sub == "S":
+            yield from _parse_as(line, cycle)
         elif sec == "E" and sub == "R":
             if not _is_primary(line[38]):
                 continue
