@@ -46,8 +46,11 @@ def merge(sources: Iterable[Iterable], dedup_nm: float = 3.0) -> Dataset:
             if isinstance(r, Airport):
                 r.validate()
                 near = apt_by_ident[r.ident]
-                if any(a.src != r.src and haversine_nm(a.lat, a.lon, r.lat, r.lon) <= 5 for a in near):
+                twin = next((a for a in near if a.src != r.src
+                             and haversine_nm(a.lat, a.lon, r.lat, r.lon) <= 5), None)
+                if twin is not None:
                     apt_dropped += 1
+                    enrich_airport(twin, r)
                     continue
                 near.append(r)
                 ds.airports.append(r)
@@ -78,6 +81,30 @@ def merge(sources: Iterable[Iterable], dedup_nm: float = 3.0) -> Dataset:
     ds.stats["fixes_dropped_as_duplicates"] = dropped
     ds.stats["airports_dropped_as_duplicates"] = apt_dropped
     return ds
+
+
+def enrich_airport(kept: Airport, other: Airport) -> None:
+    """Complète l'aéroport retenu avec ce que la source écartée sait en plus.
+
+    Ex. : le CIFP donne les pistes US sans revêtement ni fréquences ; OpenAIP les a.
+    """
+    if not kept.freqs and other.freqs:
+        kept.freqs = other.freqs
+    if not kept.runways:
+        kept.runways = other.runways
+    else:
+        by_des = {r.get("des"): r for r in other.runways}
+        for r in kept.runways:
+            o = by_des.get(r.get("des"))
+            if o:
+                for k in ("surface", "wid_ft"):
+                    if not r.get(k) and o.get(k):
+                        r[k] = o[k]
+    for k in ("iata", "name", "country"):
+        if not getattr(kept, k) and getattr(other, k):
+            setattr(kept, k, getattr(other, k))
+    if kept.elev_ft is None:
+        kept.elev_ft = other.elev_ft
 
 
 def resolve(ds: Dataset, airway: Airway) -> list[list[tuple]]:

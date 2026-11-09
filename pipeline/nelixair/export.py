@@ -99,6 +99,67 @@ def mora_features(c):
     yield {"type": "Feature", "geometry": {"type": "Point", "coordinates": [c.lon + 0.5, c.lat + 0.5]}, "properties": props}
 
 
+def pair_runways(runways: list) -> list:
+    """Regroupe les sens opposés d'une même piste : 09L + 27R -> "09L/27R".
+
+    Retourne [[désignation, longueur ft, largeur ft, revêtement, QFU, référence QFU], ...].
+    """
+    def opposite(des: str) -> str:
+        num = "".join(c for c in des if c.isdigit())
+        if not num:
+            return ""
+        side = des[len(num):]
+        n = (int(num) + 18 - 1) % 36 + 1
+        return f"{n:02d}" + {"L": "R", "R": "L"}.get(side, side)
+
+    out, used = [], set()
+    by_des = {r.get("des"): r for r in runways}
+    for r in runways:
+        d = r.get("des") or ""
+        if d in used:
+            continue
+        used.add(d)
+        opp = by_des.get(opposite(d)) if d else None
+        name = d
+        if opp is not None and opp.get("des") not in used:
+            used.add(opp["des"])
+            a, b = sorted([d, opp["des"]])
+            name = f"{a}/{b}"
+        out.append([name, r.get("len_ft"), r.get("wid_ft"), r.get("surface") or (opp or {}).get("surface") or "",
+                    r.get("hdg"), r.get("hdg_ref", "")])
+    out.sort(key=lambda x: -(x[1] or 0))
+    return out
+
+
+def shard_of(ident: str) -> str:
+    """Fichier de détail d'un aéroport : 2 premiers caractères alphanumériques de l'ident."""
+    k = "".join(c if c.isalnum() else "_" for c in ident.upper()[:2])
+    return k or "__"
+
+
+def write_airport_details(ds: Dataset, out_dir: str, charts: dict) -> int:
+    """Détails chargés à la demande par la fiche aéroport : data/apt/<shard>.json."""
+    shards: dict[str, dict] = {}
+    for a in ds.airports:
+        d = {}
+        rw = pair_runways(a.runways)
+        if rw:
+            d["rwy"] = rw
+        if a.freqs:
+            d["frq"] = [[f["type"], f["mhz"], f["name"]] for f in a.freqs]
+        ch = charts.get(a.ident) if a.country in ("US", "") or a.src == "faa-cifp" else None
+        if ch:
+            d["chr"] = ch
+        if d:
+            shards.setdefault(shard_of(a.ident), {})[a.ident] = d
+    apt_dir = os.path.join(out_dir, "apt")
+    os.makedirs(apt_dir, exist_ok=True)
+    for k, v in shards.items():
+        with open(os.path.join(apt_dir, f"{k}.json"), "w", encoding="utf-8") as fh:
+            json.dump(v, fh, ensure_ascii=False, separators=(",", ":"))
+    return sum(len(v) for v in shards.values())
+
+
 def _write_fc(path: str, features) -> int:
     n = 0
     with open(path, "w", encoding="utf-8") as fh:
@@ -110,8 +171,9 @@ def _write_fc(path: str, features) -> int:
     return n
 
 
-def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
+def export(ds: Dataset, out_dir: str, sources_meta: list[dict], charts: tuple = ("", {})) -> dict:
     os.makedirs(out_dir, exist_ok=True)
+    tpp_cycle, tpp = charts
     n_fix = _write_fc(os.path.join(out_dir, "fixes.geojson"), (fix_feature(f) for f in ds.fixes))
 
     legs = []
@@ -134,6 +196,8 @@ def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
     n_asp = _write_fc(os.path.join(out_dir, "airspaces.geojson"), (airspace_feature(a) for a in ds.airspaces))
     _write_fc(os.path.join(out_dir, "mora.geojson"), (f for c in ds.mora.values() for f in mora_features(c)))
     n_mora = len(ds.mora)
+    n_details = write_airport_details(ds, out_dir, tpp)
+    ds.stats["airports_with_charts"] = sum(1 for a in ds.airports if a.ident in tpp)
     asp_types: dict[str, int] = {}
     for a in ds.airspaces:
         asp_types[a.type] = asp_types.get(a.type, 0) + 1
@@ -164,9 +228,12 @@ def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "sources": sources_meta,
         "counts": {"fixes": n_fix, "airway_legs": n_leg, "airways": len(awy_bbox),
-                   "airports": n_apt, "airspaces": n_asp, "mora_cells": n_mora},
+                   "airports": n_apt, "airspaces": n_asp, "mora_cells": n_mora,
+                   "airport_details": n_details},
         "stats": ds.stats,
     }
+    if tpp_cycle:
+        meta["charts"] = {"name": "FAA d-TPP", "cycle": tpp_cycle, "base": f"https://aeronav.faa.gov/d-tpp/{tpp_cycle}/"}
     with open(os.path.join(out_dir, "meta.json"), "w", encoding="utf-8") as fh:
         json.dump(meta, fh, ensure_ascii=False, indent=2)
     return meta

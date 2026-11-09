@@ -9,6 +9,7 @@ Enregistrements exploités (colonnes 1-indexées, ARINC 424-18) :
   DB  NDB en route
   ER  voies aériennes en route
   PA  aéroports (section P, sous-section 'A' en colonne 13)
+  PG  pistes (longueur, QFU magnétique, largeur)
   AS  Grid MORA (altitudes minimales hors route par carré de 1°)
 Les enregistrements de continuation (n° > 1) sont ignorés.
 """
@@ -148,6 +149,21 @@ def _parse_pa(line: str, cycle: str) -> Optional[Airport]:
                    country="US", region=col(line, 11, 12), cycle=cycle)
 
 
+def _parse_pg(line: str) -> Optional[tuple]:
+    """Piste : (ident aéroport, {des, len_ft, wid_ft, hdg, hdg_ref})."""
+    if not _is_primary(line[21]):
+        return None
+    rw = col(line, 14, 18)
+    if not rw.startswith("RW"):
+        return None
+    ln, brg, wd = col(line, 23, 27), col(line, 28, 31), col(line, 78, 80)
+    return col(line, 7, 10), {
+        "des": rw[2:], "len_ft": int(ln) if ln.isdigit() else None,
+        "wid_ft": int(wd) if wd.isdigit() and int(wd) > 0 else None, "surface": "",
+        "hdg": round(int(brg) / 10) % 360 if brg.isdigit() else None, "hdg_ref": "M",
+    }
+
+
 def _parse_as(line: str, cycle: str) -> Iterator[MoraCell]:
     """Une ligne = 30 carrés consécutifs vers l'est depuis le coin sud-ouest (lat, lon) de départ."""
     slat, slon = col(line, 14, 16), col(line, 17, 20)
@@ -197,6 +213,8 @@ def _build_airways(rows: dict, cycle: str) -> Iterator[Airway]:
 
 def parse_lines(lines: Iterable[str]) -> Iterator:
     airway_rows: dict = defaultdict(list)
+    airports: list[Airport] = []
+    runways: dict = defaultdict(list)
     cycle = ""
     for raw in lines:
         line = raw.rstrip("\r\n")
@@ -220,7 +238,11 @@ def parse_lines(lines: Iterable[str]) -> Iterator:
         elif sec == "P" and line[12] == "A":
             ap = _parse_pa(line, cycle)
             if ap:
-                yield ap
+                airports.append(ap)  # émis en fin de fichier, une fois les pistes (PG) lues
+        elif sec == "P" and line[12] == "G":
+            rw = _parse_pg(line)
+            if rw:
+                runways[rw[0]].append(rw[1])
         elif sec == "A" and sub == "S":
             yield from _parse_as(line, cycle)
         elif sec == "E" and sub == "R":
@@ -239,6 +261,9 @@ def parse_lines(lines: Iterable[str]) -> Iterator:
             end = line[40] == "E"  # Waypoint Description Code pos. 2 : fin de voie continue
             airway_rows[(col(line, 2, 4), col(line, 14, 18))].append(
                 (int(seq) if seq.isdigit() else 0, pt, level, line[44].strip(), end))
+    for ap in airports:
+        ap.runways = runways.get(ap.ident, [])
+        yield ap
     yield from _build_airways(airway_rows, cycle)
 
 

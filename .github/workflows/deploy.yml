@@ -33,6 +33,16 @@ jobs:
         run: scripts/build.sh
       - name: Résumé
         run: cat build/meta.json >> "$GITHUB_STEP_SUMMARY"
+      # Captures d'écran sur les données réelles (affichées par le README) ; un échec ne bloque pas le déploiement.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Captures d'écran
+        continue-on-error: true
+        run: |
+          npm install --no-save --no-package-lock playwright@1.48.2
+          npx playwright install --with-deps chromium
+          node scripts/screenshots.mjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

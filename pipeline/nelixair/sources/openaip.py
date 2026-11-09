@@ -134,6 +134,63 @@ def _elev_ft(el: dict) -> Optional[int]:
     return round(v * M_TO_FT) if (el or {}).get("unit", 0) == 0 else round(v)
 
 
+# Revêtement des pistes (surface.mainComposite), schéma OpenAIP core.
+SURFACES = {
+    0: "asphalte", 1: "béton", 2: "herbe", 3: "sable", 4: "eau", 5: "bitume", 6: "brique",
+    7: "macadam", 8: "pierre", 9: "corail", 10: "argile", 11: "latérite", 12: "gravier",
+    13: "terre", 14: "glace", 15: "neige", 16: "revêtement synthétique", 17: "métal",
+    18: "plaques aluminium", 19: "plaques acier", 20: "bois", 21: "enrobé non bitumineux", 22: "",
+}
+_HARD = {0, 1, 5, 6, 7, 21}
+
+
+def surface_class(comp) -> str:
+    """Classe de revêtement : hard / water / soft, "" si inconnu (22 = inconnu, pas eau)."""
+    if comp is None or comp == 22:
+        return ""
+    if comp == 4:
+        return "water"
+    return "hard" if comp in _HARD else "soft"
+
+
+def _runway(r: dict) -> Optional[dict]:
+    des = (r.get("designator") or "").strip().upper()
+    dim = r.get("dimension") or {}
+    ln = _len_ft(dim)
+    wd = (dim.get("width") or {})
+    try:
+        wid = float(wd.get("value"))
+        wid_ft = round(wid * M_TO_FT) if wd.get("unit", 0) == 0 else round(wid)
+    except (TypeError, ValueError):
+        wid_ft = None
+    comp = (r.get("surface") or {}).get("mainComposite")
+    hdg = r.get("trueHeading")
+    if not des and not ln:
+        return None
+    out = {"des": des, "len_ft": ln, "wid_ft": wid_ft, "surface": SURFACES.get(comp, ""),
+           "hdg": int(hdg) if isinstance(hdg, (int, float)) else None, "hdg_ref": "T", "_comp": comp}
+    return out
+
+
+# Types de fréquence d'aérodrome (schéma OpenAIP core). Le nom publié est gardé à côté.
+FREQ_TYPES = {
+    0: "APP", 1: "APRON", 2: "ARR", 3: "CTR", 4: "CTAF", 5: "DEL", 6: "DEP", 7: "FIS",
+    8: "GLIDING", 9: "GND", 10: "INFO", 11: "MULTICOM", 12: "UNICOM", 13: "RADAR",
+    14: "TWR", 15: "ATIS", 16: "RADIO", 17: "OTHER", 18: "AIRMET", 19: "AWOS",
+    20: "LIGHTS", 21: "VOLMET", 22: "AFIS",
+}
+
+
+def _airport_freq(f: dict) -> Optional[dict]:
+    try:
+        v = float(f.get("value"))
+    except (TypeError, ValueError):
+        return None
+    mhz = v / 1000 if f.get("unit") == UNIT_KHZ else v
+    return {"type": FREQ_TYPES.get(f.get("type"), "OTHER"), "mhz": round(mhz, 3),
+            "name": (f.get("name") or "").strip()}
+
+
 def item_to_airport(item: dict, cycle: str = "") -> Optional[Airport]:
     t = AIRPORT_TYPES.get(item.get("type"))
     coords = (item.get("geometry") or {}).get("coordinates") or []
@@ -147,13 +204,13 @@ def item_to_airport(item: dict, cycle: str = "") -> Optional[Airport]:
         ident = (item.get("altIdentifier") or item.get("name") or "").strip().upper()[:8]
         if not ident:
             return None
-    rwys = item.get("runways") or []
-    lengths = [(_len_ft(r.get("dimension")), r) for r in rwys]
-    lengths = [(ln, r) for ln, r in lengths if ln]
-    rwy_ft, rwy = max(lengths, key=lambda x: x[0]) if lengths else (None, None)
-    comp = ((rwy or {}).get("surface") or {}).get("mainComposite")
-    # 0 asphalte, 1 béton : dur ; 22 eau ; le reste : non revêtu (approximation)
-    surface = "hard" if comp in (0, 1) else "water" if comp == 22 else ("soft" if comp is not None else "")
+    runways = [rw for rw in (_runway(r) for r in item.get("runways") or []) if rw]
+    longest = max((r for r in runways if r.get("len_ft")), key=lambda r: r["len_ft"], default=None)
+    rwy_ft = longest["len_ft"] if longest else None
+    comp = longest.get("_comp") if longest else None
+    surface = surface_class(comp)
+    for r in runways:
+        r.pop("_comp", None)
     if t in ("heliport", "heliport_mil"):
         kind = "heliport"
     elif t == "water" or surface == "water":
@@ -168,7 +225,8 @@ def item_to_airport(item: dict, cycle: str = "") -> Optional[Airport]:
                    name=(item.get("name") or "").strip(), iata=(item.get("iataCode") or "").strip().upper(),
                    elev_ft=_elev_ft(item.get("elevation")), rwy_ft=rwy_ft, rwy_surface=surface,
                    ifr=t in ("ifr", "international"), military=t in ("military", "heliport_mil"),
-                   country=(item.get("country") or "").upper(), cycle=cycle)
+                   country=(item.get("country") or "").upper(), cycle=cycle,
+                   runways=runways, freqs=[f for f in (_airport_freq(f) for f in item.get("frequencies") or []) if f])
 
 
 def parse_airports(path: str) -> Iterator[Airport]:

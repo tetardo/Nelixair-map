@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nelixair import model  # noqa: E402
 from nelixair.export import export  # noqa: E402
 from nelixair.merge import merge  # noqa: E402
-from nelixair.sources import faa_cifp, openaip  # noqa: E402
+from nelixair.sources import faa_cifp, faa_dtpp, openaip  # noqa: E402
 
 log = logging.getLogger("build")
 
@@ -69,6 +69,11 @@ def cmd_fetch(a) -> None:
     log.info("CIFP : %s", url)
     with open(os.path.join(a.raw, "cifp.zip"), "wb") as fh:
         fh.write(_get(url))
+    try:
+        cyc = faa_dtpp.fetch(os.path.join(a.raw, "dtpp.xml"))
+        log.info("FAA d-TPP : cycle %s", cyc)
+    except Exception as e:  # les cartes sont un bonus : le build continue sans
+        log.warning("FAA d-TPP indisponible (%s) : pas de liens vers les cartes", e)
     key = a.openaip_key or os.environ.get("OPENAIP_API_KEY")
     if key:
         for ep in openaip.ENDPOINTS:
@@ -116,8 +121,12 @@ def cmd_export(a) -> None:
     cycles = {}
     for f in ds.fixes:
         cycles.setdefault(f.src, f.cycle)
+    dtpp = a.dtpp or os.path.join(a.raw, "dtpp.xml")
+    charts = faa_dtpp.parse(dtpp) if os.path.exists(dtpp) else ("", {})
+    if charts[0]:
+        log.info("d-TPP %s : %d idents avec cartes", charts[0], len(charts[1]))
     meta = export(ds, a.out, [dict(SOURCE_META.get(s, {"name": s}), id=s, cycle=cycles.get(s, ""))
-                              for s in present])
+                              for s in present], charts)
     log.info("export : %s", meta["counts"])
     # Contrôle de cohérence Grid MORA : le carré du mont Whitney (36.58N 118.29W, 14 505 ft)
     # doit dépasser 15 000 ft. Sinon l'orientation des carrés est fausse.
@@ -139,6 +148,7 @@ def main(argv=None) -> None:
     p.add_argument("--openaip-airports", help="JSON brut OpenAIP des aéroports (défaut : à côté de --openaip)")
     p.add_argument("--openaip-airspaces", help="JSON brut OpenAIP des espaces (défaut : à côté de --openaip)")
     p.add_argument("--openaip-key", help="clé API OpenAIP (sinon $OPENAIP_API_KEY)")
+    p.add_argument("--dtpp", help="catalogue FAA d-TPP (d-tpp_Metafile.xml), défaut : <raw>/dtpp.xml")
     p.add_argument("--priority", help="ordre des sources, ex. faa-cifp,openaip")
     p.add_argument("-v", "--verbose", action="store_true")
     a = p.parse_args(argv)

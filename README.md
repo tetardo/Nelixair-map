@@ -6,12 +6,23 @@ PMTiles, hébergeable sur GitHub Pages ou n'importe quel CDN.
 
 > ⚠️ **Ne pas utiliser pour la navigation.** Carte d'illustration, sans garantie.
 
+## Captures d'écran
+
+Générées automatiquement à chaque déploiement, sur les données réelles du cycle en cours.
+
+| Carte en route (US) | Europe, mode nuit |
+|---|---|
+| ![Carte en route des États-Unis](https://tetardo.github.io/Nelixair-map/screenshots/carte.png) | ![Espaces aériens autour de Paris, mode nuit](https://tetardo.github.io/Nelixair-map/screenshots/europe-nuit.png) |
+| **Fiche aéroport** (météo, pistes, fréquences, cartes FAA) | **Log d'une voie aérienne** |
+| ![Fiche de KSFO](https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png) | ![Log de la voie J80](https://tetardo.github.io/Nelixair-map/screenshots/log-voie.png) |
+
 ## Couverture des données
 
 | Source | Contenu | Zone | Licence |
 |--------|---------|------|---------|
 | [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) | voies aériennes, waypoints, VOR/DME/TACAN/NDB, aéroports, Grid MORA | États-Unis | domaine public |
 | [OpenAIP](https://www.openaip.net) | VOR/DME/TACAN/NDB, aéroports, espaces aériens (CTR, TMA, zones R/P/D, FIR…) | monde | **CC BY-NC 4.0** |
+| [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | cartes d'approche, de départ, d'arrivée et diagrammes (liens vers les PDF officiels) | États-Unis | domaine public |
 | [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (chargés en direct par le navigateur) | monde | domaine public |
 
 Conséquences à connaître :
@@ -37,11 +48,14 @@ Conséquences à connaître :
   waypoints), liste triable des éléments à l'écran, fiche détaillée d'un point (voies qui y passent)
   et log d'une voie (MEA, route vraie, distance, cumul)
 - Aéroports par catégorie (grand / moyen / petit / héliport / hydrobase, IFR en bleu, VFR en magenta),
-  fiche avec METAR décodé (vent, visibilité, plafond, catégorie VFR/MVFR/IFR/LIFR) et TAF
+  fiche avec METAR décodé (vent, visibilité, plafond, catégorie VFR/MVFR/IFR/LIFR), TAF, pistes (longueur,
+  largeur, revêtement, QFU), fréquences (copiables d'un clic) et, aux US, cartes FAA d-TPP classées par type
 - Espaces aériens : contrôlés (CTR, TMA, CTA…), zones R/P/D/TRA/TSA, FIR/UIR, autres (TMZ, RMZ…),
   avec classe et limites ; clic = liste des espaces sous le point
 - Pastilles METAR colorées par catégorie de vol (zoom ≥ 5, données NOAA en direct)
 - Grid MORA (US) en milliers / centaines de pieds
+- Clic sur plusieurs objets superposés : liste de choix ; survol : nom de l'objet sous la souris
+- Lien partageable vers une fiche (`?sel=KSFO`) ; raccourcis `/` (recherche), `F` (panneau), `Échap`
 - Habillage type EFB : barre d'outils sombre, carte en mode jour ou nuit (mémorisé)
 - Couches activables, échelle en NM, coordonnées du curseur, cycle des données
 - Tracés en grand cercle, coupure correcte à l'antiméridien

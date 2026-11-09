@@ -21,6 +21,7 @@ args=(all --raw "$RAW" --out "$OUT")
 [[ -n "${CIFP:-}" ]] && args+=(--cifp "$CIFP")
 [[ -n "${OPENAIP:-}" ]] && args+=(--openaip "$OPENAIP")
 [[ -n "${PRIORITY:-}" ]] && args+=(--priority "$PRIORITY")
+[[ -n "${DTPP:-}" ]] && args+=(--dtpp "$DTPP")
 python3 pipeline/build.py "${args[@]}"
 
 command -v tippecanoe >/dev/null || { echo "tippecanoe introuvable (voir README)" >&2; exit 1; }
@@ -56,4 +57,6 @@ tippecanoe \
 mkdir -p "$SITE_DATA"
 cp "$OUT/nav.pmtiles" "$OUT/airspaces.pmtiles" "$OUT/search.json" "$OUT/routes.json" \
    "$OUT/mora.geojson" "$OUT/meta.json" "$SITE_DATA/"
+mkdir -p "$SITE_DATA/apt"
+cp "$OUT"/apt/*.json "$SITE_DATA/apt/" 2>/dev/null || true
 echo "OK : $(du -h "$OUT/nav.pmtiles" | cut -f1) navigation, $(du -h "$OUT/airspaces.pmtiles" | cut -f1) espaces -> $SITE_DATA/"

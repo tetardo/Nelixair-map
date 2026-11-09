@@ -57,6 +57,11 @@ def pa(ident, region, iata, la, lo, rwy, ifr, surf, elev, mil, name):
                  32: surf, 33: lat(la), 42: lon(lo), 57: elev, 82: mil, 94: name, 124: "00005", 129: CYCLE})
 
 
+def pg(apt, rw, length, brg, la, lo, width, cont="0"):
+    return line({1: "SUSA", 5: "P", 7: apt, 11: "K2", 13: "G", 14: rw, 22: cont, 23: length, 28: brg,
+                 33: lat(la), 42: lon(lo), 78: width, 124: "00007", 129: CYCLE})
+
+
 def mora_row(slat, slon, values):
     vals = "".join(v.rjust(3) for v in values).ljust(90)
     return line({1: "SUSA", 5: "A", 6: "S", 14: slat, 17: slon, 31: vals, 124: "00006", 129: CYCLE})
@@ -97,6 +102,12 @@ lines = [
     er("V99", 20, "NOPE1", "K2", "EA", "E   ", "L"),
     er("V99", 30, "SAF", "K2", "D ", "VE  ", "L"),
     pa("KABQ", "K2", "ABQ", 35.0402, -106.6092, "137", "Y", "H", "05355", "C", "ALBUQUERQUE INTL SUNPORT"),
+    pg("KABQ", "RW08", "13793", "0830", 35.0480, -106.6250, "150"),
+    pg("KABQ", "RW26", "13793", "2630", 35.0400, -106.5800, "150"),
+    pg("KABQ", "RW03", "10000", "0300", 35.0300, -106.6100, "150"),
+    pg("KABQ", "RW21", "10000", "2100", 35.0500, -106.6000, "150"),
+    # continuation de RW03 : doit être ignorée
+    pg("KABQ", "RW03", "99999", "0300", 35.0300, -106.6100, "150", cont="2"),
     pa("KSAF", "K2", "SAF", 35.6171, -106.0894, "083", "Y", "H", "06348", "C", "SANTA FE MUNI"),
     pa("E80", "K2", "", 34.6450, -106.8340, "050", "N", "H", "04821", "C", "ALEXANDER MUNI"),
     pa("0E0", "K2", "", 34.98, -106.06, "036", "N", "S", "06269", "P", "SYNTH DIRT STRIP"),
@@ -128,11 +139,20 @@ with open(os.path.join(HERE, "fixtures", "openaip_navaids.json"), "w") as fh:
 openaip_airports = {"fetched": "2026-11-09", "items": [
     {"name": "PARIS CHARLES DE GAULLE", "icaoCode": "LFPG", "iataCode": "CDG", "type": 3, "country": "FR",
      "geometry": {"type": "Point", "coordinates": [2.5479, 49.0097]}, "elevation": {"value": 119, "unit": 0},
-     "runways": [{"designator": "09L", "dimension": {"length": {"value": 4215, "unit": 0}}, "surface": {"mainComposite": 0}},
-                 {"designator": "08R", "dimension": {"length": {"value": 2700, "unit": 0}}, "surface": {"mainComposite": 1}}]},
+     "runways": [{"designator": "09L", "trueHeading": 87, "dimension": {"length": {"value": 4215, "unit": 0}, "width": {"value": 45, "unit": 0}}, "surface": {"mainComposite": 0}},
+                 {"designator": "27R", "trueHeading": 267, "dimension": {"length": {"value": 4215, "unit": 0}, "width": {"value": 45, "unit": 0}}, "surface": {"mainComposite": 0}},
+                 {"designator": "08R", "dimension": {"length": {"value": 2700, "unit": 0}}, "surface": {"mainComposite": 1}}],
+     "frequencies": [{"value": "119.250", "unit": 2, "type": 14, "name": "DE GAULLE TOUR"},
+                     {"value": "128.000", "unit": 2, "type": 15, "name": "ATIS"}]},
     # doublon de KABQ (CIFP prioritaire)
     {"name": "ALBUQUERQUE", "icaoCode": "KABQ", "type": 3, "country": "US",
-     "geometry": {"type": "Point", "coordinates": [-106.609, 35.040]}},
+     "geometry": {"type": "Point", "coordinates": [-106.609, 35.040]},
+     "runways": [{"designator": "08", "dimension": {"length": {"value": 4204, "unit": 0}}, "surface": {"mainComposite": 1}}],
+     "frequencies": [{"value": "120.300", "unit": 2, "type": 14, "name": "ALBUQUERQUE TOWER"}]},
+    # piste sur surface inconnue (22) : pas une hydrobase
+    {"name": "SYNTH UNKNOWN SURFACE", "icaoCode": "LFQQ", "type": 2, "country": "FR",
+     "geometry": {"type": "Point", "coordinates": [3.2, 48.2]},
+     "runways": [{"designator": "10", "dimension": {"length": {"value": 800, "unit": 0}}, "surface": {"mainComposite": 22}}]},
     {"name": "TOUSSUS LE NOBLE", "icaoCode": "LFPN", "type": 2, "country": "FR",
      "geometry": {"type": "Point", "coordinates": [2.1119, 48.7519]}, "elevation": {"value": 164, "unit": 0},
      "runways": [{"dimension": {"length": {"value": 1100, "unit": 0}}, "surface": {"mainComposite": 0}}]},
@@ -170,3 +190,27 @@ openaip_airspaces = {"fetched": "2026-11-09", "items": [
 with open(os.path.join(HERE, "fixtures", "openaip_airspaces.json"), "w") as fh:
     json.dump(openaip_airspaces, fh, indent=1)
 print("ok")
+
+
+# Catalogue d-TPP synthétique (structure du d-tpp_Metafile.xml FAA)
+dtpp = """<?xml version="1.0" encoding="UTF-8"?>
+<digital_tpp cycle="2511" from_edate="0901Z  10/30/25" to_edate="0901Z  11/27/25">
+ <state_code ID="NM" state_fullname="New Mexico">
+  <city_name ID="ALBUQUERQUE" volume="SW-3">
+   <airport_name ID="ALBUQUERQUE INTL SUNPORT" military="N" apt_ident="ABQ" icao_ident="KABQ" alnum="1">
+    <record><chartseq>10100</chartseq><chart_code>MIN</chart_code><chart_name>TAKEOFF MINIMUMS</chart_name><useraction></useraction><pdf_name>SW3TO.PDF</pdf_name></record>
+    <record><chartseq>70000</chartseq><chart_code>APD</chart_code><chart_name>AIRPORT DIAGRAM</chart_name><useraction></useraction><pdf_name>00001AD.PDF</pdf_name></record>
+    <record><chartseq>50750</chartseq><chart_code>IAP</chart_code><chart_name>ILS OR LOC RWY 08</chart_name><useraction></useraction><pdf_name>00001IL8.PDF</pdf_name></record>
+    <record><chartseq>50800</chartseq><chart_code>IAP</chart_code><chart_name>RNAV (GPS) RWY 26 (DELETED)</chart_name><useraction>D</useraction><pdf_name>DELETED_JOB.PDF</pdf_name></record>
+   </airport_name>
+  </city_name>
+  <city_name ID="BELEN" volume="SW-3">
+   <airport_name ID="ALEXANDER MUNI" military="N" apt_ident="E80" icao_ident="" alnum="2">
+    <record><chartseq>50750</chartseq><chart_code>IAP</chart_code><chart_name>RNAV (GPS) RWY 03</chart_name><useraction></useraction><pdf_name>00002R3.PDF</pdf_name></record>
+   </airport_name>
+  </city_name>
+ </state_code>
+</digital_tpp>
+"""
+with open(os.path.join(HERE, "fixtures", "dtpp.xml"), "w") as fh:
+    fh.write(dtpp)

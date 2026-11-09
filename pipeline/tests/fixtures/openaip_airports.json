@@ -21,9 +21,31 @@
    "runways": [
     {
      "designator": "09L",
+     "trueHeading": 87,
      "dimension": {
       "length": {
        "value": 4215,
+       "unit": 0
+      },
+      "width": {
+       "value": 45,
+       "unit": 0
+      }
+     },
+     "surface": {
+      "mainComposite": 0
+     }
+    },
+    {
+     "designator": "27R",
+     "trueHeading": 267,
+     "dimension": {
+      "length": {
+       "value": 4215,
+       "unit": 0
+      },
+      "width": {
+       "value": 45,
        "unit": 0
       }
      },
@@ -43,6 +65,20 @@
       "mainComposite": 1
      }
     }
+   ],
+   "frequencies": [
+    {
+     "value": "119.250",
+     "unit": 2,
+     "type": 14,
+     "name": "DE GAULLE TOUR"
+    },
+    {
+     "value": "128.000",
+     "unit": 2,
+     "type": 15,
+     "name": "ATIS"
+    }
    ]
   },
   {
@@ -56,7 +92,56 @@
      -106.609,
      35.04
     ]
-   }
+   },
+   "runways": [
+    {
+     "designator": "08",
+     "dimension": {
+      "length": {
+       "value": 4204,
+       "unit": 0
+      }
+     },
+     "surface": {
+      "mainComposite": 1
+     }
+    }
+   ],
+   "frequencies": [
+    {
+     "value": "120.300",
+     "unit": 2,
+     "type": 14,
+     "name": "ALBUQUERQUE TOWER"
+    }
+   ]
+  },
+  {
+   "name": "SYNTH UNKNOWN SURFACE",
+   "icaoCode": "LFQQ",
+   "type": 2,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     3.2,
+     48.2
+    ]
+   },
+   "runways": [
+    {
+     "designator": "10",
+     "dimension": {
+      "length": {
+       "value": 800,
+       "unit": 0
+      }
+     },
+     "surface": {
+      "mainComposite": 22
+     }
+    }
+   ]
   },
   {
    "name": "TOUSSUS LE NOBLE",

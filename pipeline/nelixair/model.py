@@ -122,6 +122,10 @@ class Airport:
     country: str = ""
     region: str = ""
     cycle: str = ""
+    # Pistes, une entrée par sens : {des, len_ft, wid_ft, surface, hdg, hdg_ref ("T" vrai / "M" magnétique)}
+    runways: list = field(default_factory=list)
+    # Fréquences : {type (TWR, APP, ATIS…), mhz, name}
+    freqs: list = field(default_factory=list)
     kind_rec: str = field(default="airport", init=False, repr=False)
 
     def validate(self) -> None:
