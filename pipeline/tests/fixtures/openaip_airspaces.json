@@ -1,0 +1,234 @@
+{
+ "fetched": "2026-11-09",
+ "items": [
+  {
+   "name": "CTR PARIS",
+   "type": 4,
+   "icaoClass": 3,
+   "country": "FR",
+   "lowerLimit": {
+    "value": 0,
+    "unit": 1,
+    "referenceDatum": 0
+   },
+   "upperLimit": {
+    "value": 1500,
+    "unit": 1,
+    "referenceDatum": 1
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       2.3,
+       48.9
+      ],
+      [
+       2.6999999999999997,
+       48.9
+      ],
+      [
+       2.6999999999999997,
+       49.3
+      ],
+      [
+       2.3,
+       49.3
+      ],
+      [
+       2.3,
+       48.9
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "name": "TMA PARIS 1",
+   "type": 7,
+   "icaoClass": 0,
+   "country": "FR",
+   "lowerLimit": {
+    "value": 1500,
+    "unit": 1,
+    "referenceDatum": 1
+   },
+   "upperLimit": {
+    "value": 115,
+    "unit": 6,
+    "referenceDatum": 2
+   },
+   "geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+     [
+      [
+       [
+        2.0,
+        48.6
+       ],
+       [
+        3.0,
+        48.6
+       ],
+       [
+        3.0,
+        49.6
+       ],
+       [
+        2.0,
+        49.6
+       ],
+       [
+        2.0,
+        48.6
+       ]
+      ]
+     ],
+     [
+      [
+       [
+        3.2,
+        48.6
+       ],
+       [
+        3.5,
+        48.6
+       ],
+       [
+        3.5,
+        48.9
+       ],
+       [
+        3.2,
+        48.9
+       ],
+       [
+        3.2,
+        48.6
+       ]
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "name": "R 45 SYNTH",
+   "type": 1,
+   "icaoClass": 8,
+   "country": "FR",
+   "lowerLimit": {
+    "value": 0,
+    "unit": 1,
+    "referenceDatum": 0
+   },
+   "upperLimit": {
+    "value": 3000,
+    "unit": 0,
+    "referenceDatum": 1
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       1.5,
+       47.5
+      ],
+      [
+       1.7,
+       47.5
+      ],
+      [
+       1.7,
+       47.7
+      ],
+      [
+       1.5,
+       47.7
+      ],
+      [
+       1.5,
+       47.5
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "name": "PARIS FIR",
+   "type": 10,
+   "country": "FR",
+   "lowerLimit": {
+    "value": 0,
+    "unit": 1,
+    "referenceDatum": 0
+   },
+   "upperLimit": {
+    "value": 195,
+    "unit": 6,
+    "referenceDatum": 2
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -1.0,
+       46.0
+      ],
+      [
+       4.0,
+       46.0
+      ],
+      [
+       4.0,
+       51.0
+      ],
+      [
+       -1.0,
+       51.0
+      ],
+      [
+       -1.0,
+       46.0
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "name": "UNKNOWN TYPE",
+   "type": 99,
+   "country": "FR",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       0.0,
+       45.0
+      ],
+      [
+       0.1,
+       45.0
+      ],
+      [
+       0.1,
+       45.1
+      ],
+      [
+       0.0,
+       45.1
+      ],
+      [
+       0.0,
+       45.0
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

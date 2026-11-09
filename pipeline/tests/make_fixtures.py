@@ -52,6 +52,16 @@ def er(route, seq, fix, region, secsub, desc, level, mea="", rtype="O", directio
                  84: mea, 124: "00004", 129: CYCLE})
 
 
+def pa(ident, region, iata, la, lo, rwy, ifr, surf, elev, mil, name):
+    return line({1: "SUSA", 5: "P", 7: ident, 11: region, 13: "A", 14: iata, 22: "0", 28: rwy, 31: ifr,
+                 32: surf, 33: lat(la), 42: lon(lo), 57: elev, 82: mil, 94: name, 124: "00005", 129: CYCLE})
+
+
+def mora_row(slat, slon, values):
+    vals = "".join(v.rjust(3) for v in values).ljust(90)
+    return line({1: "SUSA", 5: "A", 6: "S", 14: slat, 17: slon, 31: vals, 124: "00006", 129: CYCLE})
+
+
 lines = [
     "HDR01FAACIFP18      001P013203774 2511 SYNTHETIC FIXTURE".ljust(132),
     vhf("ABQ", "K2", 35.0438, -106.8166, "11320", "VTHW ", "ALBUQUERQUE"),
@@ -86,6 +96,15 @@ lines = [
     er("V99", 10, "ABQ", "K2", "D ", "V   ", "L"),
     er("V99", 20, "NOPE1", "K2", "EA", "E   ", "L"),
     er("V99", 30, "SAF", "K2", "D ", "VE  ", "L"),
+    pa("KABQ", "K2", "ABQ", 35.0402, -106.6092, "137", "Y", "H", "05355", "C", "ALBUQUERQUE INTL SUNPORT"),
+    pa("KSAF", "K2", "SAF", 35.6171, -106.0894, "083", "Y", "H", "06348", "C", "SANTA FE MUNI"),
+    pa("E80", "K2", "", 34.6450, -106.8340, "050", "N", "H", "04821", "C", "ALEXANDER MUNI"),
+    pa("0E0", "K2", "", 34.98, -106.06, "036", "N", "S", "06269", "P", "SYNTH DIRT STRIP"),
+    pa("KXXX", "K2", "", 35.3, -105.0, "090", "N", "W", "01000", "M", "SYNTH SEAPLANE BASE"),
+    # Grid MORA : rangée 35N depuis 107W ; 3e carré inconnu
+    mora_row("N35", "W107", ["120", "110", "UNK", "095"]),
+    # rangée 36N depuis 120W : 2e carré = 36N 119W (Whitney)
+    mora_row("N36", "W120", ["120", "165", "140"]),
 ]
 
 os.makedirs(os.path.join(HERE, "fixtures"), exist_ok=True)
@@ -105,4 +124,49 @@ openaip_items = {"fetched": "2026-11-09", "items": [
 ]}
 with open(os.path.join(HERE, "fixtures", "openaip_navaids.json"), "w") as fh:
     json.dump(openaip_items, fh, indent=1)
+
+openaip_airports = {"fetched": "2026-11-09", "items": [
+    {"name": "PARIS CHARLES DE GAULLE", "icaoCode": "LFPG", "iataCode": "CDG", "type": 3, "country": "FR",
+     "geometry": {"type": "Point", "coordinates": [2.5479, 49.0097]}, "elevation": {"value": 119, "unit": 0},
+     "runways": [{"designator": "09L", "dimension": {"length": {"value": 4215, "unit": 0}}, "surface": {"mainComposite": 0}},
+                 {"designator": "08R", "dimension": {"length": {"value": 2700, "unit": 0}}, "surface": {"mainComposite": 1}}]},
+    # doublon de KABQ (CIFP prioritaire)
+    {"name": "ALBUQUERQUE", "icaoCode": "KABQ", "type": 3, "country": "US",
+     "geometry": {"type": "Point", "coordinates": [-106.609, 35.040]}},
+    {"name": "TOUSSUS LE NOBLE", "icaoCode": "LFPN", "type": 2, "country": "FR",
+     "geometry": {"type": "Point", "coordinates": [2.1119, 48.7519]}, "elevation": {"value": 164, "unit": 0},
+     "runways": [{"dimension": {"length": {"value": 1100, "unit": 0}}, "surface": {"mainComposite": 0}}]},
+    {"name": "HELIPORT DE PARIS", "icaoCode": "LFPI", "type": 7, "country": "FR",
+     "geometry": {"type": "Point", "coordinates": [2.2733, 48.8333]}},
+    # planeur sans code OACI : écarté
+    {"name": "SYNTH GLIDER", "type": 1, "country": "FR", "geometry": {"type": "Point", "coordinates": [3.0, 48.0]}},
+    # fermé : écarté
+    {"name": "CLOSED", "icaoCode": "LFZZ", "type": 8, "country": "FR", "geometry": {"type": "Point", "coordinates": [3.1, 48.1]}},
+]}
+with open(os.path.join(HERE, "fixtures", "openaip_airports.json"), "w") as fh:
+    json.dump(openaip_airports, fh, indent=1)
+
+
+def sq(x0, y0, d):
+    return [[x0, y0], [x0 + d, y0], [x0 + d, y0 + d], [x0, y0 + d], [x0, y0]]
+
+
+openaip_airspaces = {"fetched": "2026-11-09", "items": [
+    {"name": "CTR PARIS", "type": 4, "icaoClass": 3, "country": "FR",
+     "lowerLimit": {"value": 0, "unit": 1, "referenceDatum": 0}, "upperLimit": {"value": 1500, "unit": 1, "referenceDatum": 1},
+     "geometry": {"type": "Polygon", "coordinates": [sq(2.3, 48.9, 0.4)]}},
+    {"name": "TMA PARIS 1", "type": 7, "icaoClass": 0, "country": "FR",
+     "lowerLimit": {"value": 1500, "unit": 1, "referenceDatum": 1}, "upperLimit": {"value": 115, "unit": 6, "referenceDatum": 2},
+     "geometry": {"type": "MultiPolygon", "coordinates": [[sq(2.0, 48.6, 1.0)], [sq(3.2, 48.6, 0.3)]]}},
+    {"name": "R 45 SYNTH", "type": 1, "icaoClass": 8, "country": "FR",
+     "lowerLimit": {"value": 0, "unit": 1, "referenceDatum": 0}, "upperLimit": {"value": 3000, "unit": 0, "referenceDatum": 1},
+     "geometry": {"type": "Polygon", "coordinates": [sq(1.5, 47.5, 0.2)]}},
+    {"name": "PARIS FIR", "type": 10, "country": "FR",
+     "lowerLimit": {"value": 0, "unit": 1, "referenceDatum": 0}, "upperLimit": {"value": 195, "unit": 6, "referenceDatum": 2},
+     "geometry": {"type": "Polygon", "coordinates": [sq(-1.0, 46.0, 5.0)]}},
+    {"name": "UNKNOWN TYPE", "type": 99, "country": "FR",
+     "geometry": {"type": "Polygon", "coordinates": [sq(0.0, 45.0, 0.1)]}},
+]}
+with open(os.path.join(HERE, "fixtures", "openaip_airspaces.json"), "w") as fh:
+    json.dump(openaip_airspaces, fh, indent=1)
 print("ok")

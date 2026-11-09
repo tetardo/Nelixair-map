@@ -46,6 +46,47 @@ Point : `{ident, region, cls, mea, max_alt, direction}`. `cls` sert seulement à
 la jointure (famille). `mea`/`max_alt` en pieds s'appliquent au tronçon qui
 **part** de ce point. `direction` : `F` (sens de la séquence), `B` (inverse), `""`.
 
+## `airport`
+
+| champ | type | description |
+|-------|------|-------------|
+| `kind` | `"airport"` | |
+| `ident` | string | code OACI (`KABQ`) ou identifiant local (`E80`) |
+| `category` | enum | `large`, `medium`, `small`, `heliport`, `seaplane` (dérivée de la piste la plus longue : ≥ 8000 ft, ≥ 5000 ft) |
+| `lat`,`lon`,`src`,`cycle` | | comme `fix` |
+| `name`, `iata`, `country`, `region` | string | |
+| `elev_ft`, `rwy_ft` | int\|null | altitude terrain, piste la plus longue |
+| `rwy_surface` | string | `hard`, `soft`, `water`, `""` |
+| `ifr`, `military` | bool | |
+
+Fusion : un aéroport de même ident à moins de 5 NM d'un aéroport déjà retenu est écarté.
+
+## `airspace`
+
+Un enregistrement par polygone (un MultiPolygon source donne plusieurs enregistrements).
+
+| champ | type | description |
+|-------|------|-------------|
+| `kind` | `"airspace"` | |
+| `name`, `type` | string | `type` normalisé : `CTR`, `TMA`, `CTA`, `R`, `P`, `D`, `FIR`, `UIR`… |
+| `group` | enum | `controlled`, `special`, `fir`, `other` (sert aux filtres et au style) |
+| `rings` | array | anneaux GeoJSON `[[lon, lat], …]`, extérieur en premier |
+| `icao_class` | string | `A`…`G` ou `""` |
+| `lower`, `upper` | string | libellés (`SFC`, `1500 ft MSL`, `FL115`, `UNL`) |
+| `lower_ft`, `upper_ft` | int\|null | valeurs numériques approximatives (FL × 100) |
+| `src`, `country`, `cycle` | string | |
+
+## `mora`
+
+Grid MORA : altitude minimale hors route d'un carré de 1° × 1°.
+
+| champ | type | description |
+|-------|------|-------------|
+| `kind` | `"mora"` | |
+| `lat`, `lon` | int | coin sud-ouest du carré |
+| `mora_ft` | int | pieds |
+| `src`, `cycle` | string | |
+
 ## Fusion
 
 Les sources sont lues par ordre de priorité (`--priority`, défaut
@@ -59,7 +100,7 @@ Le nombre de points non résolus est publié dans `meta.json` (`stats`).
 
 ## Brancher une source sous licence (ex. ARINC 424 mondial)
 
-1. Écrire `pipeline/nelixair/sources/<nom>.py` exposant `parse(path) -> Iterator[Fix | Airway]`.
+1. Écrire `pipeline/nelixair/sources/<nom>.py` exposant `parse(path) -> Iterator[Fix | Airway | Airport | Airspace | MoraCell]`.
    Pour une source ARINC 424 complète, `faa_cifp.parse_lines` fonctionne déjà
    tel quel (le format est le même) : seul le filtrage de zone éventuel change.
 2. L'ajouter dans `cmd_ingest` et `SOURCE_META` de `pipeline/build.py`.

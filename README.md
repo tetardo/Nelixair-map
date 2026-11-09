@@ -1,6 +1,6 @@
 # nelixair-map
 
-Carte web mondiale des **voies aériennes**, **waypoints** et **navaids**, au style
+Carte web mondiale des **voies aériennes**, **waypoints**, **navaids**, **aéroports** et **espaces aériens**, au style
 d'une carte en route IFR. Site 100 % statique : MapLibre GL + tuiles vectorielles
 PMTiles, hébergeable sur GitHub Pages ou n'importe quel CDN.
 
@@ -10,13 +10,14 @@ PMTiles, hébergeable sur GitHub Pages ou n'importe quel CDN.
 
 | Source | Contenu | Zone | Licence |
 |--------|---------|------|---------|
-| [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) | voies aériennes, waypoints, VOR/DME/TACAN/NDB | États-Unis | domaine public |
-| [OpenAIP](https://www.openaip.net) | VOR/DME/TACAN/NDB | monde | **CC BY-NC 4.0** |
+| [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) | voies aériennes, waypoints, VOR/DME/TACAN/NDB, aéroports, Grid MORA | États-Unis | domaine public |
+| [OpenAIP](https://www.openaip.net) | VOR/DME/TACAN/NDB, aéroports, espaces aériens (CTR, TMA, zones R/P/D, FIR…) | monde | **CC BY-NC 4.0** |
+| [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (chargés en direct par le navigateur) | monde | domaine public |
 
 Conséquences à connaître :
 
-- **Hors États-Unis, il n'y a que les navaids**, pas de voies aériennes ni de
-  waypoints. Aucune source mondiale gratuite et redistribuable ne publie les
+- **Hors États-Unis, il n'y a ni voies aériennes, ni waypoints, ni Grid MORA**
+  (seulement navaids, aéroports et espaces aériens OpenAIP). Aucune source mondiale gratuite et redistribuable ne publie les
   voies aériennes. Pour le monde entier, il faut une source sous licence
   (ARINC 424 d'un fournisseur de données) dont le contrat autorise une diffusion
   publique. Le pipeline est prêt pour ça, voir [docs/FORMAT.md](docs/FORMAT.md).
@@ -35,6 +36,12 @@ Conséquences à connaître :
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
   waypoints), liste triable des éléments à l'écran, fiche détaillée d'un point (voies qui y passent)
   et log d'une voie (MEA, route vraie, distance, cumul)
+- Aéroports par catégorie (grand / moyen / petit / héliport / hydrobase, IFR en bleu, VFR en magenta),
+  fiche avec METAR décodé (vent, visibilité, plafond, catégorie VFR/MVFR/IFR/LIFR) et TAF
+- Espaces aériens : contrôlés (CTR, TMA, CTA…), zones R/P/D/TRA/TSA, FIR/UIR, autres (TMZ, RMZ…),
+  avec classe et limites ; clic = liste des espaces sous le point
+- Pastilles METAR colorées par catégorie de vol (zoom ≥ 5, données NOAA en direct)
+- Grid MORA (US) en milliers / centaines de pieds
 - Habillage type EFB : barre d'outils sombre, carte en mode jour ou nuit (mémorisé)
 - Couches activables, échelle en NM, coordonnées du curseur, cycle des données
 - Tracés en grand cercle, coupure correcte à l'antiméridien
@@ -44,7 +51,8 @@ Conséquences à connaître :
 
 ```
 sources brutes ──adaptateurs──▶ format interne NDJSON ──fusion──▶ GeoJSON ──tippecanoe──▶ nav.pmtiles
- (CIFP, OpenAIP,                 (docs/FORMAT.md)                 + search.json, routes.json   │
+ (CIFP, OpenAIP,                 (docs/FORMAT.md)                 + search.json, routes.json   │ + airspaces.pmtiles
+                                                                  + mora.geojson
   futur ARINC mondial)                                            + meta.json                  ▼
                                                                               web/ (MapLibre, statique)
 ```
@@ -52,13 +60,13 @@ sources brutes ──adaptateurs──▶ format interne NDJSON ──fusion─�
 ```
 pipeline/            Python 3.10+, bibliothèque standard uniquement
   build.py           CLI : fetch | ingest | export | all
-  nelixair/model.py  format interne (Fix, Airway)
+  nelixair/model.py  format interne (Fix, Airway, Airport, Airspace, MoraCell)
   nelixair/sources/  un adaptateur par source
   nelixair/merge.py  déduplication multi-sources, résolution des voies
   nelixair/export.py GeoJSON + index de recherche + métadonnées
   tests/             tests unitaires + fixtures ARINC 424 synthétiques
 scripts/build.sh     chaîne complète jusqu'aux PMTiles
-web/                 front statique (index.html, app.js, symbols.js, config.js)
+web/                 front statique (index.html, app.js, symbols.js, weather.js, config.js)
 ```
 
 ## Build local
@@ -92,7 +100,11 @@ Tests : `python3 -m unittest discover -s pipeline/tests`
    (nouveau cycle CIFP récupéré automatiquement) et à la demande.
 
 GitHub Pages sert les requêtes HTTP Range nécessaires à PMTiles. Pour un autre
-hébergeur, vérifier ce point et servir `nav.pmtiles` avec CORS si le domaine diffère.
+hébergeur, vérifier ce point et servir les `.pmtiles` avec CORS si le domaine diffère.
+
+La météo est appelée directement depuis le navigateur sur `aviationweather.gov`.
+Si cette API refuse la requête (CORS, quota), la carte reste fonctionnelle et le panneau
+l'indique ; la solution serait alors un petit proxy, non fourni.
 
 ## Configuration du front
 

@@ -2,8 +2,13 @@
 window.NELIXAIR_CONFIG = {
   // Tuiles vectorielles produites par scripts/build.sh
   pmtiles: "data/nav.pmtiles",
+  airspacesPmtiles: "data/airspaces.pmtiles",
+  mora: "data/mora.geojson",
   // Repli GeoJSON (dev, ou ?geojson dans l'URL)
-  geojson: { fixes: "data/fixes.geojson", airways: "data/airways.geojson" },
+  geojson: {
+    fixes: "data/fixes.geojson", airways: "data/airways.geojson",
+    airports: "data/airports.geojson", airspaces: "data/airspaces.geojson",
+  },
   search: "data/search.json",
   routes: "data/routes.json",
   meta: "data/meta.json",
@@ -15,7 +20,8 @@ window.NELIXAIR_CONFIG = {
   // Attribution des données aéronautiques (obligatoire pour OpenAIP, CC BY-NC 4.0)
   attribution:
     '<a href="https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/" target="_blank" rel="noopener">FAA CIFP</a> · ' +
-    '<a href="https://www.openaip.net" target="_blank" rel="noopener">OpenAIP</a> (CC BY-NC 4.0)',
+    '<a href="https://www.openaip.net" target="_blank" rel="noopener">OpenAIP</a> (CC BY-NC 4.0) · ' +
+    'Météo <a href="https://aviationweather.gov" target="_blank" rel="noopener">NOAA AWC</a>',
   center: [-98, 39],
   zoom: 3.6,
 };
