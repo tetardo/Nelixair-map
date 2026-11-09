@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nelixair Map</title>
+  <meta name="description" content="Carte mondiale des voies aériennes, waypoints et navaids. Ne pas utiliser pour la navigation.">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="map" aria-label="Carte aéronautique"></div>
+
+  <header class="panel top">
+    <div class="brand">NELIXAIR <span>MAP</span></div>
+    <form id="search" class="search" autocomplete="off" role="search">
+      <input id="q" type="search" placeholder="Ident : ABQ, BIGEE, J60…" aria-label="Rechercher un ident" spellcheck="false">
+      <ul id="results" class="results" role="listbox" hidden></ul>
+    </form>
+  </header>
+
+  <aside class="panel layers" aria-label="Couches">
+    <label><input type="checkbox" data-group="awy-H" checked> <i class="sw sw-h"></i>Voies hautes</label>
+    <label><input type="checkbox" data-group="awy-L" checked> <i class="sw sw-l"></i>Voies basses</label>
+    <label><input type="checkbox" data-group="navaid" checked> <i class="sw sw-nav"></i>Navaids</label>
+    <label><input type="checkbox" data-group="waypoint" checked> <i class="sw sw-wpt"></i>Waypoints</label>
+    <button id="about-btn" type="button">Sources &amp; licences</button>
+  </aside>
+
+  <div class="panel status" id="status">
+    <span id="cursor">—</span><span id="cycle"></span>
+  </div>
+
+  <div class="nfn">NE PAS UTILISER POUR LA NAVIGATION</div>
+
+  <dialog id="about">
+    <h2>Sources &amp; licences</h2>
+    <ul id="sources"></ul>
+    <p>Fond de carte : © <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>
+      © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a>
+      Données © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contributeurs OpenStreetMap</a>.</p>
+    <p class="warn">Carte d'illustration. Données incomplètes hors États-Unis (navaids seulement),
+      sans garantie d'exactitude ni de mise à jour. Ne pas utiliser pour la préparation ou la conduite d'un vol.</p>
+    <form method="dialog"><button>Fermer</button></form>
+  </dialog>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+  <script src="config.js"></script>
+  <script src="symbols.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

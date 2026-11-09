@@ -1,0 +1,27 @@
+HDR01FAACIFP18      001P013203774 2511 SYNTHETIC FIXTURE                                                                            
+SUSAD        ABQ   K2011320VTHW N35023768W106485976ABQ N35023768W106485976                   ALBUQUERQUE                   000022511
+SUSAD        SAF   K2011360VDHW N35322868W106035292SAF N35322868W106035292                   SANTA FE                      000022511
+SUSAD        TCC   K2011160V HW N35105628W103355496TCC N35105628W103355496                   TUCUMCARI                     000022511
+SUSAD        ZZT   K2011000 THW N35176000W104300000ZZT N35176000W104300000                   SYNTH TACAN                   000022511
+SUSAD        IABQ  K2011090IDHW N35022400W106356000IABQN35022400W106356000                   ILS DME (ignored)             000022511
+SUSADB       GUP   K2003400H  W N35300000W108476000                                          GALLUP                        000032511
+SUSAEAENRT   ANTON K20    C  RH N35176000W105240000                            NAR                ANTON                    000012511
+SUSAEAENRT   BIGEE K20    C  RH N35150000W104120000                            NAR                BIGEE                    000012511
+SUSAEAENRT   BIGEE K22                                                                                                          2511
+SUSAEAENRT   ALSKA PA0    C  RH N52000000W179300000                            NAR                ALSKA                    000012511
+SUSAEAENRT   ASIAA PA0    C  RH N52300000E178300000                            NAR                ASIAA                    000012511
+SUSAER       J15         0010ABQ  K2D 0V    OH                                     18000                                   000042511
+SUSAER       J15         0020ANTONK2EA0E    OH                                     18000                                   000042511
+SUSAER       J15         0030BIGEEK2EA0E    OH                                     FL180                                   000042511
+SUSAER       J15         0040TCC  K2D 0VE   OH                                                                             000042511
+SUSAER       J15         0050SAF  K2D 0V    OH                                     18000                                   000042511
+SUSAER       J15         0060ZZT  K2D 0VE   OH                                                                             000042511
+SUSAER       V16         0010GUP  K2DB0N    OLF                                    09000                                   000042511
+SUSAER       V16         0020ABQ  K2D 0V    OL                                     10000                                   000042511
+SUSAER       V16         0030SAF  K2D 0V    OB                                     11000                                   000042511
+SUSAER       V16         0040TCC  K2D 0VE   OB                                                                             000042511
+SUSAER       R220        0010ALSKAPAEA0E    RB                                     FL200                                   000042511
+SUSAER       R220        0020ASIAAPAEA0EE   RB                                                                             000042511
+SUSAER       V99         0010ABQ  K2D 0V    OL                                                                             000042511
+SUSAER       V99         0020NOPE1K2EA0E    OL                                                                             000042511
+SUSAER       V99         0030SAF  K2D 0VE   OL                                                                             000042511

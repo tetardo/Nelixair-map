@@ -1,0 +1,26 @@
+name: Install tippecanoe
+description: Compile tippecanoe (felt/tippecanoe) avec cache
+inputs:
+  version:
+    description: Tag felt/tippecanoe
+    default: "2.53.0"
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      id: cache
+      with:
+        path: ~/.local/tippecanoe
+        key: tippecanoe-${{ inputs.version }}-${{ runner.os }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev
+        git clone --depth 1 --branch "${{ inputs.version }}" https://github.com/felt/tippecanoe /tmp/tippecanoe
+        make -C /tmp/tippecanoe -j"$(nproc)"
+        mkdir -p ~/.local/tippecanoe
+        cp /tmp/tippecanoe/tippecanoe /tmp/tippecanoe/tile-join ~/.local/tippecanoe/
+    - shell: bash
+      run: |
+        echo "$HOME/.local/tippecanoe" >> "$GITHUB_PATH"
+        "$HOME/.local/tippecanoe/tippecanoe" --version 2>&1 | head -1

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tests unitaires du pipeline
+        run: python -m unittest discover -s pipeline/tests -v
+      - name: Fixtures à jour
+        run: |
+          python -I pipeline/tests/make_fixtures.py
+          git diff --exit-code pipeline/tests/fixtures
+      - uses: ./.github/actions/tippecanoe
+      - name: Build de bout en bout sur fixtures (PMTiles compris)
+        env:
+          SKIP_FETCH: "1"
+          CIFP: pipeline/tests/fixtures/FAACIFP18.sample
+          OPENAIP: pipeline/tests/fixtures/openaip_navaids.json
+        run: |
+          scripts/build.sh
+          test -s web/data/nav.pmtiles
+          head -c 7 web/data/nav.pmtiles | grep -q PMTiles
+      - name: Syntaxe JS
+        run: for f in web/*.js; do node --check "$f"; done
