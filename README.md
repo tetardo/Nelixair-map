@@ -32,6 +32,7 @@ Conséquences à connaître :
 - Clic : popup (fréquence, coordonnées DMS, région, cycle, source) ; clic sur une
   voie : tronçon, distance, route vraie, MEA, et surbrillance de toute la voie
 - Recherche d'ident (navaid, waypoint ou voie), clavier `/` pour focaliser
+- Habillage type EFB : barre d'outils sombre, carte en mode jour ou nuit (mémorisé)
 - Couches activables, échelle en NM, coordonnées du curseur, cycle des données
 - Tracés en grand cercle, coupure correcte à l'antiméridien
 - Lien partageable (position dans l'URL)
