@@ -1,0 +1,70 @@
+{
+ "fetched": "2026-11-09",
+ "items": [
+  {
+   "identifier": "ABQ",
+   "name": "ALBUQUERQUE",
+   "type": 5,
+   "country": "US",
+   "frequency": {
+    "value": "113.200",
+    "unit": 2
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -106.817,
+     35.044
+    ]
+   }
+  },
+  {
+   "identifier": "PON",
+   "name": "PONTOISE",
+   "type": 4,
+   "country": "FR",
+   "channel": "84X",
+   "frequency": {
+    "value": "113.700",
+    "unit": 2
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     2.0383,
+     49.0967
+    ]
+   }
+  },
+  {
+   "identifier": "OL",
+   "name": "SYNTH NDB",
+   "type": 2,
+   "country": "FR",
+   "frequency": {
+    "value": "331",
+    "unit": 1
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     1.0,
+     48.0
+    ]
+   }
+  },
+  {
+   "identifier": "XXX",
+   "name": "UNKNOWN TYPE",
+   "type": 99,
+   "country": "FR",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     1.0,
+     47.0
+    ]
+   }
+  }
+ ]
+}
