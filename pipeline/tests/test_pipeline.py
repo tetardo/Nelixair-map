@@ -263,6 +263,26 @@ class TestWx(unittest.TestCase):
             self.assertEqual((rows["KXXX"]["wdir"], rows["KXXX"]["visib"], rows["KXXX"]["vertVis"]), ("VRB", 0.5, 200))
             t = _load(os.path.join(d, "tafs.json"))["d"]
             self.assertTrue(t["LFML"].startswith("TAF LFML"))
+            # mode fichiers locaux sans couches secondaires : fichiers vides, pas de téléchargement
+            self.assertEqual(_load(os.path.join(d, "hazards.geojson"))["features"], [])
+
+    def test_hazards_pireps(self):
+        import wx
+        with tempfile.TemporaryDirectory() as d:
+            wx.main(["--out", d, "--metars", os.path.join(FIX, "wx_metars.csv"), "--tafs", os.path.join(FIX, "wx_tafs.xml"),
+                     "--airsigmets", os.path.join(FIX, "wx_airsigmets.xml"), "--isigmets", os.path.join(FIX, "wx_isigmets.json"),
+                     "--pireps", os.path.join(FIX, "wx_pireps.csv")])
+            hz = [f["properties"] for f in _load(os.path.join(d, "hazards.geojson"))["features"]]
+            self.assertEqual([(h["kind"], h["fam"], h["src"]) for h in hz],
+                             [("SIGMET", "conv", "US"), ("AIRMET", "turb", "US"), ("SIGMET", "turb", "INTL")])
+            self.assertEqual((hz[1]["base"], hz[1]["top"], hz[1]["sev"]), (18000, 38000, "MOD"))
+            self.assertEqual(hz[2]["fir"], "MARSEILLE")
+            self.assertTrue(hz[2]["from"].endswith("Z"))
+            feats = _load(os.path.join(d, "hazards.geojson"))["features"]
+            ring = feats[1]["geometry"]["coordinates"][0]
+            self.assertEqual(ring[0], ring[-1])  # anneau refermé
+            pr = [f["properties"] for f in _load(os.path.join(d, "pireps.geojson"))["features"]]
+            self.assertEqual([(p["tb"], p["ic"], p["alt"]) for p in pr], [("MOD", "", 35000), ("", "LGT", 9000)])
 
 
 class TestCifpUrl(unittest.TestCase):

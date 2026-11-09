@@ -21,8 +21,10 @@ jobs:
           git diff --exit-code pipeline/tests/fixtures
       - name: Relais météo sur fixtures
         run: |
-          python pipeline/wx.py --out /tmp/wx --metars pipeline/tests/fixtures/wx_metars.csv --tafs pipeline/tests/fixtures/wx_tafs.xml
+          python pipeline/wx.py --out /tmp/wx --metars pipeline/tests/fixtures/wx_metars.csv --tafs pipeline/tests/fixtures/wx_tafs.xml \
+            --airsigmets pipeline/tests/fixtures/wx_airsigmets.xml --isigmets pipeline/tests/fixtures/wx_isigmets.json --pireps pipeline/tests/fixtures/wx_pireps.csv
           test -s /tmp/wx/metars.json
+          test -s /tmp/wx/hazards.geojson
       - uses: ./.github/actions/tippecanoe
       - name: Build de bout en bout sur fixtures (PMTiles compris)
         env:

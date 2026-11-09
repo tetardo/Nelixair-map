@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response><data num_results="2">
+<AIRSIGMET><raw_text>CONVECTIVE SIGMET 45C VALID UNTIL 0055Z NM AZ</raw_text><valid_time_from>2026-11-09T22:55:00Z</valid_time_from>
+<valid_time_to>2026-11-10T00:55:00Z</valid_time_to><altitude max_ft_msl="45000"/><hazard type="CONVECTIVE" severity="NONE"/>
+<airsigmet_type>SIGMET</airsigmet_type><area num_points="4"><point><longitude>-107.0</longitude><latitude>35.0</latitude></point>
+<point><longitude>-105.5</longitude><latitude>35.0</latitude></point><point><longitude>-105.5</longitude><latitude>36.0</latitude></point>
+<point><longitude>-107.0</longitude><latitude>35.0</latitude></point></area></AIRSIGMET>
+<AIRSIGMET><raw_text>AIRMET TANGO FOR TURB</raw_text><valid_time_from>2026-11-09T21:00:00Z</valid_time_from><valid_time_to>2026-11-10T03:00:00Z</valid_time_to>
+<altitude min_ft_msl="18000" max_ft_msl="38000"/><hazard type="TURB" severity="MOD"/><airsigmet_type>AIRMET</airsigmet_type>
+<area num_points="3"><point><longitude>-104.0</longitude><latitude>34.5</latitude></point><point><longitude>-103.0</longitude><latitude>34.5</latitude></point>
+<point><longitude>-103.5</longitude><latitude>35.5</latitude></point></area></AIRSIGMET>
+<AIRSIGMET><raw_text>SIGMET WITHOUT AREA</raw_text><hazard type="ICE" severity="SEV"/><airsigmet_type>SIGMET</airsigmet_type></AIRSIGMET>
+</data></response>

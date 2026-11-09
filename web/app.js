@@ -30,8 +30,18 @@
     : { type: "geojson", data: CFG.geojson.airspaces };
   navSources.mora = { type: "geojson", data: CFG.mora };
   navSources.wx = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  const EMPTY = { type: "FeatureCollection", features: [] };
+  navSources.hz = { type: "geojson", data: EMPTY };
+  navSources.pirep = { type: "geojson", data: EMPTY };
+  navSources.night = { type: "geojson", data: EMPTY };
+  navSources.sat = { type: "raster", tiles: CFG.satellite || [], tileSize: 256, maxzoom: 6 };
   const src = (layer) => (useGeojson ? { source: layer } : { source: "nav", "source-layer": layer });
   const aspSrc = hasAspPm ? { source: "asp", "source-layer": "airspaces" } : { source: "asp" };
+
+  // Couleurs des dangers SIGMET / AIRMET (identiques jour et nuit)
+  const HZ_COLORS = { conv: "#e0342f", turb: "#f08a24", ice: "#2bb3e6", ifr: "#9b5de5", ash: "#8d6e63", tc: "#c2185b", other: "#7d8aa5" };
+  const HZ_LBL = { conv: "Orages / convection", turb: "Turbulence", ice: "Givrage", ifr: "IFR / relief masqué", ash: "Cendres volcaniques",
+    tc: "Cyclone tropical", other: "Autre" };
 
   // ---------- Thèmes jour / nuit ----------
   const THEMES = {
@@ -135,6 +145,12 @@
     for (const [id, s] of Object.entries(navSources)) if (!map.getSource(id)) map.addSource(id, s);
     map.addSource("sel", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
+    // Satellite infrarouge et zone de nuit, sous toutes les couches aéronautiques
+    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: "none" },
+      paint: { "raster-opacity": 0.6, "raster-fade-duration": 300 } });
+    map.addLayer({ id: "night", type: "fill", source: "night", layout: { visibility: "none" },
+      paint: { "fill-color": "#0a1020", "fill-opacity": 0.22 } });
+
     // Espaces aériens (sous les voies) : remplissage léger, contour, nom + limites le long du contour
     map.addLayer({ id: "asp-fill", type: "fill", ...aspSrc, minzoom: 4,
       filter: ["!=", ["get", "group"], "fir"], paint: { "fill-opacity": 0.05 } });
@@ -153,6 +169,20 @@
         "text-font": F, "text-size": 10, "text-offset": [0, -0.7],
       },
       paint: { "text-halo-width": 1.2 } });
+
+    // SIGMET / AIRMET : zones colorées par type de danger (SIGMET trait plein, AIRMET pointillé)
+    const hzColor = ["match", ["get", "fam"], "conv", HZ_COLORS.conv, "turb", HZ_COLORS.turb, "ice", HZ_COLORS.ice,
+      "ifr", HZ_COLORS.ifr, "ash", HZ_COLORS.ash, "tc", HZ_COLORS.tc, HZ_COLORS.other];
+    map.addLayer({ id: "hz-fill", type: "fill", source: "hz", paint: { "fill-color": hzColor, "fill-opacity": 0.1 } });
+    map.addLayer({ id: "hz-line", type: "line", source: "hz", filter: ["!=", ["get", "kind"], "AIRMET"],
+      paint: { "line-color": hzColor, "line-width": 1.8, "line-opacity": 0.9 } });
+    map.addLayer({ id: "hz-line-airmet", type: "line", source: "hz", filter: ["==", ["get", "kind"], "AIRMET"],
+      paint: { "line-color": hzColor, "line-width": 1.2, "line-opacity": 0.8, "line-dasharray": [4, 3] } });
+    map.addLayer({ id: "hz-lbl", type: "symbol", source: "hz", minzoom: 3,
+      layout: { "text-field": ["concat", ["get", "kind"], " ", ["get", "hazard"],
+        ["case", ["all", ["has", "sev"], ["!=", ["get", "sev"], ""], ["!=", ["get", "sev"], "NONE"]], ["concat", " ", ["get", "sev"]], ""]],
+        "text-font": FB, "text-size": 10.5, "symbol-placement": "point", "text-allow-overlap": false },
+      paint: { "text-color": hzColor, "text-halo-width": 1.4 } });
 
     // Grid MORA : quadrillage 1° + valeur en milliers (centaines en exposant)
     map.addLayer({ id: "mora-line", type: "line", source: "mora", minzoom: 4, maxzoom: 11,
@@ -194,6 +224,14 @@
         "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 5, 2, 10, 3.5],
         "circle-stroke-color": ["match", ["get", "cat"], "VFR", WX.COLORS.VFR, "MVFR", WX.COLORS.MVFR,
           "IFR", WX.COLORS.IFR, "LIFR", WX.COLORS.LIFR, "#888"] } });
+
+    // PIREP : remplissage = turbulence, contour = givrage
+    const sevColor = (k) => ["match", ["get", k], "SEV", "#e0342f", "EXTM", "#a01818", "MOD", "#f08a24", "LGT", "#e8c547", "SMTH", "#e8c547", "rgba(0,0,0,0)"];
+    map.addLayer({ id: "pirep", type: "circle", source: "pirep", minzoom: 3, layout: { visibility: "none" },
+      paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 3.5, 8, 6],
+        "circle-color": ["case", ["==", ["get", "tb"], ""], "#8a94a8", sevColor("tb")],
+        "circle-stroke-color": ["case", ["==", ["get", "ic"], ""], "#ffffff", "#2bb3e6"],
+        "circle-stroke-width": ["case", ["==", ["get", "ic"], ""], 1, 2.5] } });
 
     // Aéroports
     map.addLayer({ id: "apt", type: "symbol", ...src("airports"), minzoom: 3,
@@ -311,6 +349,14 @@
     for (const id of ["asp-fill", "asp-lbl", ...ASP_LINE_IDS]) map.setLayoutProperty(id, "visibility", groups.length ? "visible" : "none");
     for (const id of ["mora-line", "mora-lbl"]) map.setLayoutProperty(id, "visibility", on.mora ? "visible" : "none");
     map.setLayoutProperty("wx", "visibility", on.wx ? "visible" : "none");
+    for (const id of ["hz-fill", "hz-line", "hz-line-airmet", "hz-lbl"]) map.setLayoutProperty(id, "visibility", on.hazards ? "visible" : "none");
+    map.setLayoutProperty("pirep", "visibility", on.pireps ? "visible" : "none");
+    map.setLayoutProperty("sat", "visibility", on.sat ? "visible" : "none");
+    map.setLayoutProperty("night", "visibility", on.night ? "visible" : "none");
+    const key = ["hazards", "pireps", "sat"].map((k) => +!!on[k]).join("");
+    const changed = key !== overlayKey;
+    overlayKey = key; overlays = on;
+    refreshOverlays(changed);
     wxEnabled = on.wx;
     if (on.wx) scheduleWx(); else $("#wx-status").hidden = true;
     try { localStorage.setItem("nelixair-filters", JSON.stringify(on)); } catch {}
@@ -361,6 +407,36 @@
     }
   }
   map.on("moveend", () => { if (wxEnabled) scheduleWx(); });
+
+  // ---------- SIGMET / AIRMET, PIREP, satellite, nuit : rafraîchis toutes les 5 min ----------
+  let overlays = {}, lastOverlay = 0, overlayKey = "";
+  async function loadJson(url) {
+    const r = await fetch(url, { cache: "no-cache" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
+  async function refreshOverlays(force = false) {
+    if (!map.getSource("hz")) return;
+    if (overlays.night) map.getSource("night").setData(window.NelixairSun.nightPolygon(new Date()));
+    const stale = force || Date.now() - lastOverlay > 5 * 60 * 1000;
+    if (!stale) return;
+    lastOverlay = Date.now();
+    const jobs = [];
+    if (overlays.hazards && CFG.wxHazards) jobs.push(loadJson(CFG.wxHazards).then((j) => {
+      const now = Date.now();
+      // garde les avis en vigueur (ou sans heure de fin connue)
+      j.features = j.features.filter((f) => !f.properties.to || Date.parse(f.properties.to) > now);
+      map.getSource("hz").setData(j);
+    }));
+    if (overlays.pireps && CFG.wxPireps) jobs.push(loadJson(CFG.wxPireps).then((j) => map.getSource("pirep").setData(j)));
+    if (overlays.sat) {
+      const s = map.getSource("sat");
+      if (s && s.setTiles) s.setTiles(CFG.satellite.map((u) => `${u}?t=${Math.floor(Date.now() / 600000)}`));
+    }
+    const res = await Promise.allSettled(jobs);
+    if (res.some((r) => r.status === "rejected")) { lastOverlay = 0; console.warn("Couches météo indisponibles", res); }
+  }
+  setInterval(() => refreshOverlays(), 60 * 1000);
 
   // ---------- Sidebar : ouverture, onglets ----------
   const sidebar = $("#sidebar"), sideBtn = $("#side-btn");
@@ -509,6 +585,22 @@
     ["STAR", "Arrivées (STAR)"], ["MIN", "Minima"], ["HOT", "Points chauds"], ["LAH", "LAHSO"], ["DAU", "Autres"]];
   const yes = (v) => v === true || v === "true";
 
+  // Éphémérides du jour (UTC) : lever / coucher et nuit aéronautique (fin / début du crépuscule civil, EASA)
+  function sunSection(lngLat) {
+    const S = window.NelixairSun;
+    if (!S) return "";
+    const t = S.times(lngLat[1], lngLat[0]);
+    const hm = (d) => d === "day" ? "soleil toujours levé" : d === "night" ? "soleil toujours couché"
+      : `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}Z`;
+    const now = new Date();
+    let state = "";
+    if (t.dawn instanceof Date && t.dusk instanceof Date) state = now >= t.dawn && now <= t.dusk ? "Jour aéronautique" : "Nuit aéronautique";
+    else if (t.dusk === "day" || t.dawn === "day") state = "Jour aéronautique";
+    else if (t.dusk === "night") state = "Nuit aéronautique";
+    return `<section class="d-sec"><h3>Soleil <small>${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)} · UTC</small></h3>` +
+      rows([["Lever", hm(t.rise)], ["Coucher", hm(t.set)], ["Début nuit (EASA)", hm(t.dusk)], ["Fin nuit (EASA)", hm(t.dawn)], ["Maintenant", state]]) +
+      `<p class="muted small">Nuit = fin du crépuscule civil du soir → début du crépuscule civil du matin. Calcul approché (± 2 min).</p></section>`;
+  }
   function showAirportDetail(p, lngLat) {
     const badges = [`<span class="badge">${esc(APT_KIND[p.kind] || "Aéroport")}</span>`,
       yes(p.ifr) ? '<span class="badge b-ifr" title="Procédures aux instruments">IFR</span>' : "",
@@ -523,6 +615,7 @@
       `<section class="d-sec"><h3>Pistes</h3><div id="d-rwy"><span class="muted">Chargement…</span></div></section>` +
       `<section class="d-sec"><h3>Fréquences</h3><div id="d-frq"><span class="muted">Chargement…</span></div></section>` +
       `<section class="d-sec" id="d-chr-sec" hidden><h3>Cartes FAA <small id="d-chr-cyc"></small></h3><div id="d-chr"></div></section>` +
+      sunSection(lngLat) +
       `<section class="d-sec"><h3>Position</h3>${rows([["Latitude", dms(lngLat[1], true)], ["Longitude", dms(lngLat[0], false)]])}` +
       `<p class="muted small">Source : ${esc(SRC[p.src] || p.src || "")}${p.cycle ? " · " + esc(p.cycle) : ""}</p></section>`;
     setTab("detail");
@@ -769,19 +862,20 @@
     }
     return out;
   }
+  function overlayAt(point, layers, b = 4) {
+    layers = layers.filter((l) => map.getLayer(l) && map.getLayoutProperty(l, "visibility") !== "none");
+    if (!layers.length) return [];
+    const seen = new Set(), out = [];
+    for (const f of map.queryRenderedFeatures([[point.x - b, point.y - b], [point.x + b, point.y + b]], { layers })) {
+      const k = f.properties.raw || JSON.stringify(f.properties);
+      if (!seen.has(k)) { seen.add(k); out.push(f.properties); }
+    }
+    return out;
+  }
   map.on("click", (e) => {
     const b = 6;
     const feats = map.queryRenderedFeatures([[e.point.x - b, e.point.y - b], [e.point.x + b, e.point.y + b]],
       { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
-    if (!feats.length) {
-      selectAirway(null); selectPoint(null); if (popup) popup.remove();
-      const asp = airspacesAt(e.point);
-      if (asp.length) {
-        if (sideOpen()) showAirspaceDetail(asp);
-        else showPopup(e.lngLat, asp.slice(0, 4).map(aspHtml).join(""));
-      }
-      return;
-    }
     const pts = [], legs = [], seen = new Set();
     for (const f of feats) {
       const p = f.properties;
@@ -790,25 +884,63 @@
       seen.add(key);
       (f.geometry.type === "Point" ? pts : legs).push(f);
     }
+    const awys = [...new Set(legs.map((l) => l.properties.ident))];
+    const asp = airspacesAt(e.point);
+    const hz = overlayAt(e.point, ["hz-fill"], 2);
+    const pr = overlayAt(e.point, ["pirep"], 6);
+    if (popup) popup.remove();
     if (sideOpen()) {
-      const awys = [...new Set(legs.map((l) => l.properties.ident))];
-      const asp = airspacesAt(e.point);
-      if (pts.length + awys.length === 1 && !asp.length) {
-        return pts.length ? openFix(pts[0].properties, pts[0].geometry.coordinates) : openAirway(awys[0]);
+      const n = pts.length + awys.length + (asp.length ? 1 : 0) + hz.length + pr.length;
+      if (!n) { selectAirway(null); selectPoint(null); return; }
+      if (n === 1) {
+        if (pts.length) return openFix(pts[0].properties, pts[0].geometry.coordinates);
+        if (awys.length) return openAirway(awys[0]);
+        selectAirway(null); selectPoint(null);
+        if (asp.length) return showAirspaceDetail(asp);
+        if (hz.length) return showOverlayDetail(hazardHtml(hz[0]), "Avis");
+        return showOverlayDetail(pirepHtml(pr[0]), "PIREP");
       }
-      return showPicker(pts, awys, asp);
+      return showPicker(pts, awys, asp, hz, pr);
     }
     if (pts.length) {
       const f = pts[0];
       selectPoint(f.geometry.coordinates);
       showPopup(f.geometry.coordinates, pts.slice(0, 3).map((x) => fixHtml(x.properties, x.geometry.coordinates)).join(""));
       selectAirway(null);
-    } else {
+    } else if (legs.length) {
       selectPoint(null);
       selectAirway(legs[0].properties.ident);
       showPopup(e.lngLat, legs.slice(0, 3).map((x) => legHtml(x.properties)).join(""));
+    } else {
+      selectAirway(null); selectPoint(null);
+      const html = pr.slice(0, 2).map(pirepHtml).concat(hz.slice(0, 2).map(hazardHtml), asp.slice(0, 3).map(aspHtml)).join("");
+      if (html) showPopup(e.lngLat, html);
     }
   });
+
+  // ---------- Fiches SIGMET / AIRMET et PIREP ----------
+  const zt = (v) => {
+    const m = /^\d{4}-(\d\d)-(\d\d)[T ](\d\d):(\d\d)/.exec(String(v || ""));
+    return m ? `${m[2]}/${m[1]} ${m[3]}${m[4]}Z` : "";
+  };
+  const SEV_LBL = { NEG: "nulle", SMTH: "faible", LGT: "faible", MOD: "modérée", SEV: "forte", EXTM: "extrême" };
+  function hazardHtml(p) {
+    const lvl = p.base != null || p.top != null ? `${p.base != null ? alt(p.base) : "SFC"} → ${p.top != null ? alt(p.top) : "?"}` : null;
+    return `<div class="pop"><h3>${esc(p.kind)} <small style="background:${HZ_COLORS[p.fam] || HZ_COLORS.other}">${esc(HZ_LBL[p.fam] || p.hazard)}</small></h3>` +
+      rows([["Danger", p.hazard], ["Intensité", p.sev && p.sev !== "NONE" ? p.sev : null], ["Niveaux", lvl],
+        ["Validité", p.from || p.to ? `${zt(p.from)} → ${zt(p.to)}` : null], ["FIR", p.fir]]) +
+      (p.raw ? `<div class="wx-raw">${esc(p.raw)}</div>` : "") + "</div>";
+  }
+  function pirepHtml(p) {
+    return `<div class="pop"><h3>${esc(p.type || "PIREP")} <small>${p.alt != null ? esc(alt(p.alt)) : "PIREP"}</small></h3>` +
+      rows([["Turbulence", p.tb ? `${p.tb} (${SEV_LBL[p.tb] || ""})` : null], ["Givrage", p.ic ? `${p.ic} (${SEV_LBL[p.ic] || ""})` : null],
+        ["Avion", p.ac], ["Heure", zt(p.t)]]) +
+      (p.raw ? `<div class="wx-raw">${esc(p.raw)}</div>` : "") + "</div>";
+  }
+  function showOverlayDetail(html) {
+    detail.innerHTML = `<div class="ov-detail">${html}</div>`;
+    setTab("detail");
+  }
   map.on("mousemove", (e) => {
     const f = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]],
       { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
@@ -817,7 +949,7 @@
   });
 
   // Plusieurs objets sous le clic : on laisse choisir plutôt que de deviner
-  function showPicker(pts, awys, asp) {
+  function showPicker(pts, awys, asp, hz = [], pr = []) {
     if (popup) popup.remove();
     selectAirway(null); selectPoint(null);
     const items = [];
@@ -830,6 +962,11 @@
     for (const a of awys) items.push({ label: a, sub: "Voie aérienne", cls: "airway", go: () => openAirway(a) });
     if (asp.length) items.push({ label: `${asp.length} espace${asp.length > 1 ? "s" : ""} aérien${asp.length > 1 ? "s" : ""}`,
       sub: asp.slice(0, 3).map((x) => x.name).join(" · "), cls: "airspace", go: () => showAirspaceDetail(asp) });
+    for (const h of hz) items.push({ label: `${h.kind} ${h.hazard}`, sub: `${HZ_LBL[h.fam] || ""}${h.fir ? " · " + h.fir : ""}`,
+      cls: `hz-${h.fam}`, go: () => showOverlayDetail(hazardHtml(h)) });
+    for (const p of pr) items.push({ label: p.alt != null ? `PIREP ${alt(p.alt)}` : "PIREP",
+      sub: [p.tb && `turbulence ${p.tb}`, p.ic && `givrage ${p.ic}`, p.ac].filter(Boolean).join(" · "), cls: "pirep",
+      go: () => showOverlayDetail(pirepHtml(p)) });
     detail.innerHTML = `<div class="d-head"><h2>À cet endroit</h2><span class="badge">${items.length}</span></div>` +
       '<ul class="picker"></ul>';
     const ul = detail.querySelector(".picker");

@@ -1,0 +1,43 @@
+[
+ {
+  "icaoId": "LFPW",
+  "firId": "LFMM",
+  "firName": "MARSEILLE",
+  "hazard": "TURB",
+  "qualifier": "SEV",
+  "validTimeFrom": 1794265200,
+  "validTimeTo": 1794279600,
+  "base": 25000,
+  "top": 38000,
+  "coords": [
+   {
+    "lat": 43.0,
+    "lon": 4.0
+   },
+   {
+    "lat": 44.0,
+    "lon": 4.0
+   },
+   {
+    "lat": 44.0,
+    "lon": 6.0
+   },
+   {
+    "lat": 43.0,
+    "lon": 6.0
+   }
+  ],
+  "rawSigmet": "LFMM SIGMET 3 VALID 092300/100300 LFPW- SEV TURB"
+ },
+ {
+  "icaoId": "XXXX",
+  "hazard": "TS",
+  "coords": [
+   {
+    "lat": 10.0,
+    "lon": 10.0
+   }
+  ],
+  "rawSigmet": "POINT ONLY"
+ }
+]

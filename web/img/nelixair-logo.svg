@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Nelixair">
+  <title>Nelixair</title>
+  <!-- Plume principale : vexille, puis languette et tuyau sous la fente -->
+  <path fill="#e2611f" d="M89 1C62 12 40 30 32 52C30 58 28.5 62 28 65.5C33 62 38 60.5 43 60C58 47 78 26 89 1Z"/>
+  <path fill="#e2611f" d="M45 61.5C38 62.5 32 65 28.5 67.5C22 79 15 89 10 99C17 90 23 81 29 71C33 66.5 39 63.5 45 61.5Z"/>
+  <!-- Petites plumes -->
+  <path fill="#f2ad62" d="M68 63C54 63 38 68 24 81C30 78 34 77 38 76.5C36 76 35 75.5 34.5 75C44 73 56 68.5 68 63Z"/>
+  <path fill="#f2ad62" d="M54 85.5C42 82 29 85 18 93C25 91 30 90 35 89.5C33.5 89 33 88.5 32.5 88C39 88 47 87.5 54 85.5Z"/>
+</svg>

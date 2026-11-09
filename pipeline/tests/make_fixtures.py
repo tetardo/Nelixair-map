@@ -243,3 +243,40 @@ wx_xml = """<?xml version="1.0" encoding="UTF-8"?>
 """
 with open(os.path.join(HERE, "fixtures", "wx_tafs.xml"), "w") as fh:
     fh.write(wx_xml)
+
+wx_airsigmets = """<?xml version="1.0" encoding="UTF-8"?>
+<response><data num_results="2">
+<AIRSIGMET><raw_text>CONVECTIVE SIGMET 45C VALID UNTIL 0055Z NM AZ</raw_text><valid_time_from>2026-11-09T22:55:00Z</valid_time_from>
+<valid_time_to>2026-11-10T00:55:00Z</valid_time_to><altitude max_ft_msl="45000"/><hazard type="CONVECTIVE" severity="NONE"/>
+<airsigmet_type>SIGMET</airsigmet_type><area num_points="4"><point><longitude>-107.0</longitude><latitude>35.0</latitude></point>
+<point><longitude>-105.5</longitude><latitude>35.0</latitude></point><point><longitude>-105.5</longitude><latitude>36.0</latitude></point>
+<point><longitude>-107.0</longitude><latitude>35.0</latitude></point></area></AIRSIGMET>
+<AIRSIGMET><raw_text>AIRMET TANGO FOR TURB</raw_text><valid_time_from>2026-11-09T21:00:00Z</valid_time_from><valid_time_to>2026-11-10T03:00:00Z</valid_time_to>
+<altitude min_ft_msl="18000" max_ft_msl="38000"/><hazard type="TURB" severity="MOD"/><airsigmet_type>AIRMET</airsigmet_type>
+<area num_points="3"><point><longitude>-104.0</longitude><latitude>34.5</latitude></point><point><longitude>-103.0</longitude><latitude>34.5</latitude></point>
+<point><longitude>-103.5</longitude><latitude>35.5</latitude></point></area></AIRSIGMET>
+<AIRSIGMET><raw_text>SIGMET WITHOUT AREA</raw_text><hazard type="ICE" severity="SEV"/><airsigmet_type>SIGMET</airsigmet_type></AIRSIGMET>
+</data></response>
+"""
+with open(os.path.join(HERE, "fixtures", "wx_airsigmets.xml"), "w") as fh:
+    fh.write(wx_airsigmets)
+
+wx_isigmets = [
+    {"icaoId": "LFPW", "firId": "LFMM", "firName": "MARSEILLE", "hazard": "TURB", "qualifier": "SEV",
+     "validTimeFrom": 1794265200, "validTimeTo": 1794279600, "base": 25000, "top": 38000,
+     "coords": [{"lat": 43.0, "lon": 4.0}, {"lat": 44.0, "lon": 4.0}, {"lat": 44.0, "lon": 6.0}, {"lat": 43.0, "lon": 6.0}],
+     "rawSigmet": "LFMM SIGMET 3 VALID 092300/100300 LFPW- SEV TURB"},
+    {"icaoId": "XXXX", "hazard": "TS", "coords": [{"lat": 10.0, "lon": 10.0}], "rawSigmet": "POINT ONLY"},
+]
+with open(os.path.join(HERE, "fixtures", "wx_isigmets.json"), "w") as fh:
+    json.dump(wx_isigmets, fh, indent=1)
+
+wx_pireps = "\n".join([
+    "No errors", "No warnings", "3 ms", "data source=aircraftreports", "2 results",
+    "receipt_time,observation_time,aircraft_ref,latitude,longitude,altitude_ft_msl,turbulence_type,turbulence_intensity,"
+    "turbulence_base_ft_msl,turbulence_top_ft_msl,icing_type,icing_intensity,icing_base_ft_msl,icing_top_ft_msl,report_type,raw_text",
+    "2026-11-09T22:40:00Z,2026-11-09T22:38:00Z,B738,35.2,-106.3,35000,CHOP,MOD,,,,,,,PIREP,ABQ UA /OV ABQ/TM 2238/FL350/TP B738/TB MOD CHOP",
+    "2026-11-09T22:41:00Z,2026-11-09T22:39:00Z,C172,35.6,-106.0,9000,,,,,,,,,PIREP,SAF UA /OV SAF/TM 2239/FL090/TP C172/IC LGT RIME",
+]) + "\n"
+with open(os.path.join(HERE, "fixtures", "wx_pireps.csv"), "w") as fh:
+    fh.write(wx_pireps)
