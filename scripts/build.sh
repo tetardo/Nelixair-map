@@ -40,5 +40,5 @@ tippecanoe \
   -L airways:"$OUT/airways.geojson"
 
 mkdir -p "$SITE_DATA"
-cp "$OUT/nav.pmtiles" "$OUT/search.json" "$OUT/meta.json" "$SITE_DATA/"
+cp "$OUT/nav.pmtiles" "$OUT/search.json" "$OUT/routes.json" "$OUT/meta.json" "$SITE_DATA/"
 echo "OK : $(du -h "$OUT/nav.pmtiles" | cut -f1) de tuiles -> $SITE_DATA/"

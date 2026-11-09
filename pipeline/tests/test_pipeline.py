@@ -130,6 +130,14 @@ class TestRoundTripAndExport(unittest.TestCase):
             j15 = [l for l in legs if l["properties"]["ident"] == "J15"]
             self.assertEqual(len(j15), 4)  # 3 + 1 tronçons, pas de lien TCC-SAF
             self.assertIn("J15", search["airways"])
+            routes = _load(os.path.join(d, "routes.json"))
+            self.assertEqual([[p[0] for p in part["pts"]] for part in routes["J15"]["parts"]],
+                             [["ABQ", "ANTON", "BIGEE", "TCC"], ["SAF", "ZZT"]])
+            self.assertEqual(routes["J15"]["parts"][0]["pts"][2][4], 18000)
+            self.assertEqual([p["lv"] for p in routes["V16"]["parts"]], ["L", "B"])
+            self.assertTrue(routes["R220"]["rnav"])
+            self.assertFalse(routes["J15"]["rnav"])
+            self.assertTrue(r220["properties"]["rnav"])
             self.assertEqual([s["id"] for s in meta["sources"]], ["faa-cifp", "openaip"])
             self.assertEqual(meta["sources"][0]["cycle"], "2511")
 

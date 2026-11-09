@@ -197,31 +197,66 @@
   }
   $("#theme-btn").addEventListener("click", () => applyTheme(theme === "night" ? "day" : "night"));
 
-  // ---------- Visibilité par groupe ----------
-  const GROUPS = {
-    "awy-H": ["awy-H", "awy-lbl-H"], "awy-L": ["awy-L", "awy-lbl-L"],
-    navaid: ["nav", "nav-lbl"], waypoint: ["wpt"],
-  };
-  function applyVisibility() {
+  // ---------- Filtres (sidebar) ----------
+  const NAV_CLASSES = ["vor", "vordme", "vortac", "tacan", "dme", "ndb"];
+  function filterState() {
     const on = {};
-    document.querySelectorAll(".layers input").forEach((i) => (on[i.dataset.group] = i.checked));
-    for (const [g, ids] of Object.entries(GROUPS))
-      for (const id of ids) map.setLayoutProperty(id, "visibility", on[g] ? "visible" : "none");
-    const b = on["awy-H"] || on["awy-L"] ? "visible" : "none";
-    map.setLayoutProperty("awy-B", "visibility", b);
-    map.setLayoutProperty("awy-lbl-B", "visibility", b);
+    document.querySelectorAll("#tab-filters input[data-f]").forEach((i) => (on[i.dataset.f] = i.checked));
+    return on;
   }
-  document.querySelectorAll(".layers input").forEach((i) => i.addEventListener("change", applyVisibility));
-  const layersBtn = $("#layers-btn"), layersPop = $("#layers");
-  function toggleLayers(open) {
-    layersPop.hidden = !open;
-    layersBtn.setAttribute("aria-expanded", open);
+  function applyFilters() {
+    const on = filterState();
+    const rnav = ["coalesce", ["get", "rnav"], false];
+    const typeF = on.rnav && on.conv ? true : on.rnav ? ["==", rnav, true] : on.conv ? ["==", rnav, false] : false;
+    const vis = { H: on.H, L: on.L, B: on.H || on.L };
+    for (const lv of ["H", "L", "B"]) {
+      const f = ["all", ["==", ["get", "level"], lv], typeF];
+      for (const id of [`awy-${lv}`, `awy-lbl-${lv}`]) {
+        map.setFilter(id, f);
+        map.setLayoutProperty(id, "visibility", vis[lv] ? "visible" : "none");
+      }
+    }
+    const classes = NAV_CLASSES.filter((c) => on[c]);
+    const navF = ["in", ["get", "cls"], ["literal", classes]];
+    map.setFilter("nav", navF);
+    map.setFilter("nav-lbl", navF);
+    map.setLayoutProperty("wpt", "visibility", on.waypoint ? "visible" : "none");
+    try { localStorage.setItem("nelixair-filters", JSON.stringify(on)); } catch {}
+    scheduleList();
   }
-  layersBtn.addEventListener("click", () => toggleLayers(layersPop.hidden));
-  document.addEventListener("click", (e) => {
-    if (!layersPop.hidden && !e.target.closest(".menu")) toggleLayers(false);
-  });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") toggleLayers(false); });
+  try {
+    const saved = JSON.parse(localStorage.getItem("nelixair-filters") || "null");
+    if (saved) document.querySelectorAll("#tab-filters input[data-f]").forEach((i) => {
+      if (i.dataset.f in saved) i.checked = !!saved[i.dataset.f];
+    });
+  } catch {}
+  document.querySelectorAll("#tab-filters input[data-f]").forEach((i) => i.addEventListener("change", applyFilters));
+
+  // ---------- Sidebar : ouverture, onglets ----------
+  const sidebar = $("#sidebar"), sideBtn = $("#side-btn");
+  const isMobile = () => matchMedia("(max-width: 760px)").matches;
+  function setSidebar(open, persist = true) {
+    document.body.classList.toggle("side-open", open);
+    sideBtn.setAttribute("aria-pressed", open);
+    sidebar.setAttribute("aria-hidden", !open);
+    if (persist && !isMobile()) { try { localStorage.setItem("nelixair-side", open ? "1" : "0"); } catch {} }
+    setTimeout(() => map.resize(), 220);
+    scheduleList();
+  }
+  const sideOpen = () => document.body.classList.contains("side-open");
+  sideBtn.addEventListener("click", () => setSidebar(!sideOpen()));
+  $("#side-close").addEventListener("click", () => setSidebar(false));
+  let savedSide = null;
+  try { savedSide = localStorage.getItem("nelixair-side"); } catch {}
+
+  let tab = "filters";
+  function setTab(name) {
+    tab = name;
+    document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === name));
+    document.querySelectorAll(".tabpanel").forEach((p) => (p.hidden = p.id !== `tab-${name}`));
+    if (name === "list") scheduleList();
+  }
+  document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
 
   // ---------- Formatage ----------
   const CLS = { waypoint: "Waypoint", vor: "VOR", vordme: "VOR/DME", vortac: "VORTAC", tacan: "TACAN", dme: "DME", ndb: "NDB" };
@@ -269,6 +304,199 @@
     popup.on("close", () => { selectPoint(null); });
   }
 
+  // ---------- Géodésie (log de voie) ----------
+  const RAD = Math.PI / 180;
+  function distNm(a, b) {
+    const dLat = (b[1] - a[1]) * RAD, dLon = (b[0] - a[0]) * RAD;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * RAD) * Math.cos(b[1] * RAD) * Math.sin(dLon / 2) ** 2;
+    return 2 * 3440.065 * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function bearing(a, b) {
+    const y = Math.sin((b[0] - a[0]) * RAD) * Math.cos(b[1] * RAD);
+    const x = Math.cos(a[1] * RAD) * Math.sin(b[1] * RAD) - Math.sin(a[1] * RAD) * Math.cos(b[1] * RAD) * Math.cos((b[0] - a[0]) * RAD);
+    return (Math.atan2(y, x) / RAD + 360) % 360;
+  }
+  const deg3 = (v) => String(Math.round(v) % 360).padStart(3, "0") + "°";
+
+  // ---------- Index des voies (routes.json, chargé à la demande) ----------
+  let routes = null, routesP = null, fixAirways = null;
+  function loadRoutes() {
+    routesP = routesP || fetch(CFG.routes).then((r) => r.json()).then((j) => {
+      routes = j;
+      fixAirways = new Map();
+      for (const [awy, r] of Object.entries(j))
+        for (const part of r.parts)
+          for (const [id, , lon, lat] of part.pts) {
+            const arr = fixAirways.get(id) || [];
+            arr.push({ lon, lat, awy });
+            fixAirways.set(id, arr);
+          }
+      return j;
+    }).catch((e) => { console.error(e); routesP = null; return null; });
+    return routesP;
+  }
+  function airwaysThrough(ident, lngLat) {
+    const near = (fixAirways?.get(ident) || []).filter((x) => Math.abs(x.lon - lngLat[0]) < 0.02 && Math.abs(x.lat - lngLat[1]) < 0.02);
+    return [...new Set(near.map((x) => x.awy))].sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+  }
+
+  // ---------- Panneau Détail ----------
+  const detail = $("#tab-detail");
+  const LVL_SHORT = { H: "Haute", L: "Basse", B: "H+B" };
+  function showFixDetail(p, lngLat) {
+    detail.innerHTML = `<div class="d-head"><h2>${esc(p.ident)}</h2><span class="badge">${CLS[p.cls] || esc(p.cls)}</span></div>` +
+      (p.name && p.name !== p.ident ? `<p class="d-sub">${esc(p.name)}</p>` : "") +
+      rows([["Fréquence", freq(p)], ["Canal", p.channel], ["Latitude", dms(lngLat[1], true)], ["Longitude", dms(lngLat[0], false)],
+        ["Région", p.region || p.country], ["Source", (SRC[p.src] || p.src || "") + (p.cycle ? " · " + p.cycle : "")]]) +
+      `<h3>Voies passant par ce point</h3><div class="chips" id="d-awys"><span class="muted">Chargement…</span></div>`;
+    loadRoutes().then(() => {
+      const box = $("#d-awys");
+      if (!box) return;
+      const list = routes ? airwaysThrough(p.ident, lngLat) : [];
+      box.innerHTML = list.length ? "" : '<span class="muted">Aucune</span>';
+      for (const a of list) {
+        const b = document.createElement("button");
+        b.className = "chip"; b.textContent = a;
+        b.addEventListener("click", () => openAirway(a, { fit: true }));
+        box.appendChild(b);
+      }
+    });
+    setTab("detail");
+  }
+  function showAirwayDetail(ident) {
+    detail.innerHTML = `<div class="d-head"><h2>${esc(ident)}</h2></div><p class="muted">Chargement…</p>`;
+    setTab("detail");
+    loadRoutes().then(() => {
+      const r = routes && routes[ident];
+      if (!r) { detail.innerHTML = `<div class="d-head"><h2>${esc(ident)}</h2></div><p class="muted">Voie introuvable dans l'index.</p>`; return; }
+      const levels = [...new Set(r.parts.map((p) => p.lv))].map((l) => LVL_SHORT[l]).join(", ");
+      let total = 0, n = 0;
+      const tables = r.parts.map((part, pi) => {
+        let cum = 0;
+        const trs = part.pts.map((pt, i) => {
+          const [id, cls, lon, lat, , dir] = pt;
+          let trk = "", d = "", mea = "";
+          if (i > 0) {
+            const prev = part.pts[i - 1];
+            const dd = distNm([prev[2], prev[3]], [lon, lat]);
+            cum += dd;
+            trk = deg3(bearing([prev[2], prev[3]], [lon, lat]));
+            d = dd.toFixed(0);
+            mea = prev[4] ? alt(prev[4]) : "";
+          }
+          n++;
+          return `<tr data-lon="${lon}" data-lat="${lat}" data-id="${esc(id)}" data-cls="${esc(cls)}">` +
+            `<td><b>${esc(id)}</b><small>${cls === "waypoint" ? "" : esc(CLS[cls] || cls)}</small></td>` +
+            `<td>${mea}</td><td>${trk}</td><td>${d}</td><td>${i ? cum.toFixed(0) : ""}</td></tr>` +
+            (dir && i < part.pts.length - 1 ? `<tr class="note"><td colspan="5">Sens unique ${dir === "F" ? "→" : "←"}</td></tr>` : "");
+        }).join("");
+        total += cum;
+        return (r.parts.length > 1 ? `<h3>Portion ${pi + 1} · ${LVL_SHORT[part.lv]}</h3>` : "") +
+          `<table class="log"><thead><tr><th>Point</th><th>MEA</th><th>Rte</th><th>NM</th><th>Cumul</th></tr></thead><tbody>${trs}</tbody></table>`;
+      }).join("");
+      detail.innerHTML = `<div class="d-head"><h2>${esc(ident)}</h2><span class="badge">${r.rnav ? "RNAV" : "Conv."}</span></div>` +
+        rows([["Niveau", levels], ["Longueur", `${total.toFixed(0)} NM`], ["Points", n], ["Portions", r.parts.length]]) +
+        `<button class="ghost" id="d-fit">Afficher toute la voie</button>` + tables +
+        `<p class="muted small">MEA et route vraie du tronçon arrivant sur le point.</p>`;
+      $("#d-fit").addEventListener("click", () => fitAirway(ident));
+      detail.querySelectorAll("tr[data-lon]").forEach((tr) => tr.addEventListener("click", () => {
+        const ll = [+tr.dataset.lon, +tr.dataset.lat];
+        selectPoint(ll);
+        map.flyTo({ center: ll, zoom: Math.max(map.getZoom(), 8), duration: 700 });
+      }));
+    });
+  }
+  function fitAirway(ident) {
+    if (!routes || !routes[ident]) return;
+    const pts = routes[ident].parts.flatMap((p) => p.pts);
+    let w = 180, s = 90, e = -180, n = -90;
+    for (const p of pts) { w = Math.min(w, p[2]); e = Math.max(e, p[2]); s = Math.min(s, p[3]); n = Math.max(n, p[3]); }
+    map.fitBounds([[w, s], [e, n]], { padding: 60, maxZoom: 8, duration: 800 });
+  }
+
+  // Point d'entrée commun (clic carte, recherche, liste)
+  function openFix(p, lngLat, { fly = false } = {}) {
+    selectAirway(null);
+    selectPoint(lngLat);
+    if (fly) map.flyTo({ center: lngLat, zoom: Math.max(map.getZoom(), p.cls === "waypoint" ? 8.5 : 7.5), duration: 800 });
+    if (sideOpen()) { if (popup) popup.remove(); showFixDetail(p, lngLat); }
+    else showPopup(lngLat, fixHtml(p, lngLat));
+    if (isMobile() && sideOpen() && fly) setSidebar(false);
+  }
+  function openAirway(ident, { fit = false } = {}) {
+    selectPoint(null);
+    selectAirway(ident);
+    if (popup) popup.remove();
+    if (!sideOpen() && !isMobile()) setSidebar(true);
+    if (sideOpen()) showAirwayDetail(ident);
+    if (fit) loadRoutes().then(() => fitAirway(ident));
+  }
+
+  // ---------- Panneau Liste (éléments visibles) ----------
+  let listMode = "pts", listTimer = null;
+  const listEl = $("#vis-list"), countEl = $("#vis-count"), sortEl = $("#vis-sort"), filtEl = $("#vis-filter");
+  function scheduleList() {
+    clearTimeout(listTimer);
+    listTimer = setTimeout(renderList, 150);
+  }
+  const TYPE_ORDER = { vortac: 0, vordme: 1, vor: 2, tacan: 3, dme: 4, ndb: 5, waypoint: 6 };
+  function renderList() {
+    if (!sideOpen() || tab !== "list" || !map.getLayer("nav")) return;
+    const q = filtEl.value.trim().toUpperCase();
+    const c = map.getCenter().toArray();
+    let items = [];
+    const seen = new Set();
+    if (listMode === "pts") {
+      for (const f of map.queryRenderedFeatures({ layers: ["nav", "wpt"].filter((l) => map.getLayoutProperty(l, "visibility") !== "none") })) {
+        const p = f.properties, ll = f.geometry.coordinates;
+        const k = `${p.ident}|${p.cls}|${ll[0].toFixed(3)}|${ll[1].toFixed(3)}`;
+        if (seen.has(k) || (q && !p.ident.startsWith(q))) continue;
+        seen.add(k);
+        items.push({ p, ll, d: distNm(c, ll) });
+      }
+      const s = sortEl.value;
+      items.sort((a, b) => s === "dist" ? a.d - b.d
+        : s === "type" ? (TYPE_ORDER[a.p.cls] - TYPE_ORDER[b.p.cls]) || a.p.ident.localeCompare(b.p.ident)
+        : a.p.ident.localeCompare(b.p.ident));
+    } else {
+      const lyr = ["awy-H", "awy-L", "awy-B"].filter((l) => map.getLayoutProperty(l, "visibility") !== "none");
+      const by = new Map();
+      for (const f of map.queryRenderedFeatures({ layers: lyr })) {
+        const p = f.properties;
+        if (q && !p.ident.startsWith(q)) continue;
+        const it = by.get(p.ident) || { ident: p.ident, lv: new Set(), rnav: p.rnav === true || p.rnav === "true", n: 0 };
+        it.lv.add(p.level); it.n++;
+        by.set(p.ident, it);
+      }
+      items = [...by.values()];
+      const s = sortEl.value;
+      items.sort((a, b) => s === "dist" ? b.n - a.n
+        : s === "type" ? ([...a.lv].join() + a.ident).localeCompare([...b.lv].join() + b.ident, "fr", { numeric: true })
+        : a.ident.localeCompare(b.ident, "fr", { numeric: true }));
+    }
+    countEl.textContent = `${items.length.toLocaleString("fr-FR")} ${listMode === "pts" ? "point(s)" : "voie(s)"} à l'écran`;
+    const MAX = 400;
+    listEl.innerHTML = items.slice(0, MAX).map((it, i) => listMode === "pts"
+      ? `<li data-i="${i}"><b>${esc(it.p.ident)}</b><span class="t">${CLS[it.p.cls] || ""}</span><span class="r">${it.p.freq != null ? freq(it.p) : ""}</span><span class="d">${it.d.toFixed(0)} NM</span></li>`
+      : `<li data-i="${i}"><b>${esc(it.ident)}</b><span class="t">${[...it.lv].map((l) => LVL_SHORT[l]).join(", ")}</span><span class="r">${it.rnav ? "RNAV" : ""}</span><span class="d">${it.n} tr.</span></li>`
+    ).join("") + (items.length > MAX ? `<li class="more">… et ${(items.length - MAX).toLocaleString("fr-FR")} autres, zoomer pour affiner</li>` : "");
+    listEl.querySelectorAll("li[data-i]").forEach((li) => li.addEventListener("click", () => {
+      const it = items[+li.dataset.i];
+      if (listMode === "pts") openFix(it.p, it.ll, { fly: true });
+      else openAirway(it.ident, { fit: true });
+    }));
+  }
+  document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+    listMode = b.dataset.mode;
+    document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    sortEl.querySelector('option[value="dist"]').textContent = listMode === "pts" ? "Distance au centre" : "Tronçons visibles";
+    renderList();
+  }));
+  sortEl.addEventListener("change", renderList);
+  filtEl.addEventListener("input", scheduleList);
+  map.on("moveend", scheduleList);
+  map.on("idle", () => { if (tab === "list" && !listEl.children.length) scheduleList(); });
+
   const CLICKABLE = ["nav", "nav-lbl", "wpt", "awy-H", "awy-L", "awy-B", "awy-lbl-H", "awy-lbl-L", "awy-lbl-B"];
   map.on("click", (e) => {
     const b = 6;
@@ -285,10 +513,12 @@
     }
     if (pts.length) {
       const f = pts[0];
+      if (sideOpen()) return openFix(f.properties, f.geometry.coordinates);
       selectPoint(f.geometry.coordinates);
       showPopup(f.geometry.coordinates, pts.slice(0, 3).map((x) => fixHtml(x.properties, x.geometry.coordinates)).join(""));
       selectAirway(null);
     } else {
+      if (sideOpen()) return openAirway(legs[0].properties.ident);
       selectPoint(null);
       selectAirway(legs[0].properties.ident);
       showPopup(e.lngLat, legs.slice(0, 3).map((x) => legHtml(x.properties)).join(""));
@@ -347,6 +577,7 @@
     input.blur();
     if (h.t === "awy") {
       input.value = h.ident;
+      if (sideOpen()) showAirwayDetail(h.ident);
       selectPoint(null);
       selectAirway(h.ident);
       if (popup) popup.remove();
@@ -359,14 +590,17 @@
       selectAirway(null);
       selectPoint([lon, lat]);
       map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), cls === "waypoint" ? 8.5 : 7.5), duration: 900 });
-      showPopup([lon, lat], fixHtml({ ident, cls, name, region, src: "", freq: null }, [lon, lat])
-        .replace('<div class="src"></div>', ""));
-      // remplace par la popup complète (fréquence, source…) une fois la tuile chargée
-      map.once("moveend", () => {
+      const basic = { ident, cls, name, region, src: "", freq: null };
+      if (sideOpen()) showFixDetail(basic, [lon, lat]);
+      else showPopup([lon, lat], fixHtml(basic, [lon, lat]).replace('<div class="src"></div>', ""));
+      // complète (fréquence, source…) une fois la tuile chargée
+      map.once("idle", () => {
         const pt = map.project([lon, lat]);
         const f = map.queryRenderedFeatures([[pt.x - 3, pt.y - 3], [pt.x + 3, pt.y + 3]], { layers: ["nav", "wpt"] })
           .find((x) => x.properties.ident === ident);
-        if (f) showPopup([lon, lat], fixHtml(f.properties, [lon, lat]));
+        if (!f) return;
+        if (sideOpen()) showFixDetail(f.properties, [lon, lat]);
+        else showPopup([lon, lat], fixHtml(f.properties, [lon, lat]));
       });
     }
   }
@@ -413,7 +647,8 @@
     baseLayers = map.getStyle().layers.slice();
     addLayers();
     applyTheme(theme);
-    applyVisibility();
+    applyFilters();
+    setSidebar(!isMobile() && savedSide !== "0", false);
     if (useGeojson) console.info("Mode GeoJSON (pas de PMTiles trouvées)");
   });
 })();

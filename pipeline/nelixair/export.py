@@ -34,6 +34,13 @@ def fix_feature(fx) -> dict:
     }
 
 
+def is_rnav(airway) -> bool:
+    """Voie RNAV : code ARINC 'R' (route type), sinon convention d'ident Q/T (US)."""
+    if airway.route_type:
+        return airway.route_type == "R"
+    return airway.ident[:1] in ("Q", "T") and airway.ident[1:2].isdigit()
+
+
 def leg_feature(airway, a, fa, b, fb) -> dict:
     coords = great_circle(fa.lat, fa.lon, fb.lat, fb.lon)
     parts = split_antimeridian(coords)
@@ -42,7 +49,7 @@ def leg_feature(airway, a, fa, b, fb) -> dict:
             else {"type": "MultiLineString", "coordinates": parts})
     props = {
         "ident": airway.ident, "level": airway.level, "src": airway.src,
-        "from": fa.ident, "to": fb.ident,
+        "rnav": is_rnav(airway), "from": fa.ident, "to": fb.ident,
         "dist_nm": round(haversine_nm(fa.lat, fa.lon, fb.lat, fb.lon), 1),
         "trk_true": round(initial_bearing(fa.lat, fa.lon, fb.lat, fb.lon)),
     }
@@ -73,8 +80,12 @@ def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
 
     legs = []
     awy_bbox: dict[str, list[float]] = {}
+    routes: dict[str, dict] = {}
     for awy in ds.airways:
         for part in resolve(ds, awy):
+            r = routes.setdefault(awy.ident, {"rnav": is_rnav(awy), "parts": []})
+            r["parts"].append({"lv": awy.level, "pts": [
+                [fx.ident, fx.cls, _r(fx.lon, 4), _r(fx.lat, 4), p.mea, p.direction] for p, fx in part]})
             for (a, fa), (b, fb) in zip(part, part[1:]):
                 legs.append(leg_feature(awy, a, fa, b, fb))
                 bb = awy_bbox.setdefault(awy.ident, [180, 90, -180, -90])
@@ -93,6 +104,10 @@ def export(ds: Dataset, out_dir: str, sources_meta: list[dict]) -> dict:
     }
     with open(os.path.join(out_dir, "search.json"), "w", encoding="utf-8") as fh:
         json.dump(search, fh, ensure_ascii=False, separators=(",", ":"))
+
+    # Points ordonnés de chaque voie (log de voie et index point -> voies du front).
+    with open(os.path.join(out_dir, "routes.json"), "w", encoding="utf-8") as fh:
+        json.dump(routes, fh, ensure_ascii=False, separators=(",", ":"))
 
     meta = {
         "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

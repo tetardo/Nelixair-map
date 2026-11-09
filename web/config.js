@@ -5,6 +5,7 @@ window.NELIXAIR_CONFIG = {
   // Repli GeoJSON (dev, ou ?geojson dans l'URL)
   geojson: { fixes: "data/fixes.geojson", airways: "data/airways.geojson" },
   search: "data/search.json",
+  routes: "data/routes.json",
   meta: "data/meta.json",
   // Fond de carte vectoriel libre, sans clé (schéma OpenMapTiles)
   basemapStyle: "https://tiles.openfreemap.org/styles/positron",
