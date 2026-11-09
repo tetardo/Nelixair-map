@@ -84,7 +84,7 @@ Tests : `python3 -m unittest discover -s pipeline/tests`
 ## Déploiement (GitHub Pages)
 
 1. *Settings → Pages → Source* : **GitHub Actions**.
-2. *Settings → Secrets → Actions* : ajouter le secret `OPENAIP` (clé API OpenAIP).
+2. *Settings → Secrets → Actions* : ajouter le secret `OPENAIP_API_KEY` (clé API OpenAIP).
 3. Le workflow `deploy.yml` tourne à chaque push sur `main`, chaque jeudi
    (nouveau cycle CIFP récupéré automatiquement) et à la demande.
 
