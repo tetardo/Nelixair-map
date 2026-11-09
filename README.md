@@ -32,6 +32,9 @@ Conséquences à connaître :
 - Clic : popup (fréquence, coordonnées DMS, région, cycle, source) ; clic sur une
   voie : tronçon, distance, route vraie, MEA, et surbrillance de toute la voie
 - Recherche d'ident (navaid, waypoint ou voie), clavier `/` pour focaliser
+- Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
+  waypoints), liste triable des éléments à l'écran, fiche détaillée d'un point (voies qui y passent)
+  et log d'une voie (MEA, route vraie, distance, cumul)
 - Habillage type EFB : barre d'outils sombre, carte en mode jour ou nuit (mémorisé)
 - Couches activables, échelle en NM, coordonnées du curseur, cycle des données
 - Tracés en grand cercle, coupure correcte à l'antiméridien
@@ -41,7 +44,7 @@ Conséquences à connaître :
 
 ```
 sources brutes ──adaptateurs──▶ format interne NDJSON ──fusion──▶ GeoJSON ──tippecanoe──▶ nav.pmtiles
- (CIFP, OpenAIP,                 (docs/FORMAT.md)                 + search.json                │
+ (CIFP, OpenAIP,                 (docs/FORMAT.md)                 + search.json, routes.json   │
   futur ARINC mondial)                                            + meta.json                  ▼
                                                                               web/ (MapLibre, statique)
 ```
