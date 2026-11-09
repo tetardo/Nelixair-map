@@ -14,6 +14,10 @@ window.NELIXAIR_CONFIG = {
   meta: "data/meta.json",
   // Détails aéroport (pistes, fréquences, cartes) : data/apt/<2 premiers caractères>.json
   airportDetails: "data/apt/",
+  // Météo : relais statique des caches NOAA (branche wx-data, mise à jour toutes les 10 min).
+  // raw.githubusercontent.com autorise les appels navigateur (CORS), contrairement à aviationweather.gov.
+  wxMetars: "https://raw.githubusercontent.com/tetardo/Nelixair-map/wx-data/metars.json",
+  wxTafs: "https://raw.githubusercontent.com/tetardo/Nelixair-map/wx-data/tafs.json",
   // Fond de carte vectoriel libre, sans clé (schéma OpenMapTiles)
   basemapStyle: "https://tiles.openfreemap.org/styles/positron",
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",

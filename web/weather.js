@@ -1,19 +1,40 @@
-// Météo : METAR / TAF via l'API publique aviationweather.gov (NOAA, domaine public).
-// Fonctions pures + petit cache ; l'affichage est géré par app.js.
+// Météo : METAR / TAF de la NOAA (domaine public).
+// L'API aviationweather.gov refuse les appels navigateur (pas de CORS) : on lit un relais
+// statique (pipeline/wx.py, publié toutes les 10 min par .github/workflows/wx.yml).
 (function () {
-  const API = "https://aviationweather.gov/api/data";
-  const cache = new Map(); // clé -> { t, data }
+  const CFG = window.NELIXAIR_CONFIG || {};
   const TTL = 5 * 60 * 1000;
+  const cache = new Map(); // url -> { t, p }
 
-  async function get(url) {
+  function load(url) {
     const hit = cache.get(url);
-    if (hit && Date.now() - hit.t < TTL) return hit.data;
-    const r = await fetch(url, { headers: { Accept: "application/json" } });
-    if (r.status === 204) return [];
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const data = await r.json();
-    cache.set(url, { t: Date.now(), data });
-    return data;
+    if (hit && Date.now() - hit.t < TTL) return hit.p;
+    const p = fetch(url, { cache: "no-cache" }).then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    });
+    cache.set(url, { t: Date.now(), p });
+    p.catch(() => cache.delete(url));
+    return p;
+  }
+
+  // metars.json -> { time, list, byId }
+  let metarsP = null, metarsT = 0;
+  function metars() {
+    if (!metarsP || Date.now() - metarsT > TTL) {
+      metarsT = Date.now();
+      metarsP = load(CFG.wxMetars).then((j) => {
+        const list = j.d.map((r) => {
+          const o = {};
+          j.f.forEach((k, i) => (o[k] = r[i]));
+          o.clouds = (o.clouds || []).map(([cover, base]) => ({ cover, base }));
+          return o;
+        });
+        return { time: j.t, list, byId: new Map(list.map((m) => [m.icaoId, m])) };
+      });
+      metarsP.catch(() => (metarsP = null));
+    }
+    return metarsP;
   }
 
   // Visibilité en milles terrestres (peut valoir "10+", "1/2", "P6SM"…)
@@ -62,18 +83,23 @@
   }
 
   async function metarsInBbox(w, s, e, n) {
-    const url = `${API}/metar?bbox=${s.toFixed(2)},${w.toFixed(2)},${n.toFixed(2)},${e.toFixed(2)}&format=json`;
-    return get(url);
+    const { list } = await metars();
+    return list.filter((m) => m.lat >= s && m.lat <= n && m.lon >= w && m.lon <= e);
   }
   async function metar(id) {
-    const d = await get(`${API}/metar?ids=${encodeURIComponent(id)}&format=json`);
-    return Array.isArray(d) ? d[0] || null : null;
+    return (await metars()).byId.get(id) || null;
   }
   async function taf(id) {
-    const d = await get(`${API}/taf?ids=${encodeURIComponent(id)}&format=json`);
-    return Array.isArray(d) ? d[0] || null : null;
+    const j = await load(CFG.wxTafs);
+    return j.d[id] ? { rawTAF: j.d[id] } : null;
+  }
+  // Âge des données en minutes (null si inconnu)
+  async function age() {
+    const { time } = await metars();
+    const t = Date.parse(time);
+    return isNaN(t) ? null : Math.max(0, Math.round((Date.now() - t) / 60000));
   }
 
-  window.NelixairWx = { metarsInBbox, metar, taf, flightCat, ceilingFt, visSm, wind,
+  window.NelixairWx = { metarsInBbox, metar, taf, age, flightCat, ceilingFt, visSm, wind,
     COLORS: { VFR: "#22a559", MVFR: "#2f6fe0", IFR: "#e0342f", LIFR: "#c235c2" } };
 })();

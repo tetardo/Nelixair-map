@@ -248,6 +248,23 @@ class TestDtpp(unittest.TestCase):
         self.assertEqual([r[0] for r in pair_runways(rw)], ["18/36", "04L/22R", "04R", "H1"])
 
 
+class TestWx(unittest.TestCase):
+    def test_relay(self):
+        import wx
+        with tempfile.TemporaryDirectory() as d:
+            wx.main(["--out", d, "--metars", os.path.join(FIX, "wx_metars.csv"), "--tafs", os.path.join(FIX, "wx_tafs.xml")])
+            m = _load(os.path.join(d, "metars.json"))
+            rows = {r[0]: dict(zip(m["f"], r)) for r in m["d"]}
+            self.assertEqual(set(rows), {"LFML", "KSAF", "KXXX"})  # ligne sans coordonnées écartée
+            lfml = rows["LFML"]
+            self.assertEqual((lfml["wdir"], lfml["wspd"], lfml["wgst"], lfml["visib"], lfml["altim"], lfml["fltCat"]),
+                             (320, 12, 25, "6+", 1018, "VFR"))
+            self.assertEqual(rows["KSAF"]["clouds"], [["OVC", 800]])
+            self.assertEqual((rows["KXXX"]["wdir"], rows["KXXX"]["visib"], rows["KXXX"]["vertVis"]), ("VRB", 0.5, 200))
+            t = _load(os.path.join(d, "tafs.json"))["d"]
+            self.assertTrue(t["LFML"].startswith("TAF LFML"))
+
+
 class TestCifpUrl(unittest.TestCase):
     def test_pick(self):
         html = ('<a href="https://aeronav.faa.gov/Upload_313-d/cifp/CIFP_251030.zip">'

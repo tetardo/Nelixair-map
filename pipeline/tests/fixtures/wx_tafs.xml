@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response><data num_results="2">
+<TAF><raw_text>TAF LFML 092300Z 1000/1106 32015G25KT CAVOK</raw_text><station_id>LFML</station_id></TAF>
+<TAF><raw_text>TAF KSAF 092130Z 0922/1024 VRB05KT P6SM OVC010</raw_text><station_id>KSAF</station_id></TAF>
+</data></response>
