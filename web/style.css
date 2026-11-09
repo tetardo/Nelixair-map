@@ -34,7 +34,8 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 /* ---- Barre d'outils ---- */
 .toolbar { position: absolute; z-index: 3; top: 0; left: 0; right: 0; height: var(--bar); display: flex; align-items: center;
   gap: 10px; padding: 0 12px; background: var(--chrome); border-bottom: 1px solid var(--chrome-line); }
-.brand { font: 700 13px/1 var(--mono); letter-spacing: .16em; white-space: nowrap; display: flex; gap: 6px; }
+.brand { font: 700 13px/1 var(--mono); letter-spacing: .16em; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.brand img { width: 22px; height: 22px; margin-right: 2px; }
 .brand span { color: var(--accent); }
 .tools { display: flex; gap: 6px; align-items: center; }
 .tbtn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 6px;
@@ -267,3 +268,12 @@ summary small { color: var(--chrome-soft); font-weight: 400; margin-left: 4px; }
   background: rgba(23, 32, 51, .94); color: var(--chrome-ink); font: 12px var(--sans); box-shadow: var(--shadow);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hover-tip b { font-family: var(--mono); margin-right: 4px; }
+.sw-hz { width: 12px; height: 10px; border: 2px solid #f0a020; background: rgba(240,160,32,.25); border-radius: 2px; }
+.sw-pirep { width: 10px; height: 10px; border: 2px solid #4dd6ff; background: #e0342f; border-radius: 50%; }
+.sw-sat { width: 12px; height: 12px; border: 0; border-radius: 2px; background: linear-gradient(135deg, #222 0%, #888 50%, #eee 100%); }
+.sw-night { width: 12px; height: 12px; border: 0; border-radius: 50%; background: linear-gradient(90deg, #f3d36b 50%, #1b2440 50%); }
+.ov-detail .pop h3 { font-size: 16px; }
+.ov-detail .pop { padding: 4px 2px; }
+.c-pirep { background: #f08a24; box-shadow: 0 0 0 2px #4dd6ff inset; }
+.c-hz-conv { background: #e0342f; } .c-hz-turb { background: #f08a24; } .c-hz-ice { background: #2bb3e6; }
+.c-hz-ifr { background: #9b5de5; } .c-hz-ash { background: #8d6e63; } .c-hz-tc { background: #c2185b; } .c-hz-other { background: #7d8aa5; }

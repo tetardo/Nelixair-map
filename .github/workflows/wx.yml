@@ -34,6 +34,6 @@ jobs:
           git init -q -b wx-data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add metars.json tafs.json
+          git add metars.json tafs.json hazards.geojson pireps.geojson
           git commit -q -m "METAR/TAF $(date -u +%Y-%m-%dT%H:%MZ)"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" wx-data

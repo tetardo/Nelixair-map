@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nelixair Map</title>
+  <link rel="icon" href="img/nelixair-logo.svg" type="image/svg+xml">
   <meta name="description" content="Carte mondiale des voies aériennes, waypoints et navaids. Ne pas utiliser pour la navigation.">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="style.css">
@@ -15,7 +16,7 @@
     <button id="side-btn" class="tbtn icon" type="button" aria-pressed="false" aria-controls="sidebar" title="Panneau latéral">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
     </button>
-    <div class="brand">NELIXAIR<span>MAP</span></div>
+    <div class="brand"><img src="img/nelixair-logo.svg" alt="" width="22" height="22">NELIXAIR<span>MAP</span></div>
     <div class="tools">
       <button id="theme-btn" class="tbtn icon" type="button" aria-pressed="false" title="Mode nuit">
         <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
@@ -76,6 +77,10 @@
       <label><input type="checkbox" data-f="asp_other"><i class="sw sw-oth"></i>Autres (TMZ, RMZ, vol à voile…)</label>
       <h3>Météo et relief</h3>
       <label><input type="checkbox" data-f="wx" checked><i class="sw sw-wx"></i>METAR (catégorie de vol)</label>
+      <label><input type="checkbox" data-f="hazards" checked><i class="sw sw-hz"></i>SIGMET / AIRMET</label>
+      <label><input type="checkbox" data-f="pireps"><i class="sw sw-pirep"></i>PIREP (comptes rendus pilotes)</label>
+      <label><input type="checkbox" data-f="sat"><i class="sw sw-sat"></i>Satellite infrarouge</label>
+      <label><input type="checkbox" data-f="night"><i class="sw sw-night"></i>Zone de nuit</label>
       <label><input type="checkbox" data-f="mora" checked><i class="sw sw-mora"></i>Grid MORA (US)</label>
       <p id="wx-status" class="muted small" hidden></p>
       <p class="muted small">Raccourcis : <kbd>/</kbd> chercher un ident · <kbd>F</kbd> afficher / masquer le panneau · <kbd>Échap</kbd> effacer la sélection. Cliquer un objet ouvre sa fiche ; l'adresse de la page permet de la partager.</p>
@@ -125,6 +130,7 @@
   <script src="config.js"></script>
   <script src="symbols.js"></script>
   <script src="weather.js"></script>
+  <script src="sun.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

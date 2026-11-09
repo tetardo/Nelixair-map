@@ -1,3 +1,5 @@
+<img src="web/img/nelixair-logo.svg" alt="Nelixair" width="64" align="right">
+
 # nelixair-map
 
 Carte web mondiale des **voies aériennes**, **waypoints**, **navaids**, **aéroports** et **espaces aériens**, au style
@@ -23,7 +25,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) | voies aériennes, waypoints, VOR/DME/TACAN/NDB, aéroports, Grid MORA | États-Unis | domaine public |
 | [OpenAIP](https://www.openaip.net) | VOR/DME/TACAN/NDB, aéroports, espaces aériens (CTR, TMA, zones R/P/D, FIR…) | monde | **CC BY-NC 4.0** |
 | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | cartes d'approche, de départ, d'arrivée et diagrammes (liens vers les PDF officiels) | États-Unis | domaine public |
-| [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (relais mis à jour toutes les 10 min) | monde | domaine public |
+| [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (monde), SIGMET (monde), AIRMET / G-AIRMET et PIREP (surtout US) ; relais toutes les 10 min | monde | domaine public |
+| [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | satellite infrarouge GOES-East, GOES-West, Himawari (Amériques, Pacifique, Asie ; **pas l'Europe ni l'Afrique**) | partielle | données NASA ouvertes |
 
 Conséquences à connaître :
 
@@ -53,6 +56,13 @@ Conséquences à connaître :
 - Espaces aériens : contrôlés (CTR, TMA, CTA…), zones R/P/D/TRA/TSA, FIR/UIR, autres (TMZ, RMZ…),
   avec classe et limites ; clic = liste des espaces sous le point
 - Pastilles METAR colorées par catégorie de vol (zoom ≥ 5, données NOAA en direct)
+- SIGMET / AIRMET en cours de validité, colorés par danger (orages, turbulence, givrage, IFR, cendres, cyclone),
+  avec niveaux, validité et texte brut au clic
+- PIREP (comptes rendus de pilotes) : couleur = intensité de turbulence, contour cyan = givrage
+- Satellite infrarouge (NASA GIBS, rafraîchi toutes les 10 min ; absent sur l'Europe et l'Afrique, faute de
+  Meteosat dans GIBS)
+- Zone de nuit sur la carte, et dans la fiche aéroport : lever, coucher, début et fin de la nuit aéronautique
+  (crépuscule civil, définition EASA), calcul local approché à ± 2 min
 - Grid MORA (US) en milliers / centaines de pieds
 - Clic sur plusieurs objets superposés : liste de choix ; survol : nom de l'objet sous la souris
 - Lien partageable vers une fiche (`?sel=KSFO`) ; raccourcis `/` (recherche), `F` (panneau), `Échap`
@@ -118,7 +128,7 @@ hébergeur, vérifier ce point et servir les `.pmtiles` avec CORS si le domaine 
 
 La météo ne vient pas directement d'aviationweather.gov : son API refuse les appels depuis un
 navigateur (pas de CORS). Le workflow `wx.yml` télécharge toutes les 10 minutes les fichiers de cache
-mondiaux de la NOAA, les convertit (`pipeline/wx.py`) et les publie sur la branche `wx-data`, que le site
+mondiaux de la NOAA (METAR, TAF, AIRMET/SIGMET US, SIGMET internationaux, PIREP), les convertit (`pipeline/wx.py`) et les publie sur la branche `wx-data`, que le site
 lit via `raw.githubusercontent.com`. Fraîcheur : 10 à 20 minutes (GitHub décale parfois les tâches
 planifiées). GitHub suspend ces tâches après 60 jours sans activité sur le dépôt : les réactiver depuis
 l'onglet *Actions*.

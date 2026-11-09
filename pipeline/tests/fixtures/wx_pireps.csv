@@ -1,0 +1,8 @@
+No errors
+No warnings
+3 ms
+data source=aircraftreports
+2 results
+receipt_time,observation_time,aircraft_ref,latitude,longitude,altitude_ft_msl,turbulence_type,turbulence_intensity,turbulence_base_ft_msl,turbulence_top_ft_msl,icing_type,icing_intensity,icing_base_ft_msl,icing_top_ft_msl,report_type,raw_text
+2026-11-09T22:40:00Z,2026-11-09T22:38:00Z,B738,35.2,-106.3,35000,CHOP,MOD,,,,,,,PIREP,ABQ UA /OV ABQ/TM 2238/FL350/TP B738/TB MOD CHOP
+2026-11-09T22:41:00Z,2026-11-09T22:39:00Z,C172,35.6,-106.0,9000,,,,,,,,,PIREP,SAF UA /OV SAF/TM 2239/FL090/TP C172/IC LGT RIME
