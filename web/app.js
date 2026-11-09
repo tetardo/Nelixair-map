@@ -351,12 +351,13 @@
       }));
       map.getSource("wx").setData({ type: "FeatureCollection", features: feats });
       st.hidden = false;
-      st.textContent = `${feats.length} METAR dans la vue · aviationweather.gov`;
+      const age = await WX.age().catch(() => null);
+      st.textContent = `${feats.length} METAR dans la vue · NOAA${age != null ? ` · relevé il y a ${age} min` : ""}`;
     } catch (err) {
       if (seq !== wxSeq) return;
       console.warn("METAR indisponibles", err);
       st.hidden = false;
-      st.textContent = "METAR indisponibles : aviationweather.gov ne répond pas depuis ce navigateur.";
+      st.textContent = "METAR indisponibles pour le moment (relais météo injoignable).";
     }
   }
   map.on("moveend", () => { if (wxEnabled) scheduleWx(); });
@@ -567,7 +568,7 @@
       const el = box();
       if (!el) return;
       if (m.status === "rejected" && t.status === "rejected") {
-        el.innerHTML = '<span class="muted">Météo indisponible : aviationweather.gov ne répond pas depuis ce navigateur.</span>';
+        el.innerHTML = '<span class="muted">Météo indisponible pour le moment (relais météo injoignable).</span>';
         return;
       }
       const mt = m.value, tf = t.value;
@@ -580,7 +581,7 @@
           [["Vent", WX.wind(mt)], ["Visibilité", v != null ? `${v >= 10 ? "≥ 10" : v} SM` : null], ["Plafond", c != null ? ft(c) : "Aucun"],
             ["Temp. / rosée", mt.temp != null ? `${mt.temp} / ${mt.dewp ?? "?"} °C` : null], ["QNH", mt.altim != null ? `${Math.round(mt.altim)} hPa` : null]]
             .filter(([, x]) => x).map(([k, x]) => `<div${String(x).length > 11 ? ' class="wide"' : ""}><small>${k}</small><b>${esc(x)}</b></div>`).join("") + "</div>" +
-          `<div class="wx-raw"><small>METAR ${esc(mt.reportTime || "")}</small>${esc(mt.rawOb)}</div>`;
+          `<div class="wx-raw"><small>METAR ${esc(String(mt.reportTime || "").replace(/^\d{4}-(\d\d)-(\d\d)[T ](\d\d:\d\d).*$/, "$2/$1 $3Z"))}</small>${esc(mt.rawOb)}</div>`;
       } else html += '<p class="muted small">Pas de METAR récent.</p>';
       html += tf ? `<div class="wx-raw"><small>TAF</small>${esc(tf.rawTAF || "")}</div>` : '<p class="muted small">Pas de TAF.</p>';
       el.innerHTML = html;

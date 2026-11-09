@@ -23,7 +23,7 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | [FAA CIFP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/cifp/) | voies aériennes, waypoints, VOR/DME/TACAN/NDB, aéroports, Grid MORA | États-Unis | domaine public |
 | [OpenAIP](https://www.openaip.net) | VOR/DME/TACAN/NDB, aéroports, espaces aériens (CTR, TMA, zones R/P/D, FIR…) | monde | **CC BY-NC 4.0** |
 | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | cartes d'approche, de départ, d'arrivée et diagrammes (liens vers les PDF officiels) | États-Unis | domaine public |
-| [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (chargés en direct par le navigateur) | monde | domaine public |
+| [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (relais mis à jour toutes les 10 min) | monde | domaine public |
 
 Conséquences à connaître :
 
@@ -116,9 +116,12 @@ Tests : `python3 -m unittest discover -s pipeline/tests`
 GitHub Pages sert les requêtes HTTP Range nécessaires à PMTiles. Pour un autre
 hébergeur, vérifier ce point et servir les `.pmtiles` avec CORS si le domaine diffère.
 
-La météo est appelée directement depuis le navigateur sur `aviationweather.gov`.
-Si cette API refuse la requête (CORS, quota), la carte reste fonctionnelle et le panneau
-l'indique ; la solution serait alors un petit proxy, non fourni.
+La météo ne vient pas directement d'aviationweather.gov : son API refuse les appels depuis un
+navigateur (pas de CORS). Le workflow `wx.yml` télécharge toutes les 10 minutes les fichiers de cache
+mondiaux de la NOAA, les convertit (`pipeline/wx.py`) et les publie sur la branche `wx-data`, que le site
+lit via `raw.githubusercontent.com`. Fraîcheur : 10 à 20 minutes (GitHub décale parfois les tâches
+planifiées). GitHub suspend ces tâches après 60 jours sans activité sur le dépôt : les réactiver depuis
+l'onglet *Actions*.
 
 ## Configuration du front
 

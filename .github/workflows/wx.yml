@@ -1,0 +1,39 @@
+name: Relais météo (METAR / TAF)
+
+# Toutes les 10 minutes : caches NOAA -> metars.json + tafs.json sur la branche wx-data,
+# lue par le site via raw.githubusercontent.com (CORS autorisé).
+# La branche est réécrite à chaque passage (un seul commit) : l'historique ne grossit pas.
+# GitHub peut décaler ces exécutions de quelques minutes, et suspend les tâches planifiées
+# d'un dépôt resté 60 jours sans activité (réactivation : onglet Actions).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wx
+  cancel-in-progress: true
+
+jobs:
+  relay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: pipeline/wx.py
+          sparse-checkout-cone-mode: false
+      - name: METAR / TAF NOAA
+        run: python3 pipeline/wx.py --out "$RUNNER_TEMP/wx"
+      - name: Publication sur wx-data
+        working-directory: ${{ runner.temp }}/wx
+        run: |
+          git init -q -b wx-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add metars.json tafs.json
+          git commit -q -m "METAR/TAF $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" wx-data

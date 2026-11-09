@@ -214,3 +214,32 @@ dtpp = """<?xml version="1.0" encoding="UTF-8"?>
 """
 with open(os.path.join(HERE, "fixtures", "dtpp.xml"), "w") as fh:
     fh.write(dtpp)
+
+# Caches météo NOAA synthétiques (même structure que metars.cache.csv / tafs.cache.xml)
+SKY = "sky_cover,cloud_base_ft_agl," * 4
+wx_csv = "\n".join([
+    "No errors", "No warnings", "4 ms", "data source=metars", "3 results",
+    "raw_text,station_id,observation_time,latitude,longitude,temp_c,dewpoint_c,wind_dir_degrees,wind_speed_kt,"
+    "wind_gust_kt,visibility_statute_mi,altim_in_hg,sea_level_pressure_mb,corrected,auto,auto_station,"
+    "maintenance_indicator_on,no_signal,lightning_sensor_off,freezing_rain_sensor_off,present_weather_sensor_off,"
+    "wx_string," + SKY + "flight_category,three_hr_pressure_tendency_mb,maxT_c,minT_c,maxT24hr_c,minT24hr_c,"
+    "precip_in,pcp3hr_in,pcp6hr_in,pcp24hr_in,snow_in,vert_vis_ft,metar_type,elevation_m",
+    "LFML 092230Z 32012G25KT CAVOK 14/03 Q1018,LFML,2026-11-09T22:30:00Z,43.44,5.216,14,3,320,12,25,6+,30.06,,,,,,,,,,"
+    ",CLR,,,,,,,,VFR,,,,,,,,,,,,METAR,6",
+    "KSAF 092153Z 00000KT 2SM BR OVC008 05/04 A3010,KSAF,2026-11-09T21:53:00Z,35.617,-106.089,5,4,0,0,,2.0,30.10,,,,,,,,,,"
+    "BR,OVC,800,,,,,,,IFR,,,,,,,,,,,,METAR,1935",
+    "KXXX 092153Z VRB03KT 1/2SM FG VV002 02/02 A2992,KXXX,2026-11-09T21:53:00Z,35.3,-105.0,2,2,VRB,3,,0.5,29.92,,,,,,,,,,"
+    "FG,OVX,0,,,,,,,LIFR,,,,,,,,,,,200,SPECI,10",
+    "BROKEN ROW WITHOUT COORDS,XXXX,2026-11-09T21:53:00Z,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+]) + "\n"
+with open(os.path.join(HERE, "fixtures", "wx_metars.csv"), "w") as fh:
+    fh.write(wx_csv)
+
+wx_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<response><data num_results="2">
+<TAF><raw_text>TAF LFML 092300Z 1000/1106 32015G25KT CAVOK</raw_text><station_id>LFML</station_id></TAF>
+<TAF><raw_text>TAF KSAF 092130Z 0922/1024 VRB05KT P6SM OVC010</raw_text><station_id>KSAF</station_id></TAF>
+</data></response>
+"""
+with open(os.path.join(HERE, "fixtures", "wx_tafs.xml"), "w") as fh:
+    fh.write(wx_xml)

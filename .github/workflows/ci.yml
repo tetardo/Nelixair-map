@@ -19,6 +19,10 @@ jobs:
         run: |
           python -I pipeline/tests/make_fixtures.py
           git diff --exit-code pipeline/tests/fixtures
+      - name: Relais météo sur fixtures
+        run: |
+          python pipeline/wx.py --out /tmp/wx --metars pipeline/tests/fixtures/wx_metars.csv --tafs pipeline/tests/fixtures/wx_tafs.xml
+          test -s /tmp/wx/metars.json
       - uses: ./.github/actions/tippecanoe
       - name: Build de bout en bout sur fixtures (PMTiles compris)
         env:
