@@ -1,0 +1,8 @@
+# Données brutes et artefacts de build (régénérables)
+data/
+build/
+web/data/
+node_modules/
+__pycache__/
+*.pyc
+.venv/
