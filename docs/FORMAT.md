@@ -58,8 +58,15 @@ la jointure (famille). `mea`/`max_alt` en pieds s'appliquent au tronçon qui
 | `elev_ft`, `rwy_ft` | int\|null | altitude terrain, piste la plus longue |
 | `rwy_surface` | string | `hard`, `soft`, `water`, `""` |
 | `ifr`, `military` | bool | |
+| `runways` | array | une entrée par sens : `{des, len_ft, wid_ft, surface, hdg, hdg_ref}` ; `hdg_ref` = `T` (vrai) ou `M` (magnétique) |
+| `freqs` | array | `{type, mhz, name}` ; `type` ∈ `TWR`, `GND`, `APP`, `ATIS`, `DEL`, `AFIS`, `CTAF`… |
 
-Fusion : un aéroport de même ident à moins de 5 NM d'un aéroport déjà retenu est écarté.
+Fusion : un aéroport de même ident à moins de 5 NM d'un aéroport déjà retenu est écarté, mais ses
+fréquences, pistes (si l'aéroport retenu n'en a pas) et revêtements (par désignation de piste) complètent
+l'aéroport retenu.
+
+Export : pistes, fréquences et cartes FAA d-TPP sont écrites dans `apt/<2 premiers caractères>.json`
+(chargé à la demande par la fiche), pas dans les tuiles.
 
 ## `airspace`
 

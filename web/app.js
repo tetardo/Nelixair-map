@@ -492,11 +492,75 @@
   function catBadge(cat) {
     return cat ? `<span class="cat" style="background:${WX.COLORS[cat] || "#888"}">${cat}</span>` : "";
   }
+  // Détails aéroport (pistes, fréquences, cartes) : un fichier par préfixe d'ident, chargé à la demande
+  const aptCache = new Map();
+  function aptDetails(ident) {
+    const k = (ident.toUpperCase().slice(0, 2).replace(/[^A-Z0-9]/g, "_")) || "__";
+    if (!aptCache.has(k)) aptCache.set(k, fetch(`${CFG.airportDetails}${k}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+    return aptCache.get(k).then((d) => d[ident] || null);
+  }
+  let chartsMeta = null; // { base, cycle } renseigné par meta.json
+  const FREQ_LBL = { TWR: "Tour", GND: "Sol", APP: "Approche", ATIS: "ATIS", DEL: "Prévol", DEP: "Départ", ARR: "Arrivée",
+    AFIS: "AFIS", INFO: "Info", CTAF: "CTAF", UNICOM: "Unicom", MULTICOM: "Multicom", RADAR: "Radar", CTR: "Centre",
+    FIS: "SIV", APRON: "Trafic", RADIO: "Radio", AWOS: "AWOS", VOLMET: "VOLMET", GLIDING: "Vol à voile", LIGHTS: "Balisage", OTHER: "Autre" };
+  const FREQ_ORDER = ["ATIS", "AWOS", "DEL", "GND", "TWR", "AFIS", "CTAF", "UNICOM", "INFO", "RADIO", "APP", "DEP", "ARR", "RADAR"];
+  const CHART_GROUPS = [["APD", "Diagramme d'aéroport"], ["IAP", "Approches"], ["DP", "Départs (SID)"], ["ODP", "Départs (SID)"],
+    ["STAR", "Arrivées (STAR)"], ["MIN", "Minima"], ["HOT", "Points chauds"], ["LAH", "LAHSO"], ["DAU", "Autres"]];
+  const yes = (v) => v === true || v === "true";
+
   function showAirportDetail(p, lngLat) {
-    detail.innerHTML = `<div class="d-head"><h2>${esc(p.ident)}</h2><span class="badge">${esc(APT_KIND[p.kind] || "Aéroport")}</span></div>` +
-      aptRows(p, lngLat) + `<p class="muted small">Source : ${esc(SRC[p.src] || p.src || "")}${p.cycle ? " · " + esc(p.cycle) : ""}</p>` +
-      `<h3>Météo</h3><div id="d-wx"><span class="muted">Chargement…</span></div>`;
+    const badges = [`<span class="badge">${esc(APT_KIND[p.kind] || "Aéroport")}</span>`,
+      yes(p.ifr) ? '<span class="badge b-ifr" title="Procédures aux instruments">IFR</span>' : "",
+      yes(p.mil) ? '<span class="badge b-mil">MIL</span>' : ""].join("");
+    const facts = [["Altitude", ft(p.elev_ft)], ["Piste max", p.rwy_ft ? ft(p.rwy_ft) : null], ["IATA", p.iata],
+      ["Pays", p.country || p.region]].filter(([, v]) => v);
+    detail.innerHTML =
+      `<div class="apt-head"><div class="d-head"><h2>${esc(p.ident)}</h2>${badges}</div>` +
+      (p.name ? `<p class="d-sub">${esc(p.name)}</p>` : "") +
+      `<div class="facts">${facts.map(([k, v]) => `<div><small>${k}</small><b>${esc(v)}</b></div>`).join("")}</div></div>` +
+      `<section class="d-sec"><h3>Météo <span id="d-cat"></span></h3><div id="d-wx"><span class="muted">Chargement…</span></div></section>` +
+      `<section class="d-sec"><h3>Pistes</h3><div id="d-rwy"><span class="muted">Chargement…</span></div></section>` +
+      `<section class="d-sec"><h3>Fréquences</h3><div id="d-frq"><span class="muted">Chargement…</span></div></section>` +
+      `<section class="d-sec" id="d-chr-sec" hidden><h3>Cartes FAA <small id="d-chr-cyc"></small></h3><div id="d-chr"></div></section>` +
+      `<section class="d-sec"><h3>Position</h3>${rows([["Latitude", dms(lngLat[1], true)], ["Longitude", dms(lngLat[0], false)]])}` +
+      `<p class="muted small">Source : ${esc(SRC[p.src] || p.src || "")}${p.cycle ? " · " + esc(p.cycle) : ""}</p></section>`;
     setTab("detail");
+    detail.scrollTop = 0;
+
+    aptDetails(p.ident).then((d) => {
+      const rw = $("#d-rwy"), fq = $("#d-frq");
+      if (!rw) return;
+      d = d || {};
+      rw.innerHTML = d.rwy && d.rwy.length
+        ? `<table class="tbl"><thead><tr><th>Piste</th><th>Longueur</th><th>Largeur</th><th>Revêtement</th></tr></thead><tbody>` +
+          d.rwy.map(([des, len, wid, surf, hdg, ref]) => `<tr><td><b>${esc(des || "—")}</b>${hdg != null ? `<small>${deg3(hdg)}${ref === "M" ? " M" : ""}</small>` : ""}</td>` +
+            `<td>${len ? esc(Number(len).toLocaleString("fr-FR")) + " ft" : "—"}</td><td>${wid ? esc(wid) + " ft" : "—"}</td><td>${esc(surf || "—")}</td></tr>`).join("") +
+          "</tbody></table>"
+        : '<span class="muted">Non publiées par les sources.</span>';
+      if (d.frq && d.frq.length) {
+        const rank = (t) => { const i = FREQ_ORDER.indexOf(t); return i < 0 ? 99 : i; };
+        const list = d.frq.slice().sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]);
+        fq.innerHTML = `<table class="tbl freqs"><tbody>` + list.map(([t, mhz, name]) =>
+          `<tr><td><span class="ftype">${esc(FREQ_LBL[t] || t)}</span></td><td><button class="copy" title="Copier" data-v="${Number(mhz).toFixed(3)}">${Number(mhz).toFixed(3)}</button></td>` +
+          `<td class="muted">${esc(name)}</td></tr>`).join("") + "</tbody></table>";
+      } else fq.innerHTML = '<span class="muted">Non publiées par les sources.</span>';
+      if (d.chr && d.chr.length && chartsMeta) {
+        $("#d-chr-sec").hidden = false;
+        $("#d-chr-cyc").textContent = `cycle ${chartsMeta.cycle}`;
+        const groups = new Map();
+        for (const [code, name, pdf] of d.chr) {
+          const g = (CHART_GROUPS.find(([c]) => c === code) || [, "Autres"])[1];
+          if (!groups.has(g)) groups.set(g, []);
+          groups.get(g).push([name, pdf]);
+        }
+        const order = [...new Set(CHART_GROUPS.map(([, g]) => g)), "Autres"];
+        $("#d-chr").innerHTML = order.filter((g) => groups.has(g)).map((g) =>
+          `<details${g === "Diagramme d'aéroport" || g === "Approches" ? " open" : ""}><summary>${esc(g)} <small>${groups.get(g).length}</small></summary><ul class="charts">` +
+          groups.get(g).map(([n, pdf]) => `<li><a href="${esc(chartsMeta.base + pdf)}" target="_blank" rel="noopener">${esc(n)}</a></li>`).join("") +
+          "</ul></details>").join("") + '<p class="muted small">PDF officiels FAA (domaine public). Ne pas utiliser pour la navigation.</p>';
+      }
+    });
+
     const box = () => $("#d-wx");
     if (!/^[A-Z0-9]{4}$/.test(p.ident)) { box().innerHTML = '<span class="muted">Pas de code OACI : météo non disponible.</span>'; return; }
     Promise.allSettled([WX.metar(p.ident), WX.taf(p.ident)]).then(([m, t]) => {
@@ -509,17 +573,25 @@
       const mt = m.value, tf = t.value;
       let html = "";
       if (mt) {
-        const v = WX.visSm(mt.visib), c = WX.ceilingFt(mt);
-        html += `<div class="d-head">${catBadge(WX.flightCat(mt))}<span class="muted small">${esc(mt.reportTime || "")}</span></div>` +
-          rows([["Vent", WX.wind(mt)], ["Visibilité", v != null ? `${v >= 10 ? "≥ 10" : v} SM` : null],
-            ["Plafond", c != null ? ft(c) : "Aucun"], ["Temp. / rosée", mt.temp != null ? `${mt.temp} / ${mt.dewp ?? "?"} °C` : null],
-            ["QNH", mt.altim != null ? `${Math.round(mt.altim)} hPa` : null]]) +
-          `<div class="wx-raw">${esc(mt.rawOb)}</div>`;
+        const v = WX.visSm(mt.visib), c = WX.ceilingFt(mt), cat = WX.flightCat(mt);
+        const hd = $("#d-cat");
+        if (hd) hd.innerHTML = catBadge(cat);
+        html += `<div class="facts wx-facts">` +
+          [["Vent", WX.wind(mt)], ["Visibilité", v != null ? `${v >= 10 ? "≥ 10" : v} SM` : null], ["Plafond", c != null ? ft(c) : "Aucun"],
+            ["Temp. / rosée", mt.temp != null ? `${mt.temp} / ${mt.dewp ?? "?"} °C` : null], ["QNH", mt.altim != null ? `${Math.round(mt.altim)} hPa` : null]]
+            .filter(([, x]) => x).map(([k, x]) => `<div${String(x).length > 11 ? ' class="wide"' : ""}><small>${k}</small><b>${esc(x)}</b></div>`).join("") + "</div>" +
+          `<div class="wx-raw"><small>METAR ${esc(mt.reportTime || "")}</small>${esc(mt.rawOb)}</div>`;
       } else html += '<p class="muted small">Pas de METAR récent.</p>';
-      html += tf ? `<h3>TAF</h3><div class="wx-raw">${esc(tf.rawTAF || "")}</div>` : '<p class="muted small">Pas de TAF.</p>';
+      html += tf ? `<div class="wx-raw"><small>TAF</small>${esc(tf.rawTAF || "")}</div>` : '<p class="muted small">Pas de TAF.</p>';
       el.innerHTML = html;
     });
   }
+  // Copier une fréquence d'un clic
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button.copy");
+    if (!b) return;
+    navigator.clipboard?.writeText(b.dataset.v).then(() => { b.classList.add("ok"); setTimeout(() => b.classList.remove("ok"), 900); }).catch(() => {});
+  });
   function showAirspaceDetail(list) {
     list = list.slice().sort((a, b) => (a.lower_ft ?? 0) - (b.lower_ft ?? 0));
     detail.innerHTML = `<div class="d-head"><h2>Espaces</h2><span class="badge">${list.length}</span></div>` +
@@ -602,6 +674,7 @@
 
   // Point d'entrée commun (clic carte, recherche, liste)
   function openFix(p, lngLat, { fly = false } = {}) {
+    setSel(p.ident);
     selectAirway(null);
     selectPoint(lngLat);
     if (fly) map.flyTo({ center: lngLat, zoom: Math.max(map.getZoom(), p.cls === "waypoint" ? 8.5 : 7.5), duration: 800 });
@@ -610,6 +683,7 @@
     if (isMobile() && sideOpen() && fly) setSidebar(false);
   }
   function openAirway(ident, { fit = false } = {}) {
+    setSel(ident);
     selectPoint(null);
     selectAirway(ident);
     if (popup) popup.remove();
@@ -715,14 +789,20 @@
       seen.add(key);
       (f.geometry.type === "Point" ? pts : legs).push(f);
     }
+    if (sideOpen()) {
+      const awys = [...new Set(legs.map((l) => l.properties.ident))];
+      const asp = airspacesAt(e.point);
+      if (pts.length + awys.length === 1 && !asp.length) {
+        return pts.length ? openFix(pts[0].properties, pts[0].geometry.coordinates) : openAirway(awys[0]);
+      }
+      return showPicker(pts, awys, asp);
+    }
     if (pts.length) {
       const f = pts[0];
-      if (sideOpen()) return openFix(f.properties, f.geometry.coordinates);
       selectPoint(f.geometry.coordinates);
       showPopup(f.geometry.coordinates, pts.slice(0, 3).map((x) => fixHtml(x.properties, x.geometry.coordinates)).join(""));
       selectAirway(null);
     } else {
-      if (sideOpen()) return openAirway(legs[0].properties.ident);
       selectPoint(null);
       selectAirway(legs[0].properties.ident);
       showPopup(e.lngLat, legs.slice(0, 3).map((x) => legHtml(x.properties)).join(""));
@@ -734,6 +814,56 @@
     map.getCanvas().style.cursor = f.length ? "pointer" : "";
     $("#cursor").textContent = `${dms(e.lngLat.lat, true)} ${dms(e.lngLat.wrap().lng, false)}`;
   });
+
+  // Plusieurs objets sous le clic : on laisse choisir plutôt que de deviner
+  function showPicker(pts, awys, asp) {
+    if (popup) popup.remove();
+    selectAirway(null); selectPoint(null);
+    const items = [];
+    for (const f of pts) {
+      const p = f.properties;
+      const sub = p.cls === "airport" ? (APT_KIND[p.kind] || "Aéroport") : (CLS[p.cls] || p.cls);
+      items.push({ label: p.ident, sub: `${sub}${p.name && p.name !== p.ident ? " · " + p.name : ""}`, cls: p.cls === "airport" ? "airport" : p.cls,
+        go: () => openFix(p, f.geometry.coordinates) });
+    }
+    for (const a of awys) items.push({ label: a, sub: "Voie aérienne", cls: "airway", go: () => openAirway(a) });
+    if (asp.length) items.push({ label: `${asp.length} espace${asp.length > 1 ? "s" : ""} aérien${asp.length > 1 ? "s" : ""}`,
+      sub: asp.slice(0, 3).map((x) => x.name).join(" · "), cls: "airspace", go: () => showAirspaceDetail(asp) });
+    detail.innerHTML = `<div class="d-head"><h2>À cet endroit</h2><span class="badge">${items.length}</span></div>` +
+      '<ul class="picker"></ul>';
+    const ul = detail.querySelector(".picker");
+    for (const it of items) {
+      const li = document.createElement("li");
+      li.innerHTML = `<button><i class="dot c-${esc(it.cls)}"></i><b>${esc(it.label)}</b><small>${esc(it.sub)}</small></button>`;
+      li.firstChild.addEventListener("click", it.go);
+      ul.appendChild(li);
+    }
+    setTab("detail");
+  }
+
+  // Survol : nom de l'objet sous le curseur (souris uniquement)
+  const tip = document.createElement("div");
+  tip.id = "hover-tip"; tip.hidden = true;
+  map.getContainer().appendChild(tip);
+  map.on("mousemove", (e) => {
+    if (!tip || matchMedia("(hover: none)").matches) return;
+    const f = map.queryRenderedFeatures([[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]],
+      { layers: CLICKABLE.filter((l) => map.getLayer(l)) })[0];
+    if (!f) { tip.hidden = true; return; }
+    const p = f.properties;
+    const what = p.cls === "airport" ? (p.name || "Aéroport") : f.geometry.type === "Point" ? (CLS[p.cls] || "") : `${p.from} → ${p.to}`;
+    tip.innerHTML = `<b>${esc(p.ident)}</b> ${esc(what)}`;
+    tip.style.transform = `translate(${e.point.x + 14}px, ${e.point.y + 14}px)`;
+    tip.hidden = false;
+  });
+  map.getCanvas().addEventListener("mouseleave", () => { if (tip) tip.hidden = true; });
+
+  // Objet sélectionné dans l'URL (?sel=KABQ) : lien partageable vers une fiche
+  function setSel(id) {
+    const u = new URL(location.href);
+    if (id) u.searchParams.set("sel", id); else u.searchParams.delete("sel");
+    history.replaceState(history.state, "", u);
+  }
 
   // ---------- Recherche d'ident ----------
   let index = null, indexP = null;
@@ -777,6 +907,7 @@
     });
   }
   function choose(h) {
+    setSel(h.t === "awy" ? h.ident : h.r[0]);
     list.hidden = true;
     input.blur();
     if (h.t === "awy") {
@@ -829,7 +960,12 @@
   $("#search").addEventListener("submit", (e) => { e.preventDefault(); if (hits[active]) choose(hits[active]); });
   input.addEventListener("blur", () => setTimeout(() => (list.hidden = true), 100));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); input.focus(); }
+    const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || "");
+    if (e.key === "/" && !typing) { e.preventDefault(); input.focus(); }
+    else if (e.key === "Escape" && !typing) {
+      if (popup) popup.remove();
+      selectAirway(null); selectPoint(null); setSel(null);
+    } else if ((e.key === "f" || e.key === "F") && !typing && !e.metaKey && !e.ctrlKey) setSidebar(!sideOpen());
   });
 
   // ---------- Métadonnées, attribution ----------
@@ -844,6 +980,7 @@
     const li = document.createElement("li");
     li.innerHTML = `<small>Génération : ${esc(meta.built)} · ${meta.counts.fixes.toLocaleString("fr-FR")} points, ${meta.counts.airways.toLocaleString("fr-FR")} voies</small>`;
     ul.appendChild(li);
+    chartsMeta = meta.charts || null;
     const cyc = (meta.sources || []).filter((s) => s.cycle).map((s) => `${s.name} ${s.cycle}`).join(" · ");
     $("#cycle").textContent = cyc;
   }).catch(() => { $("#sources").innerHTML = "<li>Métadonnées indisponibles.</li>"; });
@@ -856,5 +993,12 @@
     applyFilters();
     setSidebar(!isMobile() && savedSide !== "0", false);
     if (useGeojson) console.info("Mode GeoJSON (pas de PMTiles trouvées)");
+    const sel = params.get("sel");
+    if (sel) loadIndex().then(() => {
+      const q = sel.toUpperCase();
+      const ex = search(q).filter((h) => (h.t === "awy" ? h.ident : h.r[0]) === q);
+      const h = ex.find((x) => x.t === "fix" && x.r[1] === "airport") || ex[0];
+      if (h) choose(h);
+    });
   });
 })();

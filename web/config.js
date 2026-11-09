@@ -12,6 +12,8 @@ window.NELIXAIR_CONFIG = {
   search: "data/search.json",
   routes: "data/routes.json",
   meta: "data/meta.json",
+  // Détails aéroport (pistes, fréquences, cartes) : data/apt/<2 premiers caractères>.json
+  airportDetails: "data/apt/",
   // Fond de carte vectoriel libre, sans clé (schéma OpenMapTiles)
   basemapStyle: "https://tiles.openfreemap.org/styles/positron",
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",

@@ -208,3 +208,62 @@ kbd { font: 11px var(--mono); padding: 1px 5px; border: 1px solid var(--chrome-l
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(23, 32, 51, .88) !important; color: var(--chrome-soft); }
 .maplibregl-ctrl-attrib a { color: var(--chrome-ink) !important; }
 .maplibregl-ctrl-attrib-button { filter: invert(1); background-color: transparent !important; }
+
+/* ---- Fiche aéroport ---- */
+.apt-head { margin: -12px -14px 4px; padding: 14px 14px 12px; background: linear-gradient(180deg, var(--chrome-2), var(--chrome));
+  border-bottom: 1px solid var(--chrome-line); }
+.apt-head .d-head { flex-wrap: wrap; row-gap: 6px; }
+.apt-head .d-sub { margin: 6px 0 12px; color: var(--chrome-ink); font-weight: 500; }
+.b-ifr { background: #2f6fe0; }
+.b-mil { background: #6b7280; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
+.facts > div { background: #0f1626; border: 1px solid var(--chrome-line); border-radius: 7px; padding: 6px 8px; min-width: 0; }
+.facts small { display: block; font: 600 9.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--chrome-soft); }
+.facts b { display: block; font: 600 13px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-facts { margin-bottom: 6px; }
+.facts .wide { grid-column: span 2; }
+#d-cat .cat { margin-left: 6px; vertical-align: 1px; }
+.wx-raw small { display: block; font: 600 9.5px var(--sans); letter-spacing: .06em; color: var(--chrome-soft); margin-bottom: 2px; }
+.d-sec { border-top: 1px solid var(--chrome-line); padding-top: 2px; margin-top: 12px; }
+.d-sec:first-of-type { border-top: 0; }
+.d-sec h3 small { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 4px; }
+.tbl { width: 100%; border-collapse: collapse; font: 12px var(--mono); }
+.tbl th { text-align: left; font: 600 10px var(--sans); color: var(--chrome-soft); text-transform: uppercase; letter-spacing: .05em;
+  padding: 3px 4px; border-bottom: 1px solid var(--chrome-line); }
+.tbl td { padding: 5px 4px; border-bottom: 1px solid rgba(46, 59, 87, .6); vertical-align: baseline; }
+.tbl td small { margin-left: 6px; color: var(--chrome-soft); font-size: 10.5px; }
+.freqs td:first-child { width: 1%; white-space: nowrap; }
+.freqs td:last-child { font-family: var(--sans); overflow-wrap: anywhere; }
+.ftype { font: 600 10.5px var(--sans); text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+.copy { font: 700 13px var(--mono); color: var(--chrome-ink); background: none; border: 1px dashed transparent; border-radius: 4px;
+  padding: 1px 4px; cursor: copy; }
+.copy:hover { border-color: var(--chrome-line); }
+.copy.ok { border-color: #22a559; color: #22a559; }
+details { margin: 4px 0; }
+summary { cursor: pointer; padding: 5px 0; font-weight: 600; }
+summary small { color: var(--chrome-soft); font-weight: 400; margin-left: 4px; }
+.charts { list-style: none; margin: 0 0 6px; padding: 0 0 0 14px; }
+.charts li { padding: 3px 0; }
+.charts a { color: #7cb6ff; text-decoration: none; font: 12px var(--mono); }
+.charts a:hover { text-decoration: underline; }
+.charts a::after { content: " ↗"; color: var(--chrome-soft); }
+
+/* ---- Choix quand plusieurs objets sont sous le clic ---- */
+.picker { list-style: none; margin: 10px -14px 0; padding: 0; }
+.picker button { width: 100%; display: grid; grid-template-columns: 14px auto 1fr; gap: 10px; align-items: baseline; text-align: left;
+  padding: 9px 14px; border: 0; border-top: 1px solid rgba(46, 59, 87, .6); background: none; color: var(--chrome-ink); cursor: pointer; font: 13px var(--sans); }
+.picker button:hover, .picker button:focus-visible { background: var(--chrome-2); outline: none; }
+.picker b { font: 700 13px var(--mono); }
+.picker small { color: var(--chrome-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--navaid); align-self: center; }
+.c-airport { background: #2f6fe0; }
+.c-waypoint { background: transparent; border: 2px solid var(--chrome-soft); width: 6px; height: 6px; }
+.c-ndb { background: #a0569a; }
+.c-airway { border-radius: 2px; height: 3px; background: var(--high); }
+.c-airspace { border-radius: 2px; background: transparent; border: 2px solid #4f9bf0; }
+
+/* ---- Infobulle de survol ---- */
+#hover-tip { position: absolute; left: 0; top: 0; z-index: 2; pointer-events: none; max-width: 260px; padding: 4px 8px; border-radius: 5px;
+  background: rgba(23, 32, 51, .94); color: var(--chrome-ink); font: 12px var(--sans); box-shadow: var(--shadow);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hover-tip b { font-family: var(--mono); margin-right: 4px; }

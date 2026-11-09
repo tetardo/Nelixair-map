@@ -25,11 +25,15 @@ jobs:
           SKIP_FETCH: "1"
           CIFP: pipeline/tests/fixtures/FAACIFP18.sample
           OPENAIP: pipeline/tests/fixtures/openaip_navaids.json
+          DTPP: pipeline/tests/fixtures/dtpp.xml
         run: |
           scripts/build.sh
           test -s web/data/nav.pmtiles
           test -s web/data/airspaces.pmtiles
           test -s web/data/mora.geojson
+          test -s web/data/apt/KA.json
           head -c 7 web/data/nav.pmtiles | grep -q PMTiles
       - name: Syntaxe JS
-        run: for f in web/*.js; do node --check "$f"; done
+        run: |
+          for f in web/*.js; do node --check "$f"; done
+          node --check scripts/screenshots.mjs

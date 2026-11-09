@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<digital_tpp cycle="2511" from_edate="0901Z  10/30/25" to_edate="0901Z  11/27/25">
+ <state_code ID="NM" state_fullname="New Mexico">
+  <city_name ID="ALBUQUERQUE" volume="SW-3">
+   <airport_name ID="ALBUQUERQUE INTL SUNPORT" military="N" apt_ident="ABQ" icao_ident="KABQ" alnum="1">
+    <record><chartseq>10100</chartseq><chart_code>MIN</chart_code><chart_name>TAKEOFF MINIMUMS</chart_name><useraction></useraction><pdf_name>SW3TO.PDF</pdf_name></record>
+    <record><chartseq>70000</chartseq><chart_code>APD</chart_code><chart_name>AIRPORT DIAGRAM</chart_name><useraction></useraction><pdf_name>00001AD.PDF</pdf_name></record>
+    <record><chartseq>50750</chartseq><chart_code>IAP</chart_code><chart_name>ILS OR LOC RWY 08</chart_name><useraction></useraction><pdf_name>00001IL8.PDF</pdf_name></record>
+    <record><chartseq>50800</chartseq><chart_code>IAP</chart_code><chart_name>RNAV (GPS) RWY 26 (DELETED)</chart_name><useraction>D</useraction><pdf_name>DELETED_JOB.PDF</pdf_name></record>
+   </airport_name>
+  </city_name>
+  <city_name ID="BELEN" volume="SW-3">
+   <airport_name ID="ALEXANDER MUNI" military="N" apt_ident="E80" icao_ident="" alnum="2">
+    <record><chartseq>50750</chartseq><chart_code>IAP</chart_code><chart_name>RNAV (GPS) RWY 03</chart_name><useraction></useraction><pdf_name>00002R3.PDF</pdf_name></record>
+   </airport_name>
+  </city_name>
+ </state_code>
+</digital_tpp>

@@ -84,6 +84,11 @@ class TestCifpAirportsMora(unittest.TestCase):
         self.assertEqual(self.apts["KXXX"].category, "seaplane")
         self.assertTrue(self.apts["KXXX"].military)
 
+    def test_runways(self):
+        rw = {r["des"]: r for r in self.apts["KABQ"].runways}
+        self.assertEqual(set(rw), {"08", "26", "03", "21"})  # continuation ignorée
+        self.assertEqual((rw["08"]["len_ft"], rw["08"]["hdg"], rw["08"]["hdg_ref"], rw["08"]["wid_ft"]), (13793, 83, "M", 150))
+
     def test_mora(self):
         self.assertEqual(self.mora[(35, -107)], 12000)
         self.assertEqual(self.mora[(35, -106)], 11000)
@@ -103,7 +108,13 @@ class TestOpenAip(unittest.TestCase):
 
     def test_airports(self):
         apts = {a.ident: a for a in openaip.parse_airports(os.path.join(FIX, "openaip_airports.json"))}
-        self.assertEqual(set(apts), {"LFPG", "KABQ", "LFPN", "LFPI"})
+        self.assertEqual(set(apts), {"LFPG", "KABQ", "LFPN", "LFPI", "LFQQ"})
+        # surface 22 = inconnue (et non "eau") : petit terrain, pas une hydrobase
+        self.assertEqual((apts["LFQQ"].category, apts["LFQQ"].rwy_surface), ("small", ""))
+        self.assertEqual(apts["LFPG"].runways[0], {"des": "09L", "len_ft": 13829, "wid_ft": 148, "surface": "asphalte",
+                                                   "hdg": 87, "hdg_ref": "T"})
+        self.assertEqual(apts["LFPG"].freqs, [{"type": "TWR", "mhz": 119.25, "name": "DE GAULLE TOUR"},
+                                              {"type": "ATIS", "mhz": 128.0, "name": "ATIS"}])
         g = apts["LFPG"]
         self.assertEqual((g.category, g.iata, g.rwy_ft, g.rwy_surface, g.elev_ft), ("large", "CDG", 13829, "hard", 390))
         self.assertEqual(apts["LFPN"].category, "small")
@@ -154,7 +165,8 @@ class TestGeo(unittest.TestCase):
 class TestRoundTripAndExport(unittest.TestCase):
     def test_full(self):
         with tempfile.TemporaryDirectory() as d:
-            build.main(["all", "--cifp", CIFP, "--openaip", OAIP, "--out", d, "--raw", d])
+            build.main(["all", "--cifp", CIFP, "--openaip", OAIP, "--out", d, "--raw", d,
+                        "--dtpp", os.path.join(FIX, "dtpp.xml")])
             # NDJSON relisible
             recs = list(model.load_ndjson(os.path.join(d, "nav", "faa-cifp.ndjson")))
             self.assertTrue(any(isinstance(r, model.Airway) for r in recs))
@@ -197,6 +209,17 @@ class TestRoundTripAndExport(unittest.TestCase):
             self.assertEqual(len(asp), 6)
             self.assertEqual(meta["counts"]["mora_cells"], 6)
             self.assertIn(["LFPG", "airport"], [r[:2] for r in search["fixes"]])
+            # détails aéroport : pistes appariées, fréquences OpenAIP reportées sur l'aéroport CIFP, cartes d-TPP
+            k = _load(os.path.join(d, "apt", "KA.json"))["KABQ"]
+            self.assertEqual([r[0] for r in k["rwy"]], ["08/26", "03/21"])
+            self.assertEqual(k["rwy"][0][3], "béton")  # revêtement OpenAIP complété par désignation
+            self.assertEqual(k["frq"], [["TWR", 120.3, "ALBUQUERQUE TOWER"]])
+            self.assertEqual([c[0] for c in k["chr"]], ["MIN", "APD", "IAP"])  # carte supprimée exclue
+            self.assertEqual(_load(os.path.join(d, "apt", "E8.json"))["E80"]["chr"][0][2], "00002R3.PDF")
+            g = _load(os.path.join(d, "apt", "LF.json"))["LFPG"]
+            self.assertEqual([r[0] for r in g["rwy"]], ["09L/27R", "08R"])
+            self.assertNotIn("chr", g)
+            self.assertEqual(meta["charts"]["base"], "https://aeronav.faa.gov/d-tpp/2511/")
 
     def test_priority_swap(self):
         with tempfile.TemporaryDirectory() as d:
@@ -208,6 +231,21 @@ class TestRoundTripAndExport(unittest.TestCase):
             meta = _load(os.path.join(d, "meta.json"))
             # les voies CIFP passant par ABQ restent résolues via l'alias
             self.assertEqual(meta["stats"]["airway_points_unresolved"], 1)
+
+
+class TestDtpp(unittest.TestCase):
+    def test_airac(self):
+        import datetime as dt
+        from nelixair.sources.faa_dtpp import airac_cycle
+        self.assertEqual(airac_cycle(dt.date(2025, 10, 30)), "2511")
+        self.assertEqual(airac_cycle(dt.date(2025, 10, 29)), "2510")
+        self.assertEqual(airac_cycle(dt.date(2025, 12, 25)), "2513")
+        self.assertEqual(airac_cycle(dt.date(2026, 1, 22)), "2601")
+
+    def test_pair_opposite(self):
+        from nelixair.export import pair_runways
+        rw = [{"des": d, "len_ft": 9000} for d in ("36", "18", "04L", "22R", "04R", "H1")]
+        self.assertEqual([r[0] for r in pair_runways(rw)], ["18/36", "04L/22R", "04R", "H1"])
 
 
 class TestCifpUrl(unittest.TestCase):
