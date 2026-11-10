@@ -311,6 +311,9 @@ class TestGround(unittest.TestCase):
         self.assertEqual(c["stand"], 8)
         self.assertEqual(self.summary["taxiways"], ["A", "A1", "A2", "A3", "A4"])
         self.assertEqual(self.summary["runways"], ["13L/31R", "13R/31L"])
+        e = self.summary["ends"]
+        self.assertEqual(sorted(e), ["13L", "13R", "31L", "31R"])
+        self.assertAlmostEqual((e["31R"] - e["13L"]) % 360, 180, delta=0.5)
 
     def test_runway_ends(self):
         ends = {f["properties"]["ref"]: f for f in self.kinds("rwy_end")}

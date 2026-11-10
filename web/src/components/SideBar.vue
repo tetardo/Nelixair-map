@@ -5,7 +5,8 @@ import DetailPanel from "./DetailPanel.vue";
 import FiltersPanel from "./FiltersPanel.vue";
 import ListPanel from "./ListPanel.vue";
 
-const TABS: [Tab, string][] = [["filters", "Filtres"], ["list", "Liste"], ["detail", "Détail"]];
+// Fiche en premier : c'est ce que le pilote lit le plus
+const TABS: [Tab, string][] = [["detail", "Fiche"], ["list", "Liste"], ["filters", "Calques"]];
 </script>
 
 <template>

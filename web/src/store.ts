@@ -23,6 +23,7 @@ export type Tab = "filters" | "list" | "detail";
 export interface GroundAirport {
   name: string; bbox: [number, number, number, number]; osm: string;
   counts: Record<string, number>; runways: string[]; taxiways: string[];
+  ends?: Record<string, number>; // QFU -> cap vrai
 }
 
 export interface SourceMeta { id: string; name: string; license?: string; url: string; coverage?: string; cycle?: string }

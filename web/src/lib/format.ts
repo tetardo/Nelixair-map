@@ -41,6 +41,15 @@ export function dms(v: number, lat: boolean): string {
   return `${h}${String(d).padStart(lat ? 2 : 3, "0")}°${String(m).padStart(2, "0")}'${s.toFixed(1).padStart(4, "0")}"`;
 }
 
+/** Degrés + minutes décimales, format FMS / alignement IRS : N43°26.21' E005°12.90'. */
+export function ddm(v: number, lat: boolean): string {
+  const h = lat ? (v >= 0 ? "N" : "S") : v >= 0 ? "E" : "W";
+  const a = Math.abs(v);
+  let d = Math.floor(a), m = Math.round((a - d) * 6000) / 100;
+  if (m >= 60) { d += 1; m = 0; }
+  return `${h}${String(d).padStart(lat ? 2 : 3, "0")}°${m.toFixed(2).padStart(5, "0")}'`;
+}
+
 export const freq = (p: { freq?: number | null; cls?: string }): string | null =>
   p.freq == null ? null : p.cls === "ndb" ? `${Math.round(p.freq)} kHz` : `${Number(p.freq).toFixed(2)} MHz`;
 
