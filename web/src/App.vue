@@ -8,13 +8,16 @@ import SideBar from "./components/SideBar.vue";
 import StatusBar from "./components/StatusBar.vue";
 import TopBar from "./components/TopBar.vue";
 import { CFG } from "./config";
-import { applyFilters, applyTheme, applyView, clearSelection, initMap, setEaip, setSidebar } from "./map/mapView";
+import { applySharedAfterMap, applySharedState } from "./lib/share";
+import { applyFilters, applyTheme, applyView, clearSelection, initMap, setEaip, setOfp, setSidebar, setTab } from "./map/mapView";
+import { demoOfp } from "./services/simbrief";
 import { isMobile, state } from "./store";
 
 const mapEl = ref<HTMLElement | null>(null);
 const about = ref<InstanceType<typeof AboutDialog> | null>(null);
 const search = ref<InstanceType<typeof TopBar> | null>(null);
 
+const shared = applySharedState(); // lien partagé : ses réglages priment sur ceux mémorisés
 applyTheme(state.theme);
 watch(() => state.theme, applyTheme);
 watch(() => state.filters, applyFilters, { deep: true });
@@ -40,6 +43,10 @@ onMounted(async () => {
   try { saved = localStorage.getItem("nelixair-side"); } catch { /* stockage indisponible */ }
   await initMap(mapEl.value!);
   setSidebar(!isMobile() && saved !== "0", false);
+  if (shared) applySharedAfterMap((tab) => {
+    if (tab) setTab(tab);
+    setSidebar(!!tab, false);
+  }, (o) => setOfp(o, { fit: false }), demoOfp);
 });
 
 // Raccourcis : / chercher, F panneau, Échap effacer la sélection

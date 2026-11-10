@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { BookOpen, FileText, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, type LucideIcon } from "@lucide/vue";
+import { BookOpen, Check, FileText, Link2, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, type LucideIcon } from "@lucide/vue";
+import { ref } from "vue";
+import { shareUrl } from "../lib/share";
 import { setSidebar, setTab } from "../map/mapView";
 import { state, type Tab } from "../store";
 
@@ -16,6 +18,27 @@ function go(t: Tab) {
   if (!state.sidebarOpen) setSidebar(true);
 }
 const active = (t: Tab) => state.sidebarOpen && state.tab === t;
+
+// Partage : copie le lien de la vue exacte (position, fond, calques, thème, panneau, sélection, plan de vol)
+const toast = ref("");
+let toastTimer = 0;
+function say(msg: string) {
+  toast.value = msg;
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (toast.value = ""), 3500);
+}
+async function share() {
+  const { url, ofpDropped } = await shareUrl();
+  const note = ofpDropped ? " (plan de vol trop long, non inclus)" : "";
+  try {
+    await navigator.clipboard.writeText(url);
+    say("Lien de la vue copié" + note);
+  } catch {
+    // Presse-papiers refusé (navigateur, contexte non sécurisé) : feuille de partage du système si elle existe
+    try { await navigator.share({ title: "Nelixair", url }); say("Lien partagé" + note); }
+    catch { history.replaceState(history.state, "", url); say("Copie impossible : le lien est dans la barre d'adresse"); }
+  }
+}
 </script>
 
 <template>
@@ -30,6 +53,9 @@ const active = (t: Tab) => state.sidebarOpen && state.tab === t;
       @click.stop="state.viewMenu = !state.viewMenu">
       <MapIcon :size="20" :stroke-width="1.8" aria-hidden="true" /><span class="rail-tip">Affichage</span>
     </button>
+    <button id="share-btn" type="button" class="rail-btn" aria-label="Partager la vue" @click="share">
+      <component :is="toast ? Check : Link2" :size="20" :stroke-width="1.8" aria-hidden="true" /><span class="rail-tip">Partager la vue</span>
+    </button>
     <button id="theme-btn" type="button" class="rail-btn" :aria-label="state.theme === 'night' ? 'Mode jour' : 'Mode nuit'"
       @click="state.theme = state.theme === 'night' ? 'day' : 'night'">
       <component :is="state.theme === 'night' ? Sun : Moon" :size="20" :stroke-width="1.8" aria-hidden="true" />
@@ -39,4 +65,5 @@ const active = (t: Tab) => state.sidebarOpen && state.tab === t;
       <BookOpen :size="20" :stroke-width="1.8" aria-hidden="true" /><span class="rail-tip">Sources et licences</span>
     </button>
   </nav>
+  <div v-if="toast" class="toast" role="status">{{ toast }}</div>
 </template>
