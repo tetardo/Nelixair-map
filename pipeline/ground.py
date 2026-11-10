@@ -27,7 +27,9 @@ log = logging.getLogger("ground")
 
 # Terrains pilotes (élargir quand la qualité OSM est validée)
 PILOT = ["LFML", "LFMN", "LFLL", "LFBO", "LFPO"]
-OVERPASS = "https://overpass-api.de/api/interpreter"
+# Serveur principal puis miroirs publics (Overpass répond souvent 429 / 504 quand il est chargé)
+OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
 UA = "nelixair-map-ground (+https://github.com/tetardo/Nelixair-map)"
 
 # Largeurs par défaut (m) quand OSM ne précise pas `width`
@@ -52,24 +54,53 @@ out geom;
 
 def _get(url: str, data: bytes | None = None) -> bytes:
     req = urllib.request.Request(url, data=data, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=180) as r:
+    with urllib.request.urlopen(req, timeout=120) as r:
         return r.read()
 
 
-def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0) -> dict[str, int]:
-    """Une requête Overpass par terrain (politesse : pause entre les requêtes)."""
+def _query(icao: str, attempts: int = 2, pause: float = 15.0) -> bytes:
+    """Interroge Overpass en essayant les serveurs tour à tour, avec attente croissante."""
+    body = urllib.parse.urlencode({"data": QUERY.replace("{icao}", icao)}).encode()
+    last: Exception | None = None
+    for n in range(attempts):
+        for url in OVERPASS:
+            try:
+                raw = _get(url, body)
+                json.loads(raw)  # réponse complète et valide
+                return raw
+            except Exception as e:  # 429, 504, coupure réseau, JSON tronqué
+                last = e
+                log.warning("%s : %s a échoué (%s)", icao, url.split("/")[2], e)
+        time.sleep(pause * (n + 1))
+    raise RuntimeError(f"{icao} : Overpass indisponible ({last})")
+
+
+def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0, budget: float = 1500.0) -> dict[str, int]:
+    """Une requête Overpass par terrain (politesse : pause entre les requêtes).
+
+    Un terrain en échec n'empêche pas les autres ; l'ancien fichier éventuel est conservé.
+    Échoue seulement si aucun terrain n'a pu être téléchargé. `budget` (s) borne la durée totale.
+    """
     os.makedirs(raw_dir, exist_ok=True)
     counts = {}
+    start = time.monotonic()
     for i, icao in enumerate(icaos):
+        if time.monotonic() - start > budget:
+            log.error("budget Overpass dépassé : %s ignorés", ", ".join(icaos[i:]))
+            break
         if i:
             time.sleep(pause)
-        body = urllib.parse.urlencode({"data": QUERY.replace("{icao}", icao)}).encode()
-        raw = _get(OVERPASS, body)
-        j = json.loads(raw)
+        try:
+            raw = _query(icao)
+        except RuntimeError as e:
+            log.error("%s", e)
+            continue
         with open(os.path.join(raw_dir, f"{icao}.json"), "wb") as fh:
             fh.write(raw)
-        counts[icao] = len(j.get("elements", []))
+        counts[icao] = len(json.loads(raw).get("elements", []))
         log.info("%s : %d éléments OSM", icao, counts[icao])
+    if not counts:
+        raise RuntimeError("aucun terrain téléchargé")
     return counts
 
 

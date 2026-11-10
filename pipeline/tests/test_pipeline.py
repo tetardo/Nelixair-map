@@ -346,6 +346,24 @@ class TestGround(unittest.TestCase):
             self.assertEqual(len(fc["features"]), len(self.feats))
             self.assertEqual(_load(os.path.join(d, "ground-index.json"))["airports"]["LFML"]["osm"], "2026-11-01T00:00:00Z")
 
+    def test_fetch_survives_failing_airport(self):
+        """Un terrain en 504 ne bloque pas les autres ; l'échec n'est fatal que si tous échouent."""
+        import urllib.parse
+        from unittest import mock
+        ok = json.dumps({"elements": [{"type": "node", "id": 1}]}).encode()
+
+        def fake(url, body):
+            if b"LFMN" in urllib.parse.unquote_to_bytes(body):
+                raise OSError("HTTP Error 504")
+            return ok
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(self.g, "_get", side_effect=fake), \
+                mock.patch.object(self.g.time, "sleep"):
+            self.assertEqual(self.g.fetch(["LFML", "LFMN"], d), {"LFML": 1})
+            self.assertTrue(os.path.exists(os.path.join(d, "LFML.json")))
+            with self.assertRaises(RuntimeError):
+                self.g.fetch(["LFMN"], d)
+
+
 
 if __name__ == "__main__":
     unittest.main()
