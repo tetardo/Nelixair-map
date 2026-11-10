@@ -1,6 +1,7 @@
 // État partagé de l'interface (réactif). La carte MapLibre n'y est pas : elle vit dans map/mapView.ts.
 import { reactive } from "vue";
 import type { LngLat } from "./lib/format";
+import type { Ofp } from "./services/simbrief";
 import type { ThemeName } from "./map/themes";
 import { THEMES } from "./map/themes";
 
@@ -18,7 +19,7 @@ export type Detail =
   | { kind: "pirep"; p: Props }
   | { kind: "picker"; items: PickItem[] };
 
-export type Tab = "detail" | "airports" | "list" | "filters";
+export type Tab = "detail" | "flight" | "airports" | "list" | "filters";
 
 export interface GroundAirport {
   name: string; bbox: [number, number, number, number]; osm: string;
@@ -74,6 +75,7 @@ export const state = reactive({
   theme: initialTheme(),
   sidebarOpen: false,
   tab: "filters" as Tab,
+  ofp: storage<Ofp | null>("nelixair-ofp", null),
   filters: { ...DEFAULT_FILTERS, ...storage<Record<string, boolean>>("nelixair-filters", {}) },
   detail: { kind: "empty" } as Detail,
   wxStatus: "" as string,

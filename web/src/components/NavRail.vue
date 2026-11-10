@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, FileText, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, type LucideIcon } from "@lucide/vue";
+import { BookOpen, FileText, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, type LucideIcon } from "@lucide/vue";
 import { setSidebar, setTab } from "../map/mapView";
 import { state, type Tab } from "../store";
 
@@ -8,7 +8,7 @@ import { state, type Tab } from "../store";
 const logo = import.meta.env.BASE_URL + "img/nelixair-logo.svg";
 const emit = defineEmits<{ about: [] }>();
 const SECTIONS: [Tab, string, LucideIcon][] = [
-  ["detail", "Fiche", FileText], ["airports", "Aéroports", PlaneLanding], ["list", "Liste", List], ["filters", "Calques", Layers],
+  ["detail", "Fiche", FileText], ["flight", "Plan de vol", Route], ["airports", "Aéroports", PlaneLanding], ["list", "Liste", List], ["filters", "Calques", Layers],
 ];
 function go(t: Tab) {
   if (state.sidebarOpen && state.tab === t) return setSidebar(false);

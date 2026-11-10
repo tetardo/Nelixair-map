@@ -12,7 +12,9 @@ import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIde
 import { nightPolygon } from "../services/sun";
 import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
 import { isMobile, state, type EaipApt, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
+import type { Ofp } from "../services/simbrief";
 import { APT_DRAW_LAYERS, addAptDrawLayers, aptDrawData, themeAptDraw } from "./aptDraw";
+import { addRouteLayers, routeBounds, routeData } from "./flightRoute";
 import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
 import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
@@ -151,6 +153,9 @@ function addLayers(sources: Record<string, unknown>) {
   // Tracés eAIP (axe prolongé, ILS, seuils décalés, intersections) au-dessus du plan au sol
   map.addSource("apt-draw", { type: "geojson", data: aptDrawData(state.eaip) });
   addAptDrawLayers(map, F, FB);
+  // Plan de vol SimBrief
+  map.addSource("ofp", { type: "geojson", data: routeData(state.ofp) });
+  addRouteLayers(map, F, FB);
   // Itinéraire de roulage (calculé à la demande depuis la popup d'un poste)
   map.addSource("taxi-route", { type: "geojson", data: EMPTY });
   add({ id: "tr-casing", type: "line", source: "taxi-route", filter: ["==", ["geometry-type"], "LineString"],
@@ -535,6 +540,31 @@ export function setWindsock(apt: string, wdir: unknown, wspd: number | null | un
 }
 
 // ---------- Itinéraire de roulage ----------
+// ---------- Plan de vol SimBrief ----------
+export function setOfp(ofp: Ofp | null, { fit = true } = {}) {
+  state.ofp = ofp;
+  try {
+    if (ofp) localStorage.setItem("nelixair-ofp", JSON.stringify(ofp)); else localStorage.removeItem("nelixair-ofp");
+  } catch { /* stockage indisponible */ }
+  (map?.getSource("ofp") as maplibregl.GeoJSONSource | undefined)?.setData(routeData(ofp));
+  if (ofp && fit && map) fitOfp();
+}
+export function fitOfp() {
+  if (!state.ofp || !map) return;
+  const left = state.sidebarOpen && !isMobile() ? 60 : 40;
+  map.fitBounds(routeBounds(state.ofp), { padding: { top: 100, bottom: 60, left, right: 70 }, maxZoom: 9, duration: 900 });
+}
+/** Met en évidence le tronçon arrivant sur le point i du nav log (-1 : aucun). */
+export function highlightLeg(i: number) {
+  if (map?.getLayer("ofp-hl")) map.setFilter("ofp-hl", ["all", ["==", ["get", "t"], "leg"], ["==", ["get", "i"], i]]);
+}
+/** Ouvre la fiche d'un aéroport à partir de son ident (index de recherche). */
+export async function openAirportByIdent(ident: string) {
+  await loadIndex();
+  const h = search(ident).find((x) => x.t === "fix" && x.r[0] === ident && x.r[1] === "airport");
+  if (h) choose(h);
+}
+
 export function clearTaxiRoute() {
   (map.getSource("taxi-route") as maplibregl.GeoJSONSource | undefined)?.setData(EMPTY);
 }
