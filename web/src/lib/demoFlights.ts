@@ -153,7 +153,7 @@ export async function demoFlight(id: number): Promise<Ofp> {
     airac: "", units: "kgs", callsign: `NLX${flightNo(id)}`, flight: flightNo(id), aircraft: e.ac, acName: A.name, reg: e.reg,
     orig: apt(e.orig), dest: apt(e.dest), altn: [],
     route: pts.slice(1, -1).map((p) => p.ident).join(" DCT ") || "DCT", cruise: String(crz), ci: A.tas > 400 ? "30" : "",
-    distance: Math.round(total), airDist: Math.round(total), ete,
+    distance: Math.round(total), airDist: Math.round(total), ete, out: Math.floor(Date.parse(`${e.date}T${e.dep}:00Z`) / 1000),
     fuel: { ramp: block, takeoff: Math.round(block - taxi), landing: Math.round(block - taxi - burn), burn,
       reserve: Math.round(reserve), contingency: Math.round(contingency), alternate: null, extra: null },
     weights: { zfw: null, tow: null, law: null, pax: A.pax },

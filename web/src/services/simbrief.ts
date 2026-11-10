@@ -15,6 +15,7 @@ export interface Ofp {
   callsign: string; flight: string; aircraft: string; acName: string; reg: string;
   orig: OfpApt; dest: OfpApt; altn: OfpApt[];
   route: string; cruise: string; ci: string; distance: number | null; airDist: number | null; ete: number | null;
+  out?: number | null; // départ prévu (bloc, secondes UTC)
   fuel: { ramp: number | null; takeoff: number | null; landing: number | null; burn: number | null; reserve: number | null;
     contingency: number | null; alternate: number | null; extra: number | null };
   weights: { zfw: number | null; tow: number | null; law: number | null; pax: number | null };
@@ -59,7 +60,7 @@ export function parseOfp(j: J, user = ""): Ofp {
     callsign, flight: str(g.flight_number), aircraft: str(ac.icaocode || ac.icao_code), acName: str(ac.name), reg: str(ac.reg),
     orig: apt(j.origin), dest: apt(j.destination), altn: list<J>(j.alternate).map(apt).filter((a) => a.icao),
     route: str(g.route), cruise: str(g.initial_altitude), ci: str(g.costindex),
-    distance: num(g.route_distance), airDist: num(g.air_distance), ete: num(t.est_time_enroute),
+    distance: num(g.route_distance), airDist: num(g.air_distance), ete: num(t.est_time_enroute), out: num(t.sched_out),
     fuel: { ramp: num(f.plan_ramp), takeoff: num(f.plan_takeoff), landing: num(f.plan_landing), burn: num(f.enroute_burn),
       reserve: num(f.reserve), contingency: num(f.contingency), alternate: num(f.alternate_burn), extra: num(f.extra) },
     weights: { zfw: num(w.est_zfw), tow: num(w.est_tow), law: num(w.est_ldw), pax: num(w.pax_count) },

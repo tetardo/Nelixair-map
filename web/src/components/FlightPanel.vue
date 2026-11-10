@@ -9,6 +9,8 @@ import { useMapHotScroll } from "../lib/mapHot";
 import { demoOfp, fetchOfp, hhmm } from "../services/simbrief";
 import { state } from "../store";
 import Section from "./Section.vue";
+import RouteAirspaces from "./RouteAirspaces.vue";
+import FlightChecks from "./FlightChecks.vue";
 
 const KEY = "nelixair-simbrief-user";
 let saved = "";
@@ -93,6 +95,8 @@ useMapHotScroll(() => logEl.value?.closest(".tabpanel") as HTMLElement | null);
       </div>
 
       <RouteWeather :ofp="o" />
+      <FlightChecks />
+      <RouteAirspaces />
 
       <Section id="ofp-route" title="Route" :open="false">
         <p class="wx-raw">{{ o.route || "—" }}</p>
