@@ -24,7 +24,7 @@ watch(() => state.theme, applyTheme);
 watch(() => state.themeMode, (m) => {
   try { localStorage.setItem("tropo-theme-mode", m); } catch { /* stockage indisponible */ }
   updateAutoTheme();
-});
+}, { immediate: true }); // mémorisé dès le départ : sinon le dernier thème affiché passerait pour un choix explicite
 watch(() => state.filters, applyFilters, { deep: true });
 watch(() => state.view, applyView, { deep: true });
 
