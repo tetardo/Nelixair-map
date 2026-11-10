@@ -41,6 +41,8 @@ const params = new URLSearchParams(location.search);
 
 const src = (layer: string) => (useGeojson ? { source: layer } : { source: "nav", "source-layer": layer });
 let aspSrc: { source: string; "source-layer"?: string } = { source: "asp" };
+/** Espaces aériens en PMTiles (null : repli GeoJSON), lus aussi hors carte pour la coupe le long de la route. */
+export let aspPmtilesUrl: string | null = null;
 let groundSrc: { source: string; "source-layer"?: string } | null = null;
 
 // ---------- Fond de carte : style libre, épuré façon carte en route ----------
@@ -640,6 +642,13 @@ export function highlightSector(ll: LngLat | null, kind = "") {
   map.setFilter("asp-hot", flt); map.setFilter("asp-hot-fill", flt);
 }
 
+/** Survol d'un espace de la liste « espaces traversés » : contour allumé sur la carte. */
+export function highlightAirspace(name: string | null) {
+  if (!map?.getLayer("asp-hot")) return;
+  const flt = ["==", ["get", "name"], name || ""] as never;
+  map.setFilter("asp-hot", flt); map.setFilter("asp-hot-fill", flt);
+}
+
 /** Survol du METAR dans la fiche : flèche de vent animée sur le terrain (direction d'où vient le vent). */
 let windMk: maplibregl.Marker | null = null;
 export function showWind(ll: LngLat | null, dir?: number | null, spd?: number | null) {
@@ -1058,6 +1067,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     : { nav: { type: "vector", url: "pmtiles://" + abs(CFG.pmtiles), attribution } };
   sources.asp = hasAspPm ? { type: "vector", url: "pmtiles://" + abs(CFG.airspacesPmtiles) } : { type: "geojson", data: CFG.geojson.airspaces };
   aspSrc = hasAspPm ? { source: "asp", "source-layer": "airspaces" } : { source: "asp" };
+  aspPmtilesUrl = hasAspPm ? abs(CFG.airspacesPmtiles) : null;
   if (hasGroundPm) {
     sources.ground = { type: "vector", url: "pmtiles://" + abs(CFG.groundPmtiles), attribution: CFG.groundAttribution };
     groundSrc = { source: "ground", "source-layer": "ground" };

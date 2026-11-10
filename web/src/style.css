@@ -771,3 +771,32 @@ body.side-resizing .sidebar { transition: none; }
 .pane-step { display: inline-flex; gap: 4px; }
 .apt-cards button.cur { border-color: var(--accent); background: var(--accent-soft); }
 @media (prefers-reduced-motion: reduce) { .apt-split.open:not(.wide) .apt-pane { animation: none; } }
+
+/* ---------- Espaces traversés ---------- */
+.asp-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.asp-list button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 6px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.asp-list button:hover, .asp-list button:focus-visible { background: var(--wash); }
+.asp-list.dim { opacity: .7; }
+.asp-sw { flex: none; width: 10px; height: 10px; border-radius: 2px; }
+.asp-n { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.asp-n b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asp-n small, .asp-v small { color: var(--chrome-soft); font-size: 11px; }
+.asp-v { flex: none; display: flex; flex-direction: column; align-items: flex-end; font-family: var(--mono); font-size: 12px; }
+.asp-more summary { cursor: pointer; margin: 4px 0; }
+.pf-asp rect { fill-opacity: .10; stroke-opacity: .55; stroke-width: 1; }
+.pf-asp rect.in { fill-opacity: .2; stroke-opacity: .9; }
+.pf-asp text { font: 600 9px var(--sans); }
+.pf-asp-tg { font-size: 11px; padding: 2px 8px; }
+.pf-asp-tg[aria-pressed="false"] { opacity: .5; }
+
+/* ---------- Contrôles du plan de vol ---------- */
+.chk-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chk-list li { display: flex; gap: 8px; align-items: flex-start; }
+.chk-list li > svg { flex: none; margin-top: 1px; }
+.chk-list li.ok > svg { color: var(--ok); }
+.chk-list li.warn > svg { color: var(--caution); }
+.chk-list li.info > svg { color: var(--chrome-soft); }
+.chk-list b { font-weight: 600; }
+.chk-list p { margin: 2px 0 0; color: var(--chrome-soft); line-height: 1.4; }
+.link-btn { padding: 0; margin-top: 2px; border: 0; background: none; color: var(--link); font: inherit; font-size: 12px; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }

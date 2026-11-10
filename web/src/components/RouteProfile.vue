@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { elevationsFt } from "../lib/elevation";
 import { alt } from "../lib/format";
 import { along, routeVertices, samples } from "../lib/routeGeom";
+import { ASP_COLORS, fmtFt, routeAsp, useRouteAsp } from "../lib/routeAsp";
 import { flyTo, selectPoint } from "../map/mapView";
 import { ROUTE_COLOR } from "../map/flightRoute";
 import { state } from "../store";
@@ -69,6 +70,15 @@ const minMargin = computed(() => {
   return m;
 });
 
+// Coupe des espaces aériens traversés (bandes plancher → plafond sur la distance où la route est dedans)
+useRouteAsp();
+const showAsp = ref(true);
+const bands = computed(() => (showAsp.value ? routeAsp.value || [] : []).filter((c) => c.lowerFt < maxAlt.value).map((c) => {
+  const x0 = x(c.from), x1 = Math.max(x(c.to), x0 + 2), yTop = y(Math.min(c.upperFt, maxAlt.value)), yBot = y(c.lowerFt);
+  return { c, x: x0, w: x1 - x0, y: yTop, h: Math.max(2, yBot - yTop), color: ASP_COLORS[c.group] || ASP_COLORS.other,
+    label: x1 - x0 > 70 && c.inside ? c.name : "" };
+}).sort((a, b) => b.h - a.h)); // les plus hautes d'abord : les petites restent visibles par-dessus
+
 // curseur : survol du profil, sinon point choisi en cliquant la route sur la carte
 const cur = computed(() => hover.value ?? (state.profileAt != null ? Math.min(total.value, state.profileAt) : null));
 const hv = computed(() => {
@@ -76,7 +86,8 @@ const hv = computed(() => {
   if (d == null) return null;
   const a = along(verts.value, d);
   const t = terrain.value.length ? terrain.value.reduce((b, p) => (Math.abs(p.d - d) < Math.abs(b.d - d) ? p : b)) : null;
-  return { d, alt: a.alt, ll: a.ll, terr: t?.ft ?? null };
+  const asp = (routeAsp.value || []).filter((c) => d >= c.from && d <= c.to && a.alt >= c.lowerFt && a.alt <= c.upperFt).map((c) => c.name);
+  return { d, alt: a.alt, ll: a.ll, terr: t?.ft ?? null, asp };
 });
 watch(() => state.profileAt, (d) => { if (d != null && hover.value == null) selectPoint(hv.value?.ll ?? null); });
 watch(() => [state.ofp, state.profileOpen], () => { if (!state.profileOpen) state.profileAt = null; });
@@ -106,7 +117,8 @@ const fmt = (v: number) => Math.round(v).toLocaleString("fr-FR");
       <span v-else-if="peak" class="muted">relief max {{ fmt(peak.ft) }} ft à {{ fmt(peak.d) }} NM</span>
       <span v-if="minMargin" :class="minMargin.ft < 2000 ? 'warn' : 'muted'">marge mini en route {{ fmt(minMargin.ft) }} ft</span>
       <span class="sp"></span>
-      <span v-if="hv" class="profile-read">{{ fmt(hv.d) }} NM · prévu {{ alt(Math.round(hv.alt / 100) * 100) }}<template v-if="hv.terr != null"> · relief {{ fmt(hv.terr) }} ft</template></span>
+      <span v-if="hv" class="profile-read">{{ fmt(hv.d) }} NM · prévu {{ alt(Math.round(hv.alt / 100) * 100) }}<template v-if="hv.terr != null"> · relief {{ fmt(hv.terr) }} ft</template><template v-if="hv.asp.length"> · {{ hv.asp.join(", ") }}</template></span>
+      <button type="button" class="btn-ghost pf-asp-tg" :aria-pressed="showAsp" title="Afficher les espaces aériens traversés" @click="showAsp = !showAsp">Espaces</button>
       <button type="button" class="btn-ghost" aria-label="Fermer le profil" @click="state.profileOpen = false"><X :size="16" aria-hidden="true" /></button>
     </div>
     <svg class="pf-svg" :width="W" :height="H" :viewBox="`0 0 ${W} ${H}`" @pointermove="move" @pointerleave="leave" @click="click">
@@ -115,6 +127,12 @@ const fmt = (v: number) => Math.round(v).toLocaleString("fr-FR");
           <line :x1="PAD.l" :x2="W - PAD.r" :y1="y(g)" :y2="y(g)" />
           <text :x="PAD.l - 6" :y="y(g) + 3" text-anchor="end">{{ g >= 18000 ? "FL" + g / 100 : fmt(g) }}</text>
         </template>
+      </g>
+      <g class="pf-asp">
+        <g v-for="b in bands" :key="b.c.key">
+          <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" :fill="b.color" :stroke="b.color" :class="{ in: b.c.inside }"><title>{{ b.c.name }} · {{ fmtFt(b.c.lowerFt) }} – {{ fmtFt(b.c.upperFt) }}</title></rect>
+          <text v-if="b.label" :x="b.x + 4" :y="b.y + 10" :fill="b.color">{{ b.label }}</text>
+        </g>
       </g>
       <path v-if="terrPath" :d="terrPath" class="pf-terrain" />
       <path :d="planPath" class="pf-plan" :stroke="ROUTE_COLOR" />
