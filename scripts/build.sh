@@ -31,6 +31,13 @@ if [[ -z "${SKIP_FETCH:-}" ]]; then
 fi
 python3 pipeline/ground.py build --raw "$GROUND_RAW" --out "$OUT" || echo "AVERTISSEMENT : pas de plan au sol" >&2
 
+# Données de piste officielles France (eAIP SIA, Licence Ouverte). Bonus : un échec n'arrête pas le build.
+EAIP_RAW=${EAIP_RAW:-$RAW/eaip}
+if [[ -z "${SKIP_FETCH:-}" ]]; then
+  python3 pipeline/eaip.py fetch --raw "$EAIP_RAW" || echo "AVERTISSEMENT : eAIP SIA indisponible" >&2
+fi
+python3 pipeline/eaip.py build --raw "$EAIP_RAW" --out "$OUT" || echo "AVERTISSEMENT : pas de données eAIP" >&2
+
 command -v tippecanoe >/dev/null || { echo "tippecanoe introuvable (voir README)" >&2; exit 1; }
 
 # -r1 : pas d'éclaircissement automatique des points, l'apparition est pilotée
@@ -76,6 +83,7 @@ fi
 
 mkdir -p "$SITE_DATA"
 [[ -s "$OUT/ground.pmtiles" ]] && cp "$OUT/ground.pmtiles" "$OUT/ground-index.json" "$SITE_DATA/"
+[[ -s "$OUT/eaip.json" ]] && cp "$OUT/eaip.json" "$SITE_DATA/"
 cp "$OUT/nav.pmtiles" "$OUT/airspaces.pmtiles" "$OUT/search.json" "$OUT/routes.json" \
    "$OUT/mora.geojson" "$OUT/meta.json" "$SITE_DATA/"
 mkdir -p "$SITE_DATA/apt"

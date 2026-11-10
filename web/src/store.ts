@@ -26,6 +26,20 @@ export interface GroundAirport {
   ends?: Record<string, number>; // QFU -> cap vrai
 }
 
+// Données officielles eAIP SIA (France), voir pipeline/eaip.py
+export interface EaipRwy {
+  true?: number; mag?: number; len?: number; wid?: number; pcn?: string; surface?: string;
+  thr?: [number, number]; dthr?: [number, number]; thr_elev?: number; dthr_elev?: number;
+  tora?: number; toda?: number; asda?: number; lda?: number;
+  intersections?: { twy: string; tora: number; pos?: [number, number] }[];
+  apch_lgt?: string; papi?: number; meht_ft?: number;
+  ils?: { id?: string | null; freq?: number | null; cat?: string; gs?: number; rdh_ft?: number; dme?: boolean };
+}
+export interface EaipApt {
+  arp?: [number, number]; elev_ft?: number; magvar?: number; magvar_year?: number; ta_ft?: number;
+  rwys: Record<string, EaipRwy>; navaids?: { type: string; id: string; freq: string; pos?: [number, number] }[];
+}
+
 export interface SourceMeta { id: string; name: string; license?: string; url: string; coverage?: string; cycle?: string }
 
 function storage<T>(key: string, fallback: T): T {
@@ -47,7 +61,7 @@ export const DEFAULT_FILTERS: Record<string, boolean> = {
   apt_large: true, apt_medium: true, apt_small: true, apt_heli: false,
   asp_controlled: true, asp_special: true, asp_fir: true, asp_other: false,
   wx: true, hazards: true, pireps: false, sat: false, night: false, mora: true,
-  ground: true,
+  ground: true, approach: true,
 };
 
 // Affichage du fond de carte (menu près du zoom). Par défaut : épuré façon carte en route.
@@ -71,6 +85,8 @@ export const state = reactive({
   chartsMeta: null as null | { name: string; cycle: string; base: string },
   ground: {} as Record<string, GroundAirport>,
   groundBuilt: "",
+  eaip: {} as Record<string, EaipApt>,
+  eaipCycle: "",
   // Carte d'aéroport affichée (terrain pilote au centre de la vue, zoom ≥ 12)
   groundInView: "" as string,
   mapReady: false,

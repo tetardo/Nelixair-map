@@ -2,12 +2,12 @@
 import { computed, ref } from "vue";
 import { airacAt, fmtDate, siaAd2Url } from "../lib/airac";
 import { APT_KIND, SRC, ddm, deg3, dms, ft, pairs, yes, type LngLat } from "../lib/format";
-import { groundFocus, groundPreview, openAirportChart } from "../map/mapView";
+import { eaipEnds, groundFocus, groundPreview, openAirportChart } from "../map/mapView";
 import { aptDetails, type AptDetails } from "../services/data";
 import { sunTimes, type SunTime } from "../services/sun";
 import { runwayWinds, splitDesignator, type RwyWind } from "../lib/wind";
 import { WX_COLORS, ceilingFt, flightCat, metar, taf, visSm, wind, type Metar } from "../services/weather";
-import { state, type Props } from "../store";
+import { state, type EaipRwy, type Props } from "../store";
 import KeyValues from "./KeyValues.vue";
 import Section from "./Section.vue";
 
@@ -20,8 +20,11 @@ const FREQ_ORDER = ["ATIS", "AWOS", "DEL", "GND", "TWR", "AFIS", "CTAF", "UNICOM
 const CHART_GROUPS: [string, string][] = [["APD", "Diagramme d'aéroport"], ["IAP", "Approches"], ["DP", "Départs (SID)"], ["ODP", "Départs (SID)"],
   ["STAR", "Arrivées (STAR)"], ["MIN", "Minima"], ["HOT", "Points chauds"], ["LAH", "LAHSO"], ["DAU", "Autres"]];
 
-const facts = computed(() => pairs([["Altitude", ft(props.p.elev_ft)], ["Piste max", props.p.rwy_ft ? ft(props.p.rwy_ft) : null],
-  ["IATA", props.p.iata], ["Pays", props.p.country || props.p.region]]));
+const facts = computed(() => {
+  const ta = state.eaip[props.p.ident]?.ta_ft;
+  return pairs([["Altitude", ft(props.p.elev_ft)], ["Piste max", props.p.rwy_ft ? ft(props.p.rwy_ft) : null],
+    ["TA", ta ? `${ta} ft` : null], ["IATA", ta ? null : props.p.iata], ["Pays", ta ? null : props.p.country || props.p.region]]).slice(0, 3);
+});
 
 // ---------- Pistes, fréquences, cartes FAA ----------
 const details = ref<AptDetails | null | undefined>(undefined);
@@ -72,12 +75,13 @@ const rwyWinds = computed(() => {
   const mt = wx.value?.m;
   if (!mt) return [];
   const rw = (details.value?.rwy || []).map((r) => [r[0], r[4], r[5]] as [string, number | null, string]);
-  return runwayWinds(mt.wdir, mt.wspd, mt.wgst, ground.value?.ends || null, rw);
+  return runwayWinds(mt.wdir, mt.wspd, mt.wgst, { ...ground.value?.ends, ...eaipEnds(props.p.ident) }, rw);
 });
 const kt = (v: number) => `${Math.abs(v)} kt`;
 
 // Une ligne par QFU : caractéristiques de la piste + composantes de vent du METAR
-interface QfuRow { qfu: string; hdg: string; len: string; surf: string; w?: RwyWind }
+interface QfuRow { qfu: string; hdg: string; len: string; surf: string; w?: RwyWind; e?: EaipRwy }
+const eaip = computed(() => state.eaip[props.p.ident] || null);
 const qfuRows = computed<QfuRow[]>(() => {
   const wmap = new Map(rwyWinds.value.map((r) => [r.qfu, r]));
   const out: QfuRow[] = [];
@@ -96,8 +100,18 @@ const qfuRows = computed<QfuRow[]>(() => {
   for (const [q, h] of Object.entries(ground.value?.ends || {})) {
     if (!seen.has(q)) { seen.add(q); out.push({ qfu: q, hdg: deg3(h) + "V", len: "—", surf: "", w: wmap.get(q) }); }
   }
+  // Données officielles eAIP : remplacent cap et dimensions, ajoutent distances / ILS / PAPI
+  for (const [q, e] of Object.entries(eaip.value?.rwys || {})) {
+    let r = out.find((x) => x.qfu === q);
+    if (!r) { r = { qfu: q, hdg: "", len: "—", surf: "", w: wmap.get(q) }; out.push(r); }
+    r.e = e;
+    if (e.mag != null) r.hdg = String(e.mag).padStart(3, "0") + "°M";
+    if (e.len) r.len = `${e.len.toLocaleString("fr-FR")}${e.wid ? " × " + e.wid : ""} m`;
+    if (e.surface) r.surf = e.surface + (e.pcn ? " · PCN " + e.pcn : "");
+  }
   return out.sort((a, b) => a.qfu.localeCompare(b.qfu, "fr", { numeric: true }));
 });
+const m = (v?: number) => (v != null ? v.toLocaleString("fr-FR") : "—");
 const bestQfu = computed(() => rwyWinds.value[0]?.qfu || "");
 const metarTime = computed(() => String(wx.value?.m?.reportTime || "").replace(/^\d{4}-(\d\d)-(\d\d)[T ](\d\d:\d\d).*$/, "$2/$1 $3Z"));
 
@@ -111,6 +125,9 @@ if (sun.dawn instanceof Date && sun.dusk instanceof Date) dayState = now >= sun.
 else if (sun.dusk === "day" || sun.dawn === "day") dayState = "Jour aéronautique";
 else if (sun.dusk === "night") dayState = "Nuit aéronautique";
 const isNight = dayState === "Nuit aéronautique";
+const siteRows = computed(() => pairs([["Altitude de transition", eaip.value?.ta_ft ? `${eaip.value.ta_ft.toLocaleString("fr-FR")} ft` : null],
+  ["Déclinaison", eaip.value?.magvar != null ? `${Math.abs(eaip.value.magvar)}° ${eaip.value.magvar >= 0 ? "E" : "W"}${eaip.value.magvar_year ? " (" + eaip.value.magvar_year + ")" : ""}` : null],
+  ["Altitude de référence", eaip.value?.elev_ft != null ? `${eaip.value.elev_ft} ft` : null]]));
 const sunRows = pairs([["Lever", hm(sun.rise)], ["Coucher", hm(sun.set)], ["Début nuit (EASA)", hm(sun.dusk)], ["Fin nuit (EASA)", hm(sun.dawn)],
   ["Maintenant", dayState]]);
 const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)}`;
@@ -165,7 +182,8 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
       <table class="tbl qfu-tbl">
         <thead><tr><th>QFU</th><th>Dimensions</th><th v-if="rwyWinds.length">Face</th><th v-if="rwyWinds.length">Travers</th></tr></thead>
         <tbody>
-          <tr v-for="r in qfuRows" :key="r.qfu" :class="{ best: r.qfu === bestQfu }">
+          <template v-for="r in qfuRows" :key="r.qfu">
+          <tr :class="{ best: r.qfu === bestQfu }">
             <td><b>{{ r.qfu }}</b><small v-if="r.hdg">{{ r.hdg }}</small></td>
             <td>{{ r.len }}<small v-if="r.surf">{{ r.surf }}</small></td>
             <template v-if="rwyWinds.length">
@@ -175,8 +193,21 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
               <td v-else>—</td>
             </template>
           </tr>
+          <tr v-if="r.e" class="qfu-sub" :class="{ best: r.qfu === bestQfu }">
+            <td :colspan="rwyWinds.length ? 4 : 2">
+              <span title="Distance de roulement utilisable au décollage">TORA <b>{{ m(r.e.tora) }}</b></span>
+              <span title="Distance utilisable à l'atterrissage">LDA <b>{{ m(r.e.lda) }}</b></span>
+              <span v-if="r.e.ils?.freq" class="ils" title="ILS / LOC">ILS <b>{{ r.e.ils.id }} {{ r.e.ils.freq.toFixed(2) }}</b>{{ r.e.ils.gs ? "\u00a0" + r.e.ils.gs + "°" : "" }}</span>
+              <span v-if="r.e.papi">PAPI <b>{{ r.e.papi }}°</b></span>
+              <span v-if="r.e.dthr" title="Seuil décalé">DTHR</span>
+              <span v-if="r.e.thr_elev != null">THR <b>{{ r.e.thr_elev }} ft</b></span>
+              <span v-for="it in r.e.intersections || []" :key="it.twy" class="int" title="Départ d'intersection : TORA">{{ it.twy }} <b>{{ m(it.tora) }}</b></span>
+            </td>
+          </tr>
+          </template>
         </tbody>
       </table>
+      <p v-if="eaip" class="muted small">Distances en mètres, données eAIP SIA{{ state.eaipCycle ? " AIRAC du " + state.eaipCycle.split("-").reverse().join("/") : "" }} (Licence Ouverte).</p>
       <p v-if="rwyWinds.length" class="muted small">Vent du METAR, rafales en « G ». ↑ face, ↓ arrière, ← de gauche, → de droite. Indicatif : la piste en service est celle de l'ATIS.</p>
     </template>
     <span v-else class="muted">Non publiées par les sources.</span>
@@ -242,6 +273,7 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
   <!-- 6. Terrain : position, soleil -->
   <Section id="site" title="Terrain et soleil" :open="false" :note="today + ' UTC'">
     <KeyValues :rows="pairs([['Position', `${ddm(ll[1], true)} ${ddm(ll[0], false)}`], ['', `${dms(ll[1], true)} ${dms(ll[0], false)}`]])" />
+    <KeyValues v-if="siteRows.length" :rows="siteRows" />
     <KeyValues :rows="sunRows" />
     <p class="muted small">Nuit = fin du crépuscule civil du soir → début du crépuscule civil du matin (EASA). Calcul approché (± 2 min).
       Source : {{ SRC[p.src] || p.src || "" }}{{ p.cycle ? " · " + p.cycle : "" }}</p>

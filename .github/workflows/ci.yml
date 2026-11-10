@@ -45,6 +45,7 @@ jobs:
       # Plan au sol réel des terrains pilotes : informatif (Overpass peut être saturé), ne bloque pas la CI
       - name: Qualité OSM des terrains pilotes (Overpass)
         continue-on-error: true
+        timeout-minutes: 5
         run: |
           python3 pipeline/ground.py fetch --raw /tmp/ground-raw
           python3 pipeline/ground.py build --raw /tmp/ground-raw --out /tmp/ground-out

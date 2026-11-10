@@ -373,6 +373,76 @@ class TestGround(unittest.TestCase):
             self.assertEqual(os.listdir(out), [])
 
 
+class TestEaip(unittest.TestCase):
+    """Lecture de l'eAIP SIA (AD 2) sur un extrait à la structure réelle."""
+
+    @classmethod
+    def setUpClass(cls):
+        import eaip
+        cls.eaip = eaip
+        with open(os.path.join(FIX, "eaip", "FR-AD-2.LFML-fr-FR.html"), encoding="utf-8") as f:
+            cls.apt = eaip.parse(f.read(), "LFML")
+
+    def test_airac_and_url(self):
+        self.assertEqual(self.eaip.airac_start(dt.date(2026, 11, 10)), dt.date(2026, 10, 29))
+        self.assertEqual(self.eaip.airac_start(dt.date(2026, 11, 26)), dt.date(2026, 11, 26))
+        self.assertTrue(self.eaip.ad2_url("LFML", dt.date(2026, 10, 29)).endswith(
+            "eAIP_29_OCT_2026/FRANCE/AIRAC-2026-10-29/html/eAIP/FR-AD-2.LFML-fr-FR.html"))
+
+    def test_ad22(self):
+        self.assertEqual(self.apt["elev_ft"], 70)
+        self.assertAlmostEqual(self.apt["magvar"], 2.57)
+        self.assertAlmostEqual(self.apt["arp"][1], 43.4367, places=3)
+
+    def test_runway_revision_resolved(self):
+        r = self.apt["rwys"]["13L"]
+        # <del>(132)</del> (131) : seule la valeur en vigueur compte
+        self.assertEqual((r["true"], r["mag"]), (134.47, 131))
+        self.assertEqual((r["len"], r["wid"], r["pcn"]), (3500, 45, "58/R/B/W/T"))
+        self.assertEqual((r["thr_elev"], r["dthr_elev"]), (9, 8))
+        self.assertIn("dthr", r)
+        self.assertNotIn("dthr", self.apt["rwys"]["13R"])
+
+    def test_declared_distances(self):
+        r = self.apt["rwys"]["31R"]
+        self.assertEqual((r["tora"], r["toda"], r["asda"], r["lda"]), (3440, 3500, 3440, 2780))
+        self.assertEqual(self.apt["rwys"]["13L"]["intersections"][0], {"twy": "D1", "tora": 3003})
+
+    def test_lighting_ils(self):
+        r = self.apt["rwys"]["13R"]
+        self.assertEqual(r["papi"], 3.0)
+        self.assertEqual(r["ils"]["freq"], 108.3)
+        self.assertEqual(r["ils"]["id"], "MCE")
+        self.assertEqual((r["ils"]["gs"], r["ils"]["rdh_ft"]), (3.0, 54))
+        self.assertEqual(self.apt["rwys"]["31R"]["apch_lgt"], "CAT I - 900 m - LIH")
+        self.assertEqual(self.apt["ta_ft"], 5000)
+        self.assertEqual([n["id"] for n in self.apt["navaids"]], ["MAR", "MRM"])
+
+    def test_intersection_position(self):
+        apt = {"rwys": {"13L": {"intersections": [{"twy": "D1", "tora": 3003}, {"twy": "ZZ", "tora": 1}]}}}
+        feats = [
+            {"type": "Feature", "properties": {"apt": "LFML", "kind": "rwy_axis", "ref": "13L/31R"},
+             "geometry": {"type": "LineString", "coordinates": [[5.0, 43.0], [5.04, 43.0]]}},
+            # taxiway perpendiculaire qui touche l'axe à 5.01
+            {"type": "Feature", "properties": {"apt": "LFML", "kind": "taxiway", "ref": "D1"},
+             "geometry": {"type": "LineString", "coordinates": [[5.01, 43.002], [5.01, 43.0001]]}},
+        ]
+        self.eaip.locate_intersections("LFML", apt, feats)
+        it = apt["rwys"]["13L"]["intersections"]
+        self.assertAlmostEqual(it[0]["pos"][0], 5.01, places=4)
+        self.assertNotIn("pos", it[1])
+
+    def test_build(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self.eaip.build(os.path.join(FIX, "eaip"), d), 1)
+            doc = _load(os.path.join(d, "eaip.json"))
+            self.assertIn("LFML", doc["airports"])
+            self.assertIn("Licence Ouverte", doc["source"])
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(self.eaip.build(os.path.join(d, "absent"), d), 0)
+            self.assertFalse(os.path.exists(os.path.join(d, "eaip.json")))
+
+
 class TestOpenAipRetry(unittest.TestCase):
     def _run(self, errors):
         import io

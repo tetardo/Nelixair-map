@@ -400,3 +400,18 @@ details.taf summary { cursor: pointer; font: 600 10.5px var(--sans); letter-spac
 @media (max-width: 760px) { .view-menu { right: 50px; bottom: 24px; width: min(250px, calc(100vw - 70px)); } }
 .vm-seg2 { grid-template-columns: repeat(2, 1fr); margin-top: 4px; }
 .vm-seg button:disabled { opacity: .35; cursor: default; }
+.sw-appr { width: 14px; height: 10px; border: 0; background: linear-gradient(90deg, transparent 0 40%, currentColor 40% 60%, transparent 60%); clip-path: polygon(0 50%, 100% 0, 100% 100%); background-color: rgba(90,168,255,.5); }
+/* Manche à air (point de référence du terrain) */
+.windsock { display: flex; flex-direction: column; align-items: center; pointer-events: auto; cursor: help; }
+.windsock svg { width: 46px; height: 28px; overflow: visible; filter: drop-shadow(0 1px 1px rgba(0,0,0,.5)); transition: transform .6s; }
+.windsock line { stroke: #222; stroke-width: 2; }
+.windsock path { stroke: #222; stroke-width: .6; }
+.windsock .r { fill: #f05a1a; } .windsock .w { fill: #fff; } .windsock .off { fill: rgba(240,90,26,.15); stroke-dasharray: 1 1; }
+.windsock .ws-lbl, .windsock .ws-calm { font: 700 10px var(--mono); color: #fff; background: rgba(23,32,51,.85); border-radius: 3px; padding: 0 4px; margin-top: 1px; }
+/* Ligne eAIP sous chaque QFU */
+.qfu-tbl tr.qfu-sub td { padding-top: 0; border-top: 0; font: 11px var(--mono); color: var(--chrome-soft); }
+.qfu-tbl tr.qfu-sub span { display: inline-block; margin: 0 8px 2px 0; white-space: nowrap; }
+.qfu-tbl tr.qfu-sub b { color: var(--chrome-ink); font-weight: 600; }
+.qfu-tbl tr.qfu-sub .ils b { color: #5aa8ff; }
+.qfu-tbl tr.qfu-sub .int { color: #ff8a3d; }
+.pop-eaip td small { opacity: .6; }

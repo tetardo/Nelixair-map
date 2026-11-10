@@ -10,7 +10,8 @@ import { distNm } from "../lib/geo";
 import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIdent, type Hit } from "../services/data";
 import { nightPolygon } from "../services/sun";
 import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
-import { isMobile, state, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
+import { isMobile, state, type EaipApt, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
+import { APT_DRAW_LAYERS, addAptDrawLayers, aptDrawData, themeAptDraw } from "./aptDraw";
 import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
 import { aspHtml, fixHtml, groundHtml, groundTip, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
@@ -93,14 +94,14 @@ export function applyView() {
   if (map.getLayer("relief")) map.setLayoutProperty("relief", "visibility", v.relief ? "visible" : "none");
   // Imagerie Esri (choix de l'association : usage non commercial). Insérée sous les routes, bâtiments et noms du fond.
   const sat = v.base === "sat";
-  if (sat && !map.getSource("sat")) {
-    map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 19,
+  if (sat && !map.getSource("imagery")) {
+    map.addSource("imagery", { type: "raster", tileSize: 256, maxzoom: 19,
       tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
       attribution: 'Imagerie <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics' });
     const above = baseLayers.find((l) => baseGroup(l) && baseGroup(l) !== "landuse")?.id || firstAero();
-    map.addLayer({ id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 150 } }, above);
+    map.addLayer({ id: "imagery", type: "raster", source: "imagery", paint: { "raster-fade-duration": 150 } }, above);
   }
-  if (map.getLayer("sat")) map.setLayoutProperty("sat", "visibility", sat ? "visible" : "none");
+  if (map.getLayer("imagery")) map.setLayoutProperty("imagery", "visibility", sat ? "visible" : "none");
   // Sur l'imagerie, les fonds du plan au sol deviennent transparents : on voit la scène réelle sous les taxiways
   if (map.getLayer("g-boundary")) {
     map.setPaintProperty("g-boundary", "fill-opacity", sat ? 0 : ["interpolate", ["linear"], ["zoom"], 11, 0, 12.5, 0.85]);
@@ -143,6 +144,9 @@ function addLayers(sources: Record<string, unknown>) {
 
   // Carte d'aéroport (plan au sol), sous les espaces et la navigation
   if (groundSrc) addGroundLayers(map, groundSrc, F, FB);
+  // Tracés eAIP (axe prolongé, ILS, seuils décalés, intersections) au-dessus du plan au sol
+  map.addSource("apt-draw", { type: "geojson", data: aptDrawData(state.eaip) });
+  addAptDrawLayers(map, F, FB);
 
   // Espaces aériens (sous les voies) : remplissage léger, contour, nom + limites le long du contour
   add({ id: "asp-fill", type: "fill", ...aspSrc, minzoom: 4, filter: ["!=", ["get", "group"], "fir"], paint: { "fill-opacity": 0.05 } });
@@ -289,6 +293,7 @@ export function applyTheme(name: ThemeName) {
   Lp("nav-lbl", "icon-image", ["case", isNdb, `${name}-box-ndb`, `${name}-box-nav`]);
   P("nav-lbl", "text-color", ["case", isNdb, T.ndb, T.navaid]);
   if (map.getLayer("g-runway")) themeGround(map, name, T);
+  themeAptDraw(map, T);
 }
 
 // Le symbole d'un aéroport s'efface quand son plan au sol est affiché (zoom ≥ 13)
@@ -337,6 +342,7 @@ export function applyFilters() {
   V("sat", on.sat);
   V("night", on.night);
   if (map.getLayer("g-runway")) for (const id of GROUND_LAYERS) V(id, on.ground);
+  for (const id of APT_DRAW_LAYERS) if (map.getLayer(id)) V(id, on.approach);
   fadeAirportsWithGround();
   const key = ["hazards", "pireps", "sat"].map((k) => +!!on[k]).join("");
   const changed = key !== overlayKey;
@@ -493,6 +499,32 @@ export function openAirportChart(ident: string) {
   map.fitBounds([[w, s], [e, n]], { padding: isMobile() ? 20 : 50, maxZoom: 16, duration: 1000 });
 }
 
+// Manche à air au point de référence du terrain affiché, orientée selon le METAR (la manche pointe sous le vent)
+let sock: maplibregl.Marker | null = null;
+export function setWindsock(apt: string, wdir: unknown, wspd: number | null | undefined) {
+  sock?.remove(); sock = null;
+  const g = state.ground[apt];
+  const at = state.eaip[apt]?.arp || (g ? [(g.bbox[0] + g.bbox[2]) / 2, (g.bbox[1] + g.bbox[3]) / 2] as LngLat : null);
+  if (!apt || !at || !state.mapReady || wspd == null) return;
+  const el = document.createElement("div");
+  el.className = "windsock";
+  const calm = !wspd, vrb = typeof wdir !== "number";
+  el.title = calm ? "Vent calme" : vrb ? `Vent variable ${wspd} kt` : `Vent ${String(wdir).padStart(3, "0")}° ${wspd} kt (vrai)`;
+  // 5 bandes = 15 kt ou plus (convention OACI : une bande par tranche de 3 kt)
+  const bands = Math.min(5, Math.max(1, Math.round(wspd / 3)));
+  el.innerHTML = calm || vrb ? `<span class="ws-calm">${calm ? "CALME" : "VRB"}</span>` :
+    `<svg viewBox="-4 -14 48 28" style="transform: rotate(${(Number(wdir) + 90) % 360}deg)"><line x1="-3" y1="0" x2="0" y2="0"/>` +
+    Array.from({ length: 5 }, (_, i) => `<path class="${i < bands ? (i % 2 ? "w" : "r") : "off"}" d="M${i * 8} ${-9 + i * 1.2} L${i * 8 + 8} ${-9 + (i + 1) * 1.2} L${i * 8 + 8} ${9 - (i + 1) * 1.2} L${i * 8} ${9 - i * 1.2}Z"/>`).join("") +
+    `</svg><span class="ws-lbl">${wspd} kt</span>`;
+  sock = new maplibregl.Marker({ element: el }).setLngLat(at).addTo(map);
+}
+
+/** Données eAIP chargées : tracés et caps vrais officiels. */
+export function setEaip(airports: Record<string, EaipApt>) {
+  state.eaip = airports;
+  (map?.getSource("apt-draw") as maplibregl.GeoJSONSource | undefined)?.setData(aptDrawData(airports));
+}
+
 // ---------- Objets du plan au sol pilotés depuis la fiche (puces pistes / taxiways) ----------
 type GKind = "runway" | "taxiway";
 let hoverPop: maplibregl.Popup | null = null;
@@ -608,6 +640,10 @@ function propsAt(point: maplibregl.Point, layers: string[], b: number, keyOf: (p
 const airspacesAt = (pt: maplibregl.Point) => propsAt(pt, ["asp-fill", ...ASP_LINE_IDS], 3, (p) => `${p.name}|${p.type}|${p.lower}|${p.upper}`);
 const overlayAt = (pt: maplibregl.Point, layers: string[], b = 4) => propsAt(pt, layers, b, (p) => p.raw || JSON.stringify(p));
 
+/** Caps vrais officiels (eAIP) par QFU. */
+export const eaipEnds = (apt: string): Record<string, number> =>
+  Object.fromEntries(Object.entries(state.eaip[apt]?.rwys || {}).filter(([, r]) => r.true != null).map(([q, r]) => [q, r.true!]));
+
 // METAR des aérodromes à plan au sol, pour les composantes de vent dans les bulles (rafraîchi toutes les 10 min)
 const gndWx = new Map<string, { m: Metar | null; t: number }>();
 function gndCtx(apt: string): GndCtx {
@@ -616,7 +652,7 @@ function gndCtx(apt: string): GndCtx {
     gndWx.set(apt, { m: c?.m ?? null, t: Date.now() });
     metar(apt).then((m) => gndWx.set(apt, { m, t: Date.now() })).catch(() => {});
   }
-  return { ends: state.ground[apt]?.ends, m: gndWx.get(apt)?.m };
+  return { ends: { ...state.ground[apt]?.ends, ...eaipEnds(apt) }, m: gndWx.get(apt)?.m, eaip: state.eaip[apt] };
 }
 
 function onClick(e: maplibregl.MapMouseEvent) {
