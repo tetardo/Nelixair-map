@@ -873,12 +873,17 @@ function gndCtx(apt: string): GndCtx {
 }
 
 /** Ouvre un vol de « Mes vols » dans le panneau Plan de vol (route tracée et cadrée). */
-export async function openLogFlight(id: number) {
+/** Charge un vol du carnet comme plan de vol courant (la route du vol ouvert reste lisible : carnet masqué). */
+export async function loadLogFlight(id: number) {
   const { demoFlight } = await import("../lib/demoFlights");
-  state.logbookMap = false; // la route du vol ouvert reste lisible
+  state.logbookMap = false;
   setOfp(await demoFlight(id));
-  setTab("flight");
+}
+/** Clic sur un vol du carnet sur la carte : ouvert dans le volet de Mes vols, à côté de la liste. */
+export async function openLogFlight(id: number) {
+  setTab("flights");
   if (!state.sidebarOpen) setSidebar(true);
+  await loadLogFlight(id);
 }
 /** Clic sur la route du plan de vol : place le curseur du profil vertical au même endroit et l'ouvre. */
 function routeClick(pt: maplibregl.Point) {

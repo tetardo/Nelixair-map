@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ArrowLeft, ChevronLeft, ChevronRight, Route, Signpost, SquareParking, TowerControl, X } from "@lucide/vue";
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { airportLL, closeAirportPane, openAirportInList, resizeMap } from "../map/mapView";
+import { computed, nextTick, ref } from "vue";
+import { airportLL, closeAirportPane, openAirportInList } from "../map/mapView";
+import { useSplitPane } from "../lib/splitPane";
 import AirportDetail from "./AirportDetail.vue";
 import { setHalo } from "../map/fx";
 import { useMapHotScroll } from "../lib/mapHot";
@@ -17,31 +18,8 @@ const root = ref<HTMLElement | null>(null);
 const list = ref<HTMLElement | null>(null);
 useMapHotScroll(() => list.value);
 
-// Panneau large (≥ 620 px) : liste et fiche côte à côte ; sinon la fiche passe par-dessus la liste
-const wide = ref(false);
-let ro: ResizeObserver | null = null;
-onMounted(() => { ro = new ResizeObserver(([e]) => (wide.value = e.contentRect.width >= 620)); if (root.value) ro.observe(root.value); });
-onBeforeUnmount(() => ro?.disconnect());
-
-// Fiche ouverte : le panneau s'élargit tout seul (liste + fiche côte à côte), puis reprend sa largeur
-const AUTO_W = 700;
-let savedW = 0, autoW = 0;
-const sideW = () => parseInt(getComputedStyle(document.documentElement).getPropertyValue("--side")) || 340;
-function autoWiden(on: boolean) {
-  const root = document.documentElement;
-  if (on) {
-    const max = Math.min(820, window.innerWidth * 0.6);
-    if (savedW || sideW() >= 620 || max < 620) return; // déjà large, ou écran trop étroit : la fiche passe par-dessus
-    savedW = sideW();
-    autoW = Math.round(Math.min(AUTO_W, max));
-    root.style.setProperty("--side", `${autoW}px`);
-  } else if (savedW) {
-    if (sideW() === autoW) root.style.setProperty("--side", `${savedW}px`); // sauf si la largeur a été changée à la main
-    savedW = 0;
-  } else return;
-  setTimeout(resizeMap, 50);
-}
-watch(() => !!state.aptPane && state.tab === "airports" && state.sidebarOpen, (on) => autoWiden(on));
+// Liste et fiche côte à côte quand le panneau est large ; il s'élargit tout seul à l'ouverture d'une fiche
+const { wide } = useSplitPane(root, () => !!state.aptPane && state.tab === "airports" && state.sidebarOpen);
 
 const cur = computed(() => state.aptPane?.p.ident as string | undefined);
 let listTop = 0;
