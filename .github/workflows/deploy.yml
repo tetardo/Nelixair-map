@@ -61,3 +61,6 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # ~136 Mo de tuiles : la synchro Pages dépasse parfois le délai par défaut de 10 min
+          timeout: 1800000
