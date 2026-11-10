@@ -67,10 +67,11 @@ jobs:
               print(k, "TA", a.get("ta_ft"), "magvar", a.get("magvar"), "ARP", a.get("arp"))
               for q, r in a["rwys"].items():
                   print("  ", q, {x: r.get(x) for x in ("true", "mag", "len", "tora", "lda", "papi", "ils")})
-          # AD 2.10 (obstacles) : structure brute, pour préparer sa lecture
-          h = open("/tmp/eaip-raw/FR-AD-2.LFML-fr-FR.html", encoding="utf-8").read()
-          for row in eaip.rows(eaip.sections(h, "LFML").get(10, ""))[:25]:
-              print("AD2.10", row)
+          # Structure brute de sections encore mal lues (diagnostic)
+          for icao, sec, n in (("LFML", 17, 12), ("LFLL", 12, 3), ("LFMN", 12, 3)):
+              h = open(f"/tmp/eaip-raw/FR-AD-2.{icao}-fr-FR.html", encoding="utf-8").read()
+              for row in eaip.rows(eaip.sections(h, icao).get(sec, ""))[:n]:
+                  print(f"{icao} AD2.{sec}", row)
           PY
       - uses: actions/setup-node@v4
         with:

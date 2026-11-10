@@ -428,6 +428,19 @@ class TestEaip(unittest.TestCase):
         self.assertIn("dthr", r)
         self.assertNotIn("dthr", self.apt["rwys"]["13R"])
 
+    def test_runway_columns_shifted(self):
+        # certains terrains ajoutent une colonne (pente…) avant le cap : lecture par la forme des valeurs
+        h = ('<div id="LFLL-AD-2.12"><table><tbody><tr><td> 17L </td><td> 0.47 % </td><td> 172.89 (173) </td>'
+             '<td> 2670 x 45 </td><td> 80 F/B/W/T béton </td><td> 45°44\'25.00"N 005°04\'51.00"E ------ GUND NIL </td>'
+             '<td> THR : 821ft </td></tr></tbody></table></div>'
+             '<div id="LFLL-AD-2.17"><table><tbody><tr><td>5</td><td> Altitude de transition / Transition altitude </td>'
+             '<td> TA : 5000 ft </td></tr></tbody></table></div>')
+        a = self.eaip.parse(h, "LFLL")
+        r = a["rwys"]["17L"]
+        self.assertEqual((r["true"], r["mag"], r["len"], r["thr_elev"]), (172.89, 173, 2670, 821))
+        self.assertNotIn("dthr", r)
+        self.assertEqual(a["ta_ft"], 5000)
+
     def test_declared_distances(self):
         r = self.apt["rwys"]["31R"]
         self.assertEqual((r["tora"], r["toda"], r["asda"], r["lda"]), (3440, 3500, 3440, 2780))

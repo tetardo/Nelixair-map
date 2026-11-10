@@ -140,29 +140,38 @@ def parse(h: str, icao: str) -> dict:
     if (y := _int(row2("Annee"))):
         apt["magvar_year"] = y
 
-    # AD 2.12 : première table, une ligne par QFU
+    # AD 2.12 : première table, une ligne par QFU. L'ordre des colonnes varie selon les terrains (pente, etc.) :
+    # chaque valeur est cherchée par sa forme dans la ligne entière, cap vrai cohérent avec le numéro de piste.
     for c in rows(S.get(12, "")):
-        if len(c) < 6 or not _RWY.match(c[0]):
+        if len(c) < 4 or not _RWY.match(c[0]):
             continue
-        r = R.setdefault(c[0], {})
-        nums = re.findall(r"\d+(?:\.\d+)?", c[1])
-        if nums:
-            r["true"] = float(nums[0])
-        if len(nums) > 1:
-            r["mag"] = int(float(nums[-1]))
-        if (m := re.search(r"(\d+)\s*x\s*(\d+)", c[2])):
+        q = c[0]
+        r = R.setdefault(q, {})
+        txt = " | ".join(c[1:])
+        nominal = (int(q[:2]) % 36) * 10
+        near = lambda v: abs((v - nominal + 180) % 360 - 180) <= 25  # noqa: E731
+        if "true" not in r:
+            for v in re.findall(r"(?<![\d.])(\d{1,3}\.\d+)(?![\d.])", txt):
+                if near(float(v)):
+                    r["true"] = float(v)
+                    break
+        mags = [int(v) for v in re.findall(r"\(\s*(\d{1,3})\s*\)", txt) if near(int(v))]
+        if mags:
+            r["mag"] = mags[-1]
+        if (m := re.search(r"(\d{3,4})\s*x\s*(\d{2,3})", txt)):
             r["len"], r["wid"] = int(m.group(1)), int(m.group(2))
-        if (m := re.match(r"(\d+)\s+([A-Z](?:/[A-Z]){3})\s*(.*)", c[3])):
+        if (m := re.search(r"(\d{2,3})\s+([A-Z](?:/[A-Z]){3})\s*([^|]*)", txt)):
             r["pcn"] = f"{m.group(1)}/{m.group(2)}"
             r["surface"] = m.group(3).split(" / ")[0].strip()
-        pts = dms_pairs(c[4].split("GUND")[0])
+        geo = txt.split("GUND")[0]
+        pts = dms_pairs(geo)
         if pts:
             r["thr"] = pts[0]
-        if len(pts) > 1:
-            r["dthr"] = pts[1]
-        if (m := re.search(r"THR\s*:\s*(\d+)\s*ft", c[5])):
+        if (m := re.search(r"\(([^()]*\d{2}°\d{2}'[^()]*)\)", geo)) and (d := dms_pairs(m.group(1))):
+            r["dthr"] = d[0]
+        if (m := re.search(r"(?<!D)THR\s*:\s*(\d+)\s*ft", txt)):
             r["thr_elev"] = int(m.group(1))
-        if (m := re.search(r"DTHR\s*:\s*(\d+)\s*ft", c[5])):
+        if (m := re.search(r"DTHR\s*:\s*(\d+)\s*ft", txt)):
             r["dthr_elev"] = int(m.group(1))
 
     # AD 2.13 : distances déclarées ; lignes « TWY xx » = départ d'intersection de la piste précédente
@@ -190,10 +199,14 @@ def parse(h: str, icao: str) -> dict:
             r["meht_ft"] = v
 
     # AD 2.17 : altitude de transition
-    m = re.search(r"[Tt]ransition altitude\s*</td>\s*<td[^>]*>(.*?)</td>", S.get(17, ""), re.S) or \
-        re.search(r"[Aa]ltitude de transition.*?</td>\s*<td[^>]*>(.*?)</td>", S.get(17, ""), re.S)
-    if m and (v := _int(_text(m.group(1)))):
-        apt["ta_ft"] = v
+    for c in rows(S.get(17, "")):
+        line = " ".join(c)
+        if re.search(r"transition", line, re.I) and (m := re.search(r"(\d{3,5})\s*ft", line)):
+            apt["ta_ft"] = int(m.group(1))
+            break
+    else:
+        if (m := re.search(r"(?:TA|[Aa]ltitude de transition|[Tt]ransition altitude)\s*[:=]?\s*(\d{3,5})\s*ft", _text(S.get(17, "")))):
+            apt["ta_ft"] = int(m.group(1))
 
     # AD 2.19 : moyens radio. LOC / GP / DME rattachés à leur piste.
     navs = []
