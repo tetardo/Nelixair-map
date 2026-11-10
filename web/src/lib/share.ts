@@ -57,7 +57,7 @@ export function applySharedState(): boolean {
   const q = new URLSearchParams(location.search);
   if (!KEYS.some((k) => q.has(k))) return false;
   const th = q.get("th");
-  if (th && th in THEMES) state.theme = th as ThemeName;
+  if (th && th in THEMES) { state.themeMode = th as ThemeName; state.theme = th as ThemeName; } // le lien fige le thème vu par l'expéditeur
   if (q.has("b") || q.has("v")) {
     const on = new Set((q.get("v") || "").split(",").filter(Boolean));
     state.view = { ...state.view, base: q.get("b") === "sat" ? "sat" : "plan",

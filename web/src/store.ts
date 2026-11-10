@@ -54,10 +54,26 @@ function storage<T>(key: string, fallback: T): T {
   } catch { return fallback; }
 }
 
-function initialTheme(): ThemeName {
+export type ThemeMode = ThemeName | "auto";
+
+/** Réglage choisi : Jour, Nuit ou Auto (soleil à la position affichée). Auto par défaut. */
+function initialThemeMode(): ThemeMode {
+  try {
+    const m = localStorage.getItem("tropo-theme-mode");
+    if (m === "auto" || (m && m in THEMES)) return m as ThemeMode;
+    const old = localStorage.getItem("nelixair-theme"); // réglage de l'ancienne version
+    if (old && old in THEMES) return old as ThemeName;
+  } catch { /* stockage indisponible */ }
+  return "auto";
+}
+
+/** Thème au démarrage, avant que la carte ne sache où elle est : réglage explicite, sinon dernier thème vu, sinon le système. */
+function initialTheme(mode: ThemeMode): ThemeName {
+  if (mode !== "auto") return mode;
   try { const t = localStorage.getItem("nelixair-theme"); if (t && t in THEMES) return t as ThemeName; } catch { /* stockage indisponible */ }
   return matchMedia("(prefers-color-scheme: dark)").matches ? "night" : "day";
 }
+const MODE0 = initialThemeMode();
 
 // Filtres par défaut (cochés / décochés comme dans la version précédente)
 export const DEFAULT_FILTERS: Record<string, boolean> = {
@@ -76,7 +92,9 @@ export const DEFAULT_VIEW: MapView = { base: "plan", relief: false, roads: false
 
 export const state = reactive({
   view: { ...DEFAULT_VIEW, ...storage<Partial<MapView>>("nelixair-view", {}) } as MapView,
-  theme: initialTheme(),
+  themeMode: MODE0,
+  /** Thème effectivement affiché (résolu depuis themeMode) */
+  theme: initialTheme(MODE0),
   sidebarOpen: false,
   tab: "filters" as Tab,
   ofp: storage<Ofp | null>("nelixair-ofp", null),

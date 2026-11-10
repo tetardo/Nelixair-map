@@ -11,7 +11,7 @@ import { CLS, dms, esc, type LngLat } from "../lib/format";
 import { distNm } from "../lib/geo";
 import { loadTaxi, nearestStand, routeToRunway } from "../lib/taxiRoute";
 import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIdent, type Hit } from "../services/data";
-import { nightPolygon } from "../services/sun";
+import { nightPolygon, sunElevation } from "../services/sun";
 import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
 import { isMobile, state, type EaipApt, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
 import type { Ofp } from "../services/simbrief";
@@ -286,6 +286,17 @@ function addLayers(sources: Record<string, unknown>) {
 }
 
 // ---------- Thème ----------
+/** Mode Auto : nuit quand le soleil est à plus de 6° sous l'horizon au centre de la carte
+ *  (fin du crépuscule civil, proche de la nuit aéronautique). Écart de 1° pour éviter les bascules. */
+export function updateAutoTheme() {
+  if (state.themeMode !== "auto") { if (state.theme !== state.themeMode) state.theme = state.themeMode; return; }
+  if (!state.mapReady) return;
+  const c = map.getCenter();
+  const el = sunElevation(c.lat, c.lng);
+  const next: ThemeName = state.theme === "night" ? (el > -5 ? "day" : "night") : (el < -6 ? "night" : "day");
+  if (next !== state.theme) state.theme = next;
+}
+
 export function applyTheme(name: ThemeName) {
   const T = THEMES[name];
   document.documentElement.dataset.theme = name;
@@ -957,7 +968,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     if (state.mapReady) { fadeAirportsWithGround(); updateGroundInView(); }
   }).catch(() => { /* cartes d'aéroport indisponibles */ });
 
-  map.on("moveend", () => { if (state.filters.wx) scheduleWx(); scheduleList(); updateGroundInView(); });
+  map.on("moveend", () => { if (state.filters.wx) scheduleWx(); scheduleList(); updateGroundInView(); updateAutoTheme(); });
   map.on("idle", () => { if (state.tab === "list") scheduleList(); });
   map.on("click", onClick);
 
@@ -1003,7 +1014,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     navigator.clipboard?.writeText(b.dataset.copy || "").then(() => { b.textContent = "✓"; setTimeout(() => (b.textContent = "⧉"), 900); }).catch(() => {});
   });
 
-  setInterval(() => refreshOverlays(), 60 * 1000);
+  setInterval(() => { refreshOverlays(); updateAutoTheme(); }, 60 * 1000);
 
   await new Promise<void>((resolve) => map.on("load", () => {
     baseLayers = map.getStyle().layers.slice();
@@ -1011,6 +1022,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     initRuler(map);
     initTraffic(map);
     state.mapReady = true;
+    updateAutoTheme();
     applyTheme(state.theme);
     applyView();
     applyFilters();
