@@ -7,7 +7,7 @@ import { THEMES, type ThemeName } from "../map/themes";
 import type { Ofp } from "../services/simbrief";
 
 const TOGGLES: (keyof MapView)[] = ["relief", "roads", "buildings", "landuse", "places"];
-const TABS: Tab[] = ["detail", "flight", "airports", "list", "filters"];
+const TABS: Tab[] = ["detail", "flight", "flights", "airports", "list", "filters"];
 const KEYS = ["th", "b", "v", "f", "p", "ofp", "pf"];
 /** Au-delà, le plan de vol est retiré du lien (certaines messageries tronquent les URL longues). */
 const MAX_URL = 8000;
@@ -44,6 +44,7 @@ export async function shareUrl(): Promise<{ url: string; ofpDropped: boolean }> 
   let ofpDropped = false;
   if (state.ofp) {
     if (state.ofp.user === "démo") q.set("ofp", "demo");
+    else if (state.ofp.user.startsWith("démo:")) q.set("ofp", "demo" + state.ofp.user.slice(5));
     else {
       q.set("ofp", await pack({ ...state.ofp, user: "" })); // le nom SimBrief du pilote ne part pas dans le lien
       if (u.href.length > MAX_URL) { q.delete("ofp"); ofpDropped = true; }
@@ -86,6 +87,7 @@ export async function applySharedAfterMap(open: (tab: Tab | null) => void, setOf
   const o = q.get("ofp");
   try {
     if (o === "demo") setOfp(await demo());
+    else if (o && /^demo\d+$/.test(o)) setOfp(await (await import("./demoFlights")).demoFlight(Number(o.slice(4))));
     else if (o) setOfp(await unpack<Ofp>(o));
   } catch (e) { console.warn("Plan de vol du lien illisible", e); }
   const u = new URL(location.href);

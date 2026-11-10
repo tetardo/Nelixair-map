@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, Check, ChevronsLeft, ChevronsRight, FileText, Link2, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, SunMoon, type LucideIcon } from "@lucide/vue";
+import { BookOpen, NotebookTabs, Check, ChevronsLeft, ChevronsRight, FileText, Link2, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, SunMoon, type LucideIcon } from "@lucide/vue";
 import { computed, onMounted, ref } from "vue";
 import { shareUrl } from "../lib/share";
 import { resizeMap, setSidebar, setTab } from "../map/mapView";
@@ -21,7 +21,7 @@ function nextTheme() { state.themeMode = MODES[(MODES.indexOf(state.themeMode) +
 const logo = import.meta.env.BASE_URL + "img/nelixair-logo.svg";
 const emit = defineEmits<{ about: [] }>();
 const SECTIONS: [Tab, string, LucideIcon][] = [
-  ["detail", "Fiche", FileText], ["flight", "Plan de vol", Route], ["airports", "Aéroports", PlaneLanding], ["list", "Liste", List], ["filters", "Calques", Layers],
+  ["detail", "Fiche", FileText], ["flight", "Plan de vol", Route], ["flights", "Mes vols", NotebookTabs], ["airports", "Aéroports", PlaneLanding], ["list", "Liste", List], ["filters", "Calques", Layers],
 ];
 function go(t: Tab) {
   if (state.sidebarOpen && state.tab === t) return setSidebar(false);

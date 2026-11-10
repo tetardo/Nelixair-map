@@ -1,6 +1,7 @@
 // Carte MapLibre : sources, couches, thèmes, filtres, interactions. Pilote l'état partagé (store) ;
 // les composants Vue appellent les actions exportées (openFix, openAirway, setSidebar…).
 import { routeVertices } from "../lib/routeGeom";
+import { LOGBOOK_LAYERS, highlightLogbook, initLogbook } from "./logbookLayer";
 import type { Atc } from "../services/traffic";
 import { initRuler, rulerControl } from "./ruler";
 import { TRAFFIC_LAYERS, atcSectorBounds, atcAt, drawFlight, initTraffic, pilotAt, refreshTraffic } from "./trafficLayer";
@@ -510,7 +511,9 @@ function setMapHover(pt: maplibregl.Point | null, f?: MapGeoJSONFeature) {
   if (pt) {
     const rl = ROUTE_HOVER.filter((l) => map.getLayer(l));
     const r = rl.length ? map.queryRenderedFeatures(box(pt, 5), { layers: rl })[0] : undefined;
+    const lb = !r && state.logbookMap ? map.queryRenderedFeatures(box(pt, 5), { layers: LOGBOOK_LAYERS })[0] : undefined;
     if (r) key = r.properties.t === "term" ? "apt:" + r.properties.lbl : "ofp:" + r.properties.i;
+    else if (lb) key = "flt:" + lb.properties.id;
     else if (f && !f.layer.id.startsWith("g-")) {
       const p = f.properties;
       key = p.cls === "airport" ? "apt:" + p.ident : f.geometry.type === "Point" ? "fix:" + p.ident : p.ident ? "awy:" + p.ident : "";
@@ -518,6 +521,7 @@ function setMapHover(pt: maplibregl.Point | null, f?: MapGeoJSONFeature) {
   }
   if (key === state.mapHover) return;
   state.mapHover = key;
+  highlightLogbook(key.startsWith("flt:") ? Number(key.slice(4)) : -1);
   if (key.startsWith("ofp:")) { highlightLeg(Number(key.slice(4))); legFromMap = true; }
   else if (legFromMap) { highlightLeg(-1); legFromMap = false; }
 }
@@ -840,6 +844,14 @@ function gndCtx(apt: string): GndCtx {
   return { ends: { ...state.ground[apt]?.ends, ...eaipEnds(apt) }, m: gndWx.get(apt)?.m, eaip: state.eaip[apt], rwys: state.ground[apt]?.taxi?.rwys };
 }
 
+/** Ouvre un vol de « Mes vols » dans le panneau Plan de vol (route tracée et cadrée). */
+export async function openLogFlight(id: number) {
+  const { demoFlight } = await import("../lib/demoFlights");
+  state.logbookMap = false; // la route du vol ouvert reste lisible
+  setOfp(await demoFlight(id));
+  setTab("flight");
+  if (!state.sidebarOpen) setSidebar(true);
+}
 /** Clic sur la route du plan de vol : place le curseur du profil vertical au même endroit et l'ouvre. */
 function routeClick(pt: maplibregl.Point) {
   if (!state.ofp || !map.getLayer("ofp-line") || !map.queryRenderedFeatures(box(pt, 6), { layers: ["ofp-line", "ofp-casing"] }).length) return;
@@ -876,6 +888,10 @@ function onClick(e: maplibregl.MapMouseEvent) {
   }
   drawFlight(null);
   routeClick(e.point);
+  if (state.logbookMap) {
+    const lb = map.queryRenderedFeatures(box(e.point, 5), { layers: LOGBOOK_LAYERS })[0];
+    if (lb) { openLogFlight(Number(lb.properties.id)); return; }
+  }
   const tipEl = document.getElementById("hover-tip"); if (tipEl) tipEl.hidden = true;
   const feats = map.queryRenderedFeatures(box(e.point, 6), { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
   const pts: MapGeoJSONFeature[] = [], legs: MapGeoJSONFeature[] = [], seen = new Set<string>();
@@ -1139,6 +1155,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     addLayers(sources);
     initRuler(map);
     initTraffic(map);
+    initLogbook(map);
     initFx(map);
     state.mapReady = true;
     updateAutoTheme();
