@@ -807,3 +807,6 @@ body.side-resizing .sidebar { transition: none; }
 .pf-replay { display: inline-flex; align-items: center; gap: 6px; }
 .pf-replay select { font: 600 11px var(--mono); padding: 2px 4px; border-radius: 6px; border: 1px solid var(--chrome-line); background: var(--chrome-2); color: inherit; }
 .pf-follow { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--chrome-soft); }
+/* Altitude de transition sur le profil */
+.pf-ta line { stroke: #f59e0b; stroke-width: 1.3; stroke-dasharray: 5 3; }
+.pf-ta text { fill: #f59e0b; font: 600 9.5px var(--mono); }

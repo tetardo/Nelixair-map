@@ -1,5 +1,6 @@
 // Contrôles rapides du plan de vol : niveau semi-circulaire, relief / MORA, carburant réglementaire, nuit aéronautique.
 // Aide à la préparation en simulation : règles simplifiées (OACI / EASA), pas un contrôle réglementaire.
+import type { AspCrossing } from "../services/airspaceRoute";
 import { CFG } from "../config";
 import type { Ofp } from "../services/simbrief";
 import { sunTimes } from "../services/sun";
@@ -132,4 +133,18 @@ export function nightCheck(o: Ofp): Check {
   const dusk = s.dusk instanceof Date ? ` Fin du crépuscule à ${o.dest.icao} : ${hm(s.dusk)}.` : "";
   return { id: "night", title: "Jour / nuit", status: PISTON.test(o.aircraft) ? "warn" : "info",
     text: `${dn && an ? "Vol de nuit" : dn ? "Départ de nuit" : "Arrivée de nuit"} : ${when}.${dusk}${PISTON.test(o.aircraft) ? " Qualification vol de nuit nécessaire en VFR." : ""}` };
+}
+
+// Zones réglementées, dangereuses, interdites et zones à exigences (radio, transpondeur) que l'altitude prévue traverse
+const ZONE_LABEL: Record<string, string> = { P: "interdite", R: "réglementée", D: "dangereuse", TRA: "TRA", TSA: "TSA", RMZ: "RMZ (radio obligatoire)", TMZ: "TMZ (transpondeur obligatoire)" };
+export function zonesCheck(asp: AspCrossing[] | null): Check {
+  const base = { id: "zones", title: "Zones R / D / P" };
+  if (!asp) return { ...base, status: "info", text: "Recherche des espaces le long de la route…" };
+  const hits = asp.filter((c) => c.inside && c.type in ZONE_LABEL);
+  if (!hits.length) return { ...base, status: "ok", text: "Aucune zone interdite, réglementée ou dangereuse à l'altitude prévue (données OpenAIP, activations NOTAM non connues)." };
+  const strong = hits.filter((c) => !["RMZ", "TMZ"].includes(c.type));
+  const txt = hits.slice(0, 4).map((c) => `${c.name} (${ZONE_LABEL[c.type]}, ${Math.round(c.from)}–${Math.round(c.to)} NM)`).join(" · ")
+    + (hits.length > 4 ? ` · +${hits.length - 4}` : "");
+  return { ...base, status: strong.length ? "warn" : "info", at: (hits[0].from + hits[0].to) / 2,
+    text: txt + (strong.length ? ". Vérifier l'activité (NOTAM, AZBA) ou contourner." : ".") };
 }

@@ -72,6 +72,28 @@ const minMargin = computed(() => {
   return m;
 });
 
+// Altitude de transition au départ et à l'arrivée (eAIP France ; 18 000 ft aux États-Unis) : trait jusqu'au passage du plan
+function taOf(icao: string): number | null {
+  return state.eaip[icao]?.ta_ft ?? (/^(K|P[AHGF])/.test(icao) ? 18000 : null);
+}
+function crossing(ta: number, fromEnd: boolean): number {
+  const v = fromEnd ? [...verts.value].reverse() : verts.value;
+  for (let i = 1; i < v.length; i++) if (v[i].alt >= ta && v[i - 1].alt < ta) {
+    const a = v[i - 1], b = v[i];
+    return a.d + ((ta - a.alt) / (b.alt - a.alt || 1)) * (b.d - a.d);
+  }
+  return fromEnd ? 0 : total.value;
+}
+const taLines = computed(() => {
+  const o = state.ofp;
+  if (!o) return [];
+  const out: { x1: number; x2: number; y: number; label: string; end: boolean }[] = [];
+  const dep = taOf(o.orig.icao), arr = taOf(o.dest.icao);
+  if (dep != null && dep < maxAlt.value) out.push({ x1: x(0), x2: x(Math.min(total.value / 2, crossing(dep, false) + total.value * 0.04)), y: y(dep), label: `TA ${fmt(dep)}`, end: false });
+  if (arr != null && arr < maxAlt.value) out.push({ x1: x(Math.max(total.value / 2, crossing(arr, true) - total.value * 0.04)), x2: x(total.value), y: y(arr), label: `TA ${fmt(arr)}`, end: true });
+  return out;
+});
+
 // Coupe des espaces aériens traversés (bandes plancher → plafond sur la distance où la route est dedans)
 useRouteAsp();
 const showAsp = ref(true);
@@ -149,6 +171,12 @@ const fmt = (v: number) => Math.round(v).toLocaleString("fr-FR");
         </g>
       </g>
       <path v-if="terrPath" :d="terrPath" class="pf-terrain" />
+      <g class="pf-ta">
+        <g v-for="t in taLines" :key="t.label + t.end">
+          <line :x1="t.x1" :x2="t.x2" :y1="t.y" :y2="t.y"><title>Altitude de transition : au-dessus, calage standard 1013 hPa</title></line>
+          <text :x="t.end ? t.x2 - 2 : t.x1 + 2" :y="t.y - 3" :text-anchor="t.end ? 'end' : 'start'">{{ t.label }}</text>
+        </g>
+      </g>
       <path :d="planPath" class="pf-plan" :stroke="ROUTE_COLOR" />
       <g class="pf-fix">
         <template v-for="v in labels" :key="v.ident + v.d">
