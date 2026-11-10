@@ -1,7 +1,9 @@
 // Carte MapLibre : sources, couches, thèmes, filtres, interactions. Pilote l'état partagé (store) ;
 // les composants Vue appellent les actions exportées (openFix, openAirway, setSidebar…).
+import { routeVertices } from "../lib/routeGeom";
+import type { Atc } from "../services/traffic";
 import { initRuler, rulerControl } from "./ruler";
-import { TRAFFIC_LAYERS, atcAt, drawFlight, initTraffic, pilotAt, refreshTraffic } from "./trafficLayer";
+import { TRAFFIC_LAYERS, atcSectorBounds, atcAt, drawFlight, initTraffic, pilotAt, refreshTraffic } from "./trafficLayer";
 import * as maplibregl from "maplibre-gl";
 import { type Map as MlMap, type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -350,6 +352,29 @@ function fadeAirportsWithGround() {
 const NAV_CLASSES = ["vor", "vordme", "vortac", "tacan", "dme", "ndb"];
 let overlayKey = "";
 let lastNets = "";
+// Fondu à l'activation d'un calque : opacité ramenée à 0 puis remontée avec une transition MapLibre.
+// Les calques dont l'opacité est pilotée ailleurs (aéroports, plan au sol) ne sont pas concernés.
+const OPACITY: Record<string, string[]> = { line: ["line-opacity"], fill: ["fill-opacity"], circle: ["circle-opacity", "circle-stroke-opacity"],
+  symbol: ["icon-opacity", "text-opacity"], raster: ["raster-opacity"] };
+const fading = new Map<string, unknown>(); // valeur d'origine pendant un fondu en cours
+let firstFilters = true;
+function fadeIn(id: string) {
+  if (!state.anim || id === "apt" || id.startsWith("g-")) return;
+  const props = OPACITY[map.getLayer(id)?.type || ""] || [];
+  for (const p of props) {
+    const k = id + "|" + p;
+    const orig = fading.has(k) ? fading.get(k) : (map.getPaintProperty(id, p as never) ?? 1);
+    fading.set(k, orig);
+    map.setPaintProperty(id, `${p}-transition` as never, { duration: 0, delay: 0 } as never);
+    map.setPaintProperty(id, p as never, 0 as never);
+    requestAnimationFrame(() => {
+      if (!map.getLayer(id)) return;
+      map.setPaintProperty(id, `${p}-transition` as never, { duration: 500, delay: 0 } as never);
+      map.setPaintProperty(id, p as never, orig as never);
+      setTimeout(() => { if (fading.get(k) === orig) fading.delete(k); }, 600);
+    });
+  }
+}
 export function applyFilters() {
   if (!state.mapReady) return;
   const on = state.filters;
@@ -358,7 +383,11 @@ export function applyFilters() {
   const rnav = ["coalesce", ["get", "rnav"], false];
   const typeF = on.rnav && on.conv ? true : on.rnav ? ["==", rnav, true] : on.conv ? ["==", rnav, false] : false;
   const vis: Record<string, boolean> = { H: on.H, L: on.L, B: on.H || on.L };
-  const V = (id: string, v: boolean) => map.setLayoutProperty(id, "visibility", v ? "visible" : "none");
+  const V = (id: string, v: boolean) => {
+    const was = map.getLayoutProperty(id, "visibility") !== "none";
+    map.setLayoutProperty(id, "visibility", v ? "visible" : "none");
+    if (v && !was && !firstFilters) fadeIn(id);
+  };
   for (const lv of ["H", "L", "B"]) {
     const f = ["all", ["==", ["get", "level"], lv], typeF];
     for (const id of [`awy-${lv}`, `awy-lbl-${lv}`]) { map.setFilter(id, f as never); V(id, vis[lv]); }
@@ -390,6 +419,7 @@ export function applyFilters() {
   overlayKey = key;
   refreshOverlays(changed);
   if (on.wx) scheduleWx(); else state.wxStatus = "";
+  firstFilters = false;
   try { localStorage.setItem("nelixair-filters", JSON.stringify(on)); } catch { /* stockage indisponible */ }
   scheduleList();
 }
@@ -626,6 +656,12 @@ export function setOfp(ofp: Ofp | null, { fit = true } = {}) {
   (map?.getSource("ofp") as maplibregl.GeoJSONSource | undefined)?.setData(routeData(ofp));
   if (ofp && fit && map) fitOfp();
 }
+/** Vol vers le secteur d'un contrôleur en route (ou vers son terrain s'il n'a pas de secteur connu). */
+export function flyToAtc(a: Atc) {
+  const b = atcSectorBounds(a);
+  if (!b || !map) return;
+  map.fitBounds(b, { padding: { top: 90, bottom: 50, left: 50, right: 70 }, maxZoom: 7, duration: state.anim ? 1100 : 0 });
+}
 export function fitOfp() {
   if (!state.ofp || !map) return;
   const left = state.sidebarOpen && !isMobile() ? 60 : 40;
@@ -804,6 +840,22 @@ function gndCtx(apt: string): GndCtx {
   return { ends: { ...state.ground[apt]?.ends, ...eaipEnds(apt) }, m: gndWx.get(apt)?.m, eaip: state.eaip[apt], rwys: state.ground[apt]?.taxi?.rwys };
 }
 
+/** Clic sur la route du plan de vol : place le curseur du profil vertical au même endroit et l'ouvre. */
+function routeClick(pt: maplibregl.Point) {
+  if (!state.ofp || !map.getLayer("ofp-line") || !map.queryRenderedFeatures(box(pt, 6), { layers: ["ofp-line", "ofp-casing"] }).length) return;
+  const v = routeVertices(state.ofp);
+  let best = { px: Infinity, d: 0 };
+  for (let i = 1; i < v.length; i++) {
+    const a = map.project(v[i - 1].ll), b = map.project(v[i].ll);
+    const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy;
+    const t = len ? Math.max(0, Math.min(1, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / len)) : 0;
+    const px = Math.hypot(a.x + t * dx - pt.x, a.y + t * dy - pt.y);
+    if (px < best.px) best = { px, d: v[i - 1].d + t * (v[i].d - v[i - 1].d) };
+  }
+  if (best.px > 12) return;
+  state.profileAt = best.d;
+  state.profileOpen = true;
+}
 function onClick(e: maplibregl.MapMouseEvent) {
   if (state.ruler) return; // la règle capte les clics
   // Trafic en ligne : avion ou terrain contrôlé, prioritaire sur le reste
@@ -823,6 +875,7 @@ function onClick(e: maplibregl.MapMouseEvent) {
     return;
   }
   drawFlight(null);
+  routeClick(e.point);
   const tipEl = document.getElementById("hover-tip"); if (tipEl) tipEl.hidden = true;
   const feats = map.queryRenderedFeatures(box(e.point, 6), { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
   const pts: MapGeoJSONFeature[] = [], legs: MapGeoJSONFeature[] = [], seen = new Set<string>();

@@ -3,6 +3,7 @@ import type * as maplibregl from "maplibre-gl";
 import type { Map as MlMap } from "maplibre-gl";
 import type { LngLat } from "../lib/format";
 import { loadIndex } from "../services/data";
+import { loadSectors, sectorFor } from "../services/atcSectors";
 import { fetchTraffic, type Atc, type Net, type Pilot, type Traffic } from "../services/traffic";
 import { state } from "../store";
 
@@ -47,7 +48,15 @@ export function initTraffic(m: MlMap) {
   map.addSource("traffic", { type: "geojson", data: EMPTY });
   map.addSource("traffic-atc", { type: "geojson", data: EMPTY });
   map.addSource("traffic-sel", { type: "geojson", data: EMPTY });
+  map.addSource("atc-sec", { type: "geojson", data: EMPTY });
   const color: any = ["match", ["get", "net"], "ivao", NET_COLOR.ivao, NET_COLOR.vatsim]; // expression MapLibre
+  // secteurs des centres en route en ligne : voile léger, contour, et contour épais pour le secteur survolé
+  map.addLayer({ id: "atc-sec-fill", type: "fill", source: "atc-sec", paint: { "fill-color": color, "fill-opacity": 0.05 } });
+  map.addLayer({ id: "atc-sec-line", type: "line", source: "atc-sec", paint: { "line-color": color, "line-width": 1.2, "line-opacity": 0.55 } });
+  map.addLayer({ id: "atc-sec-hot", type: "line", source: "atc-sec", filter: ["==", ["get", "cs"], "\u0000"],
+    paint: { "line-color": "#ffb020", "line-width": 3, "line-opacity": 0.95 } });
+  map.addLayer({ id: "atc-sec-hot-fill", type: "fill", source: "atc-sec", filter: ["==", ["get", "cs"], "\u0000"],
+    paint: { "fill-color": "#ffb020", "fill-opacity": 0.12 } });
   map.addLayer({ id: "traffic-sel", type: "line", source: "traffic-sel",
     paint: { "line-color": ["get", "c"], "line-width": 2, "line-dasharray": ["literal", [2, 2]], "line-opacity": 0.9 } });
   map.addLayer({ id: "traffic-atc", type: "circle", source: "traffic-atc",
@@ -112,8 +121,9 @@ function render() {
     fs.push({ type: "Feature", properties: { net, icao, lbl: kinds.map((x) => SHORT[x]).join(" ") }, geometry: { type: "Point", coordinates: pos } });
   }
   (map.getSource("traffic-atc") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: fs });
+  renderSectors(nets);
   const vis = nets.length ? "visible" : "none";
-  for (const id of ["traffic-ac", "traffic-lbl", "traffic-atc", "traffic-atc-lbl", "traffic-sel"]) map.setLayoutProperty(id, "visibility", vis);
+  for (const id of ["traffic-ac", "traffic-lbl", "traffic-atc", "traffic-atc-lbl", "traffic-sel", "atc-sec-fill", "atc-sec-line", "atc-sec-hot", "atc-sec-hot-fill"]) map.setLayoutProperty(id, "visibility", vis);
   state.trafficStatus = nets.map((n) => {
     const d = data[n];
     if (!d) return `${NET_NAME[n]} : indisponible`;
@@ -127,6 +137,42 @@ function render() {
     if (p) { state.detail = { kind: "traffic", p }; drawFlight(p); }
   }
 }
+
+/** Secteurs des contrôleurs en route en ligne (chargés à la demande). */
+const secShape = new Map<string, GeoJSON.Feature>(); // indicatif -> limite affichée
+async function renderSectors(nets: Net[]) {
+  const src = map.getSource("atc-sec") as maplibregl.GeoJSONSource | undefined;
+  if (!src) return;
+  const list = nets.flatMap((n) => (data[n]?.atc || []).filter((a) => a.kind === "CTR" || a.kind === "FSS"));
+  if (!list.length) { secShape.clear(); src.setData(EMPTY); return; }
+  const s = await loadSectors();
+  if (!s) return;
+  secShape.clear();
+  const fs: GeoJSON.Feature[] = [];
+  for (const a of list) {
+    const f = sectorFor(s, a.callsign);
+    if (!f) continue;
+    const g = { type: "Feature", properties: { net: a.net, cs: a.callsign }, geometry: f.geometry } as GeoJSON.Feature;
+    secShape.set(a.net + "|" + a.callsign, g);
+    fs.push(g);
+  }
+  src.setData({ type: "FeatureCollection", features: fs });
+}
+/** Allume le secteur d'un contrôleur en route (survol de la liste). */
+export function highlightAtcSector(a: Atc | null) {
+  const f = ["==", ["get", "cs"], a && secShape.has(a.net + "|" + a.callsign) ? a.callsign : "\u0000"];
+  for (const id of ["atc-sec-hot", "atc-sec-hot-fill"]) if (map?.getLayer(id)) map.setFilter(id, f as never);
+}
+/** Emprise du secteur d'un contrôleur en route, ou null s'il n'est pas connu. */
+export function atcSectorBounds(a: Atc): [[number, number], [number, number]] | null {
+  const g = secShape.get(a.net + "|" + a.callsign)?.geometry;
+  if (!g || (g.type !== "Polygon" && g.type !== "MultiPolygon")) return null;
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+  const rings = g.type === "Polygon" ? g.coordinates : g.coordinates.flat();
+  for (const r of rings) for (const [x, y] of r) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); }
+  return [[w, s], [e, n]];
+}
+export const hasAtcSector = (a: Atc) => secShape.has(a.net + "|" + a.callsign);
 
 export async function refreshTraffic() {
   clearTimeout(timer);
