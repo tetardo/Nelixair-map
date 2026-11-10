@@ -3,6 +3,12 @@ import { computed, ref, shallowRef, watch } from "vue";
 import { APT_KIND, CLS, LVL_SHORT, freq, ft } from "../lib/format";
 import { openAirway, openFix, visibleAirways, visiblePoints, type AwyItem, type ListItem } from "../map/mapView";
 import { state } from "../store";
+import { setHalo } from "../map/fx";
+import { useMapHotScroll } from "../lib/mapHot";
+
+const root = ref<HTMLElement | null>(null);
+useMapHotScroll(() => root.value);
+const hotKey = (it: ListItem) => (it.p.cls === "airport" ? "apt:" : "fix:") + it.p.ident;
 
 const MAX = 400;
 const mode = ref<"pts" | "awy">("pts");
@@ -24,7 +30,7 @@ const ptRight = (it: ListItem) => (it.p.freq != null ? freq(it.p) : it.p.cls ===
 </script>
 
 <template>
-  <section id="tab-list" class="tabpanel" role="tabpanel">
+  <section id="tab-list" ref="root" class="tabpanel" role="tabpanel">
     <div class="seg" role="group" aria-label="Type d'éléments">
       <button :aria-pressed="mode === 'pts'" @click="mode = 'pts'">Points</button>
       <button :aria-pressed="mode === 'awy'" @click="mode = 'awy'">Voies</button>
@@ -38,9 +44,9 @@ const ptRight = (it: ListItem) => (it.p.freq != null ? freq(it.p) : it.p.cls ===
       </select>
     </div>
     <p id="vis-count" class="muted small">{{ count.toLocaleString("fr-FR") }} {{ mode === "pts" ? "point(s)" : "voie(s)" }} à l'écran</p>
-    <ul id="vis-list" class="vis-list">
+    <ul id="vis-list" class="vis-list" @mouseleave="setHalo(null)">
       <template v-if="mode === 'pts'">
-        <li v-for="(it, i) in pts.slice(0, MAX)" :key="i" @click="openFix(it.p, it.ll, { fly: true })">
+        <li v-for="(it, i) in pts.slice(0, MAX)" :key="i" :class="{ 'map-hot': state.mapHover === hotKey(it) }" @click="openFix(it.p, it.ll, { fly: true })" @mouseenter="setHalo(it.ll)">
           <b>{{ it.p.ident }}</b>
           <span class="t">{{ it.p.cls === "airport" ? APT_KIND[it.p.kind] || "Aéroport" : CLS[it.p.cls] || "" }}</span>
           <span class="r">{{ ptRight(it) }}</span>
@@ -48,7 +54,7 @@ const ptRight = (it: ListItem) => (it.p.freq != null ? freq(it.p) : it.p.cls ===
         </li>
       </template>
       <template v-else>
-        <li v-for="(it, i) in awys.slice(0, MAX)" :key="i" @click="openAirway(it.ident, { fit: true })">
+        <li v-for="(it, i) in awys.slice(0, MAX)" :key="i" :class="{ 'map-hot': state.mapHover === 'awy:' + it.ident }" @click="openAirway(it.ident, { fit: true })">
           <b>{{ it.ident }}</b>
           <span class="t">{{ [...it.lv].map((l) => LVL_SHORT[l]).join(", ") }}</span>
           <span class="r">{{ it.rnav ? "RNAV" : "" }}</span>

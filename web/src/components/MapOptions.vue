@@ -46,6 +46,9 @@ onBeforeUnmount(() => { document.removeEventListener("click", outside); document
         <input v-model="state.view[k]" type="checkbox"><span>{{ label }}<small>{{ hint }}</small></span>
       </label>
 
+      <div class="vm-l">Effets</div>
+      <label class="vm-opt"><input v-model="state.anim" type="checkbox"><span>Animations<small>Flux sur la route, halos, trafic fluide, météo IFR qui respire</small></span></label>
+
       <div class="vm-l">Carte d'aéroport</div>
       <label class="vm-opt"><input v-model="state.filters.ground" type="checkbox"><span>Plan au sol (OSM)<small>Pistes, taxiways, postes, points d'attente</small></span></label>
 

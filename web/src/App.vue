@@ -21,6 +21,7 @@ const search = ref<InstanceType<typeof TopBar> | null>(null);
 const shared = applySharedState(); // lien partagé : ses réglages priment sur ceux mémorisés
 applyTheme(state.theme);
 watch(() => state.theme, applyTheme);
+watch(() => state.anim, (on) => { try { localStorage.setItem("tropo-anim", on ? "1" : "0"); } catch { /* stockage indisponible */ } });
 watch(() => state.themeMode, (m) => {
   try { localStorage.setItem("tropo-theme-mode", m); } catch { /* stockage indisponible */ }
   updateAutoTheme();

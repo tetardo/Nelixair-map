@@ -70,12 +70,32 @@ export function initTraffic(m: MlMap) {
 
 export const TRAFFIC_LAYERS = ["traffic-ac", "traffic-atc"];
 
+let fetchedAt = 0; // heure de la dernière mise à jour des positions
+
+/** Avions affichés, avancés à l'estime depuis la dernière mise à jour (cap et vitesse sol, 2 min au plus). */
+function pilotFeatures(): GeoJSON.FeatureCollection {
+  const nets = (["vatsim", "ivao"] as Net[]).filter((n) => state.filters[n]);
+  const h = Math.min(120, Math.max(0, (Date.now() - fetchedAt) / 1000)) / 3600;
+  return { type: "FeatureCollection", features: nets.flatMap((n) => data[n]?.pilots || []).map((p, i) => {
+    let { lat, lon } = p;
+    if (state.anim && !p.ground && p.gs > 40) {
+      const d = (p.gs * h) / 60, r = (p.hdg * Math.PI) / 180; // degrés de latitude parcourus
+      lat += d * Math.cos(r);
+      lon += (d * Math.sin(r)) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    }
+    return { type: "Feature", id: i, properties: { net: p.net, callsign: p.callsign, hdg: p.hdg, ground: p.ground },
+      geometry: { type: "Point", coordinates: [lon, lat] } };
+  }) };
+}
+/** Appelé chaque seconde par la boucle d'animation. */
+export function tickTraffic() {
+  if (!map || !(state.filters.vatsim || state.filters.ivao) || !fetchedAt) return;
+  (map.getSource("traffic") as maplibregl.GeoJSONSource | undefined)?.setData(pilotFeatures());
+}
+
 function render() {
   const nets = (["vatsim", "ivao"] as Net[]).filter((n) => state.filters[n]);
-  const pilots = nets.flatMap((n) => data[n]?.pilots || []);
-  (map.getSource("traffic") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: pilots.map((p, i) => ({
-    type: "Feature", id: i, properties: { net: p.net, callsign: p.callsign, hdg: p.hdg, ground: p.ground },
-    geometry: { type: "Point", coordinates: [p.lon, p.lat] } })) });
+  (map.getSource("traffic") as maplibregl.GeoJSONSource).setData(pilotFeatures());
   // un point par terrain contrôlé et par réseau, libellé des postes (D G T A, i pour l'ATIS)
   const byApt = new Map<string, Atc[]>();
   for (const n of nets) for (const a of data[n]?.atc || []) {
@@ -115,6 +135,7 @@ export async function refreshTraffic() {
   if (nets.length) {
     await airportIndex();
     await Promise.all(nets.map((n) => fetchTraffic(n).then((t) => (data[n] = t)).catch((e) => { console.warn(e); delete data[n]; })));
+    fetchedAt = Date.now();
     timer = window.setTimeout(refreshTraffic, document.hidden ? EVERY * 4 : EVERY);
   }
   render();
