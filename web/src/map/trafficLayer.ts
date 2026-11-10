@@ -3,6 +3,7 @@ import type * as maplibregl from "maplibre-gl";
 import type { Map as MlMap } from "maplibre-gl";
 import type { LngLat } from "../lib/format";
 import { loadIndex } from "../services/data";
+import { filedRoute } from "../lib/filedRoute";
 import { loadSectors, sectorFor } from "../services/atcSectors";
 import { fetchTraffic, type Atc, type Net, type Pilot, type Traffic } from "../services/traffic";
 import { state } from "../store";
@@ -11,11 +12,28 @@ export const NET_COLOR: Record<Net, string> = { vatsim: "#2fbf71", ivao: "#3d8bf
 const NET_NAME: Record<Net, string> = { vatsim: "VATSIM", ivao: "IVAO" };
 const EVERY = 30_000; // les réseaux publient toutes les 15 s ; 30 s suffisent pour une carte
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+const TRAIL_MAX = 40; // 40 relevés de 30 s : les 20 dernières minutes
+const VEC_MIN = 2; // vecteur vitesse : position dans 2 minutes
 
 let map: MlMap;
 let timer = 0;
 const data: Partial<Record<Net, Traffic>> = {};
 let apts: Map<string, LngLat> | null = null;
+/** Positions relevées depuis l'ouverture de la carte, par réseau et indicatif. */
+const trails = new Map<string, LngLat[]>();
+function recordTrails() {
+  const seen = new Set<string>();
+  for (const n of ["vatsim", "ivao"] as Net[]) for (const p of data[n]?.pilots || []) {
+    const k = n + "|" + p.callsign, t = trails.get(k) || [], ll: LngLat = [p.lon, p.lat];
+    seen.add(k);
+    if (p.ground) { trails.delete(k); continue; }
+    const l = t[t.length - 1];
+    if (!l || Math.abs(l[0] - ll[0]) + Math.abs(l[1] - ll[1]) > 1e-4) t.push(ll);
+    if (t.length > TRAIL_MAX) t.splice(0, t.length - TRAIL_MAX);
+    trails.set(k, t);
+  }
+  for (const k of trails.keys()) if (!seen.has(k)) trails.delete(k);
+}
 
 /** Silhouette d'avion (icône SDF : la couleur est donnée par le calque). */
 function planeIcon(): ImageData {
@@ -49,6 +67,7 @@ export function initTraffic(m: MlMap) {
   map.addSource("traffic-atc", { type: "geojson", data: EMPTY });
   map.addSource("traffic-sel", { type: "geojson", data: EMPTY });
   map.addSource("atc-sec", { type: "geojson", data: EMPTY });
+  map.addSource("traffic-tail", { type: "geojson", data: EMPTY });
   const color: any = ["match", ["get", "net"], "ivao", NET_COLOR.ivao, NET_COLOR.vatsim]; // expression MapLibre
   // secteurs des centres en route en ligne : voile léger, contour, et contour épais pour le secteur survolé
   map.addLayer({ id: "atc-sec-fill", type: "fill", source: "atc-sec", paint: { "fill-color": color, "fill-opacity": 0.05 } });
@@ -59,6 +78,13 @@ export function initTraffic(m: MlMap) {
     paint: { "fill-color": "#ffb020", "fill-opacity": 0.12 } });
   map.addLayer({ id: "traffic-sel", type: "line", source: "traffic-sel",
     paint: { "line-color": ["get", "c"], "line-width": 2, "line-dasharray": ["literal", [2, 2]], "line-opacity": 0.9 } });
+  // traînée des positions passées et vecteur vitesse (où sera l'avion dans 2 min)
+  map.addLayer({ id: "traffic-trail", type: "line", source: "traffic-tail", minzoom: 5, filter: ["==", ["get", "k"], "trail"],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": color, "line-width": ["interpolate", ["linear"], ["zoom"], 5, 1, 9, 2], "line-opacity": 0.4 } });
+  map.addLayer({ id: "traffic-vec", type: "line", source: "traffic-tail", minzoom: 6, filter: ["==", ["get", "k"], "vec"],
+    layout: { "line-cap": "round" },
+    paint: { "line-color": color, "line-width": 1.5, "line-opacity": 0.85 } });
   map.addLayer({ id: "traffic-atc", type: "circle", source: "traffic-atc",
     // pastille pleine (les METAR sont des anneaux creux : pas de confusion)
     paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 3, 4, 8, 7], "circle-color": color,
@@ -81,30 +107,44 @@ export const TRAFFIC_LAYERS = ["traffic-ac", "traffic-atc"];
 
 let fetchedAt = 0; // heure de la dernière mise à jour des positions
 
-/** Avions affichés, avancés à l'estime depuis la dernière mise à jour (cap et vitesse sol, 2 min au plus). */
-function pilotFeatures(): GeoJSON.FeatureCollection {
+/** Position à l'estime après `h` heures au cap et à la vitesse sol. */
+function ahead(p: Pilot, lon: number, lat: number, h: number): LngLat {
+  const d = (p.gs * h) / 60, r = (p.hdg * Math.PI) / 180; // degrés de latitude parcourus
+  return [lon + (d * Math.sin(r)) / Math.max(0.2, Math.cos((lat * Math.PI) / 180)), lat + d * Math.cos(r)];
+}
+/** Avions affichés, avancés à l'estime depuis la dernière mise à jour (2 min au plus), avec traînées et vecteurs. */
+function pilotFeatures(): { planes: GeoJSON.FeatureCollection; tails: GeoJSON.FeatureCollection } {
   const nets = (["vatsim", "ivao"] as Net[]).filter((n) => state.filters[n]);
   const h = Math.min(120, Math.max(0, (Date.now() - fetchedAt) / 1000)) / 3600;
-  return { type: "FeatureCollection", features: nets.flatMap((n) => data[n]?.pilots || []).map((p, i) => {
-    let { lat, lon } = p;
-    if (state.anim && !p.ground && p.gs > 40) {
-      const d = (p.gs * h) / 60, r = (p.hdg * Math.PI) / 180; // degrés de latitude parcourus
-      lat += d * Math.cos(r);
-      lon += (d * Math.sin(r)) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+  const tails: GeoJSON.Feature[] = [];
+  const planes = nets.flatMap((n) => data[n]?.pilots || []).map((p, i): GeoJSON.Feature => {
+    const moving = !p.ground && p.gs > 40;
+    const [lon, lat] = state.anim && moving ? ahead(p, p.lon, p.lat, h) : [p.lon, p.lat];
+    if (moving) {
+      const props = { net: p.net, k: "vec" };
+      tails.push({ type: "Feature", properties: props, geometry: { type: "LineString", coordinates: [[lon, lat], ahead(p, lon, lat, VEC_MIN / 60)] } });
+      const t = trails.get(p.net + "|" + p.callsign);
+      if (t && t.length) tails.push({ type: "Feature", properties: { net: p.net, k: "trail" }, geometry: { type: "LineString", coordinates: [...t, [lon, lat]] } });
     }
     return { type: "Feature", id: i, properties: { net: p.net, callsign: p.callsign, hdg: p.hdg, ground: p.ground },
       geometry: { type: "Point", coordinates: [lon, lat] } };
-  }) };
+  });
+  return { planes: { type: "FeatureCollection", features: planes }, tails: { type: "FeatureCollection", features: tails } };
+}
+function setPilots() {
+  const { planes, tails } = pilotFeatures();
+  (map.getSource("traffic") as maplibregl.GeoJSONSource | undefined)?.setData(planes);
+  (map.getSource("traffic-tail") as maplibregl.GeoJSONSource | undefined)?.setData(tails);
 }
 /** Appelé chaque seconde par la boucle d'animation. */
 export function tickTraffic() {
   if (!map || !(state.filters.vatsim || state.filters.ivao) || !fetchedAt) return;
-  (map.getSource("traffic") as maplibregl.GeoJSONSource | undefined)?.setData(pilotFeatures());
+  setPilots();
 }
 
 function render() {
   const nets = (["vatsim", "ivao"] as Net[]).filter((n) => state.filters[n]);
-  (map.getSource("traffic") as maplibregl.GeoJSONSource).setData(pilotFeatures());
+  setPilots();
   // un point par terrain contrôlé et par réseau, libellé des postes (D G T A, i pour l'ATIS)
   const byApt = new Map<string, Atc[]>();
   for (const n of nets) for (const a of data[n]?.atc || []) {
@@ -123,7 +163,7 @@ function render() {
   (map.getSource("traffic-atc") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: fs });
   renderSectors(nets);
   const vis = nets.length ? "visible" : "none";
-  for (const id of ["traffic-ac", "traffic-lbl", "traffic-atc", "traffic-atc-lbl", "traffic-sel", "atc-sec-fill", "atc-sec-line", "atc-sec-hot", "atc-sec-hot-fill"]) map.setLayoutProperty(id, "visibility", vis);
+  for (const id of ["traffic-ac", "traffic-lbl", "traffic-trail", "traffic-vec", "traffic-atc", "traffic-atc-lbl", "traffic-sel", "atc-sec-fill", "atc-sec-line", "atc-sec-hot", "atc-sec-hot-fill"]) map.setLayoutProperty(id, "visibility", vis);
   state.trafficStatus = nets.map((n) => {
     const d = data[n];
     if (!d) return `${NET_NAME[n]} : indisponible`;
@@ -182,17 +222,23 @@ export async function refreshTraffic() {
     await airportIndex();
     await Promise.all(nets.map((n) => fetchTraffic(n).then((t) => (data[n] = t)).catch((e) => { console.warn(e); delete data[n]; })));
     fetchedAt = Date.now();
+    recordTrails();
     timer = window.setTimeout(refreshTraffic, document.hidden ? EVERY * 4 : EVERY);
   }
   render();
 }
 
-/** Trajet départ → avion → arrivée du vol choisi. */
-export function drawFlight(p: Pilot | null) {
+/** Route déposée du vol choisi (à défaut : départ → avion → arrivée). */
+let drawSeq = 0;
+export async function drawFlight(p: Pilot | null) {
   const src = map?.getSource("traffic-sel") as maplibregl.GeoJSONSource | undefined;
   if (!src) return;
+  const seq = ++drawSeq;
   if (!p) return src.setData(EMPTY);
-  const pts = [airportPos(p.dep), [p.lon, p.lat] as LngLat, airportPos(p.arr)].filter(Boolean) as LngLat[];
+  const dep = airportPos(p.dep), arr = airportPos(p.arr);
+  let pts = p.route ? await filedRoute(p.route, dep, arr).catch(() => []) : [];
+  if (seq !== drawSeq) return; // un autre vol a été choisi entre-temps
+  if (pts.length < 2) pts = [dep, [p.lon, p.lat] as LngLat, arr].filter(Boolean) as LngLat[];
   src.setData({ type: "FeatureCollection", features: pts.length > 1
     ? [{ type: "Feature", properties: { c: NET_COLOR[p.net] }, geometry: { type: "LineString", coordinates: pts } }] : [] });
 }

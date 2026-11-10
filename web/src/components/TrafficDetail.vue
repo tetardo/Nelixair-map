@@ -49,7 +49,7 @@ const rows = computed(() => {
       <h3>Route déposée</h3>
       <p class="wx-raw">{{ p.route }}</p>
     </template>
-    <p class="muted small">Position mise à jour toutes les 30 s. Pointillés : départ → position → arrivée.</p>
+    <p class="muted small">Position mise à jour toutes les 30 s. Pointillés : route déposée (points et voies reconnus), à défaut départ → position → arrivée. Sur la carte, trait derrière l’avion : sa trace depuis l’ouverture (20 min au plus) ; trait devant : où il sera dans 2 min.</p>
   </template>
 
   <template v-else>
