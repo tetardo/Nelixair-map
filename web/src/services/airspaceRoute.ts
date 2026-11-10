@@ -92,3 +92,21 @@ export async function airspacesAlong(pts: { d: number; ll: LngLat; alt: number }
   done.push(...open.values());
   return done.sort((a, b) => a.from - b.from || a.lowerFt - b.lowerFt);
 }
+
+export interface AspLayer { name: string; type: string; cls: string; group: string; lower: string; upper: string; lowerFt: number; upperFt: number }
+/** Tous les espaces publiés à un point (FIR comprise), du plus bas au plus haut. */
+export async function airspacesAtPoint(ll: LngLat): Promise<AspLayer[]> {
+  let shapes: Shape[];
+  if (aspPmtilesUrl) { const [x, y] = tileXY(ll); shapes = await tileShapes(x, y); } else shapes = await allGeojson();
+  const seen = new Set<string>(), out: AspLayer[] = [];
+  for (const s of shapes) {
+    const [w, so, e, n] = s.bb;
+    if (ll[0] < w || ll[0] > e || ll[1] < so || ll[1] > n || !s.rings.some((poly) => inPolygon(ll, poly))) continue;
+    const key = `${s.p.name}|${s.p.type}|${s.p.lower_ft}|${s.p.upper_ft}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name: s.p.name || "?", type: s.p.type || "", cls: s.p.icao_class || "", group: s.p.group || "other", lower: s.p.lower || "", upper: s.p.upper || "",
+      lowerFt: Number(s.p.lower_ft) || 0, upperFt: Number.isFinite(Number(s.p.upper_ft)) && s.p.upper_ft !== "" && s.p.upper_ft != null ? Number(s.p.upper_ft) : 99999 });
+  }
+  return out.sort((a, b) => a.lowerFt - b.lowerFt || a.upperFt - b.upperFt);
+}

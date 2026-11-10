@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { elevationsFt } from "../lib/elevation";
 import { alt } from "../lib/format";
 import { along, routeVertices, samples } from "../lib/routeGeom";
-import { ASP_COLORS, fmtFt, routeAsp, useRouteAsp } from "../lib/routeAsp";
+import { ASP_COLORS, ZONE_TYPES, fmtFt, routeAsp, useRouteAsp } from "../lib/routeAsp";
 import { flyTo, selectPoint } from "../map/mapView";
 import { pauseReplay, playReplay, replayInfo, seekReplayD, stopReplay } from "../map/replay";
 import { hhmm } from "../services/simbrief";
@@ -70,6 +70,28 @@ const minMargin = computed(() => {
     if (!m || g < m.ft) m = { d: p.d, ft: g };
   }
   return m;
+});
+
+// Altitude de transition au départ et à l'arrivée (eAIP France ; 18 000 ft aux États-Unis) : trait jusqu'au passage du plan
+function taOf(icao: string): number | null {
+  return state.eaip[icao]?.ta_ft ?? (/^(K|P[AHGF])/.test(icao) ? 18000 : null);
+}
+function crossing(ta: number, fromEnd: boolean): number {
+  const v = fromEnd ? [...verts.value].reverse() : verts.value;
+  for (let i = 1; i < v.length; i++) if (v[i].alt >= ta && v[i - 1].alt < ta) {
+    const a = v[i - 1], b = v[i];
+    return a.d + ((ta - a.alt) / (b.alt - a.alt || 1)) * (b.d - a.d);
+  }
+  return fromEnd ? 0 : total.value;
+}
+const taLines = computed(() => {
+  const o = state.ofp;
+  if (!o) return [];
+  const out: { x1: number; x2: number; y: number; label: string; end: boolean }[] = [];
+  const dep = taOf(o.orig.icao), arr = taOf(o.dest.icao);
+  if (dep != null && dep < maxAlt.value) out.push({ x1: x(0), x2: x(Math.min(total.value / 2, crossing(dep, false) + total.value * 0.04)), y: y(dep), label: `TA ${fmt(dep)}`, end: false });
+  if (arr != null && arr < maxAlt.value) out.push({ x1: x(Math.max(total.value / 2, crossing(arr, true) - total.value * 0.04)), x2: x(total.value), y: y(arr), label: `TA ${fmt(arr)}`, end: true });
+  return out;
 });
 
 // Coupe des espaces aériens traversés (bandes plancher → plafond sur la distance où la route est dedans)
@@ -142,13 +164,20 @@ const fmt = (v: number) => Math.round(v).toLocaleString("fr-FR");
           <text :x="PAD.l - 6" :y="y(g) + 3" text-anchor="end">{{ g >= 18000 ? "FL" + g / 100 : fmt(g) }}</text>
         </template>
       </g>
+      <defs><pattern id="pf-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#e5484d" stroke-width="2" /></pattern></defs>
       <g class="pf-asp">
         <g v-for="b in bands" :key="b.c.key">
-          <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" :fill="b.color" :stroke="b.color" :class="{ in: b.c.inside }"><title>{{ b.c.name }} · {{ fmtFt(b.c.lowerFt) }} – {{ fmtFt(b.c.upperFt) }}</title></rect>
+          <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" :fill="ZONE_TYPES.has(b.c.type) ? 'url(#pf-hatch)' : b.color" :stroke="b.color" :class="{ in: b.c.inside, zone: ZONE_TYPES.has(b.c.type) }"><title>{{ b.c.name }} · {{ fmtFt(b.c.lowerFt) }} – {{ fmtFt(b.c.upperFt) }}</title></rect>
           <text v-if="b.label" :x="b.x + 4" :y="b.y + 10" :fill="b.color">{{ b.label }}</text>
         </g>
       </g>
       <path v-if="terrPath" :d="terrPath" class="pf-terrain" />
+      <g class="pf-ta">
+        <g v-for="t in taLines" :key="t.label + t.end">
+          <line :x1="t.x1" :x2="t.x2" :y1="t.y" :y2="t.y"><title>Altitude de transition : au-dessus, calage standard 1013 hPa</title></line>
+          <text :x="t.end ? t.x2 - 2 : t.x1 + 2" :y="t.y - 3" :text-anchor="t.end ? 'end' : 'start'">{{ t.label }}</text>
+        </g>
+      </g>
       <path :d="planPath" class="pf-plan" :stroke="ROUTE_COLOR" />
       <g class="pf-fix">
         <template v-for="v in labels" :key="v.ident + v.d">

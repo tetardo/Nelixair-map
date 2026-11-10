@@ -8,6 +8,7 @@ import { state } from "../store";
 import AirportDetail from "./AirportDetail.vue";
 import AirwayDetail from "./AirwayDetail.vue";
 import FixDetail from "./FixDetail.vue";
+import HereDetail from "./HereDetail.vue";
 import KeyValues from "./KeyValues.vue";
 import TrafficDetail from "./TrafficDetail.vue";
 
@@ -32,6 +33,8 @@ const sortedAsp = (list: Record<string, any>[]) => list.slice().sort((a, b) => (
     <AirportDetail v-else-if="state.detail.kind === 'airport'" :key="'a' + state.detail.p.ident" :p="state.detail.p" :ll="state.detail.ll" />
     <FixDetail v-else-if="state.detail.kind === 'fix'" :key="'f' + state.detail.p.ident + state.detail.ll" :p="state.detail.p" :ll="state.detail.ll" />
     <AirwayDetail v-else-if="state.detail.kind === 'airway'" :key="'w' + state.detail.ident" :ident="state.detail.ident" />
+
+    <HereDetail v-else-if="state.detail.kind === 'here'" :ll="state.detail.ll" />
 
     <template v-else-if="state.detail.kind === 'airspaces'">
       <div class="d-head"><h2>Espaces</h2><span class="badge">{{ state.detail.list.length }}</span></div>

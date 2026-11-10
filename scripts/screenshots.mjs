@@ -76,6 +76,11 @@ const SHOTS = [
   ["relecture.png", "", "day", "flight", null, false, { demo: true, steps: [{ click: "#tab-flight button:has-text('Rejouer')" }, { wait: 6000 }] }],
   // Trafic VATSIM / IVAO en direct (traînées et vecteurs vitesse)
   ["trafic.png", "#map=6/48.6/4", "night", null, { vatsim: true, ivao: true }],
+  // Dégagements en route du vol de démo (filtres, catégorie météo, trous de couverture, cercles sur la carte)
+  ["degagements.png", "", "night", "flight", null, false, { demo: true, steps: [
+    { click: "#tab-flight button:has-text('Dégagements en route')" }, { wait: 5000 }, { scroll: "#tab-flight .altn-filters" }] }],
+  // « Ce qu'il faut ici » : clic dans la région parisienne, espace et exigences à l'altitude choisie
+  ["ce-qu-il-faut-ici.png", "#map=8.5/48.75/2.35", "day", "detail", null, false, { click: [900, 430] }],
 ];
 
 mkdirSync(OUT, { recursive: true });

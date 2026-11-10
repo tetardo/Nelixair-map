@@ -16,6 +16,7 @@ export type Detail =
   | { kind: "fix"; p: Props; ll: LngLat }
   | { kind: "airway"; ident: string }
   | { kind: "airspaces"; list: Props[] }
+  | { kind: "here"; ll: LngLat }
   | { kind: "hazard"; p: Props }
   | { kind: "pirep"; p: Props }
   | { kind: "traffic"; p: Pilot }
@@ -116,6 +117,7 @@ export const state = reactive({
   detail: { kind: "empty" } as Detail,
   wxStatus: "" as string,
   trafficStatus: "" as string,
+  trafficTick: 0, // incrémenté à chaque relevé VATSIM / IVAO
   cursor: "—",
   cycleText: "",
   sources: [] as SourceMeta[],

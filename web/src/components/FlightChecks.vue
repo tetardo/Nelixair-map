@@ -1,18 +1,21 @@
 <script setup lang="ts">
 // Contrôles du plan de vol : un voyant par règle, détail au survol / en dessous.
 import { CircleAlert, CircleCheck, Info } from "@lucide/vue";
-import { ref, watch } from "vue";
-import { fuelCheck, nightCheck, semicircular, terrainCheck, type Check } from "../lib/flightChecks";
+import { computed, ref, watch } from "vue";
+import { routeAsp, useRouteAsp } from "../lib/routeAsp";
+import { fuelCheck, nightCheck, semicircular, terrainCheck, zonesCheck, type Check } from "../lib/flightChecks";
 import { state } from "../store";
 import Section from "./Section.vue";
 
-const checks = ref<Check[]>([]);
+const base = ref<Check[]>([]);
+useRouteAsp();
+const checks = computed(() => (base.value.length ? [...base.value.slice(0, 2), zonesCheck(routeAsp.value), ...base.value.slice(2)] : []));
 watch(() => state.ofp, async (o) => {
-  if (!o) { checks.value = []; return; }
+  if (!o) { base.value = []; return; }
   const sync = [semicircular(o), fuelCheck(o), nightCheck(o)];
-  checks.value = [sync[0], { id: "terr", title: "Relief / MORA", status: "info", text: "Vérification du relief…" }, ...sync.slice(1)];
+  base.value = [sync[0], { id: "terr", title: "Relief / MORA", status: "info", text: "Vérification du relief…" }, ...sync.slice(1)];
   const t = await terrainCheck(o);
-  if (state.ofp === o) checks.value = [sync[0], t, ...sync.slice(1)];
+  if (state.ofp === o) base.value = [sync[0], t, ...sync.slice(1)];
 }, { immediate: true });
 const warns = () => checks.value.filter((c) => c.status === "warn").length;
 function show(c: Check) { if (c.at != null) { state.profileOpen = true; state.profileAt = c.at; } }

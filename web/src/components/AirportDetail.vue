@@ -9,6 +9,7 @@ import { sunTimes, type SunTime } from "../services/sun";
 import { runwayWinds, splitDesignator, type RwyWind } from "../lib/wind";
 import { WX_COLORS, ceilingFt, flightCat, metar, taf, visSm, wind, type Metar } from "../services/weather";
 import { state, type EaipRwy, type Props } from "../store";
+import AirportOnline from "./AirportOnline.vue";
 import KeyValues from "./KeyValues.vue";
 import Section from "./Section.vue";
 
@@ -157,6 +158,7 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
       </button>
       <a v-if="isFrench" class="btn-ghost" :href="siaAd2Url(p.ident, cyc)" target="_blank" rel="noopener" :title="`AIRAC ${cyc.ident} (${fmtDate(cyc.start)} → ${fmtDate(cyc.end)})`">eAIP AD 2 <ExternalLink :size="12" aria-hidden="true" /></a>
     </div>
+    <AirportOnline :icao="p.ident" :ll="ll" />
   </div>
 
   <!-- 1. Météo -->
