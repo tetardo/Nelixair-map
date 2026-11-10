@@ -57,10 +57,13 @@ jobs:
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.retry.outputs.page_url }}
     steps:
+      # ~136 Mo de tuiles : la synchro Pages dépasse parfois 10 min, et deploy-pages plafonne
+      # son délai à 10 min quel que soit « timeout ». Une 2e tentative passe en général.
       - id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          # ~136 Mo de tuiles : la synchro Pages dépasse parfois le délai par défaut de 10 min
-          timeout: 1800000
+        continue-on-error: true
+      - id: retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
