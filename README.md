@@ -116,18 +116,18 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 
 <table>
 <tr>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/accueil-france.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/accueil-france.png" alt="Vue d&#x27;accueil centrée sur la France" width="260"></a><br><sub>Vue d'accueil (France, calques)</sub></td>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/carte.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/carte.png" alt="Carte en route des États-Unis" width="260"></a><br><sub>Carte en route (US)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/accueil-france.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/accueil-france.png" alt="Vue d&#x27;accueil centrée sur la France" width="260"></a><br><sub><b>Vue d'accueil</b><br>(France, calques)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/carte.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/carte.png" alt="Carte en route des États-Unis" width="260"></a><br><sub><b>Carte en route</b><br>(US)</sub></td>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/europe-nuit.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/europe-nuit.png" alt="Espaces aériens autour de Paris, mode nuit" width="260"></a><br><sub><b>Europe, mode nuit</b></sub></td>
 </tr>
 <tr>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png" alt="Fiche de KSFO" width="260"></a><br><sub><b>Fiche aéroport</b> (météo, pistes, fréquences, cartes FAA)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png" alt="Fiche de KSFO" width="260"></a><br><sub><b>Fiche aéroport</b><br>(météo, pistes, fréquences, cartes FAA)</sub></td>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/log-voie.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/log-voie.png" alt="Log de la voie J80" width="260"></a><br><sub><b>Log d'une voie aérienne</b></sub></td>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/meteo.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/meteo.png" alt="SIGMET, AIRMET, PIREP et satellite sur les États-Unis" width="260"></a><br><sub><b>Météo</b> (SIGMET / AIRMET, PIREP, satellite IR, zone de nuit)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/meteo.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/meteo.png" alt="SIGMET, AIRMET, PIREP et satellite sur les États-Unis" width="260"></a><br><sub><b>Météo</b><br>(SIGMET / AIRMET, PIREP, satellite IR, zone de nuit)</sub></td>
 </tr>
 <tr>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/fiche-soleil.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/fiche-soleil.png" alt="Fiche de KDEN, section Soleil" width="260"></a><br><sub><b>Éphémérides</b> (lever, coucher, nuit aéronautique)</sub></td>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png" alt="Plan au sol de LFML" width="260"></a><br><sub><b>Carte d'aéroport</b> (plan au sol OSM, vent par piste, LFML)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/fiche-soleil.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/fiche-soleil.png" alt="Fiche de KDEN, section Soleil" width="260"></a><br><sub><b>Éphémérides</b><br>(lever, coucher, nuit aéronautique)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png" alt="Plan au sol de LFML" width="260"></a><br><sub><b>Carte d'aéroport</b><br>(plan au sol OSM, vent par piste, LFML)</sub></td>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png" alt="Plan au sol de LFML de nuit" width="260"></a><br><sub><b>Carte d'aéroport, mode nuit</b></sub></td>
 </tr>
 <tr>
@@ -137,7 +137,7 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 </tr>
 <tr>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png" alt="Barre verticale et liste des cartes d&#x27;aéroport" width="260"></a><br><sub><b>Barre de navigation, panneau Aéroports</b></sub></td>
-<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png" alt="Route LFML-LFPO et nav log" width="260"></a><br><sub><b>Plan de vol SimBrief (vol de démo)</b></sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png" alt="Route LFML-LFPO et nav log" width="260"></a><br><sub><b>Plan de vol SimBrief</b><br>(vol de démo)</sub></td>
 </tr>
 </table>
 
