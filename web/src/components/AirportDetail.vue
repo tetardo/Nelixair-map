@@ -172,7 +172,7 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
         <div class="wx-raw hot-src" title="Survoler : vent sur la carte" @mouseenter="showWind(ll, typeof wx.m.wdir === 'number' ? wx.m.wdir : null, wx.m.wspd ?? null)" @mouseleave="showWind(null)">{{ wx.m.rawOb }}</div>
       </template>
       <p v-else class="muted small">Pas de METAR récent.</p>
-      <details v-if="wx.t" class="taf"><summary>TAF</summary><div class="wx-raw">{{ wx.t.rawTAF }}</div></details>
+      <details v-if="wx.t" class="taf" open><summary>TAF</summary><div class="wx-raw">{{ wx.t.rawTAF }}</div></details>
       <p v-else class="muted small">Pas de TAF.</p>
     </template>
   </Section>
