@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ExternalLink, Map as MapIcon } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { airacAt, fmtDate, siaAd2Url } from "../lib/airac";
 import { APT_KIND, SRC, ddm, deg3, dms, ft, pairs, yes, type LngLat } from "../lib/format";
@@ -151,9 +152,9 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
     </div>
     <div v-if="ground || isFrench" class="apt-actions">
       <button v-if="ground" class="primary" type="button" @click="openAirportChart(p.ident)">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 20 4M7 4h13v13"/></svg>Plan au sol
+        <MapIcon :size="14" aria-hidden="true" />Plan au sol
       </button>
-      <a v-if="isFrench" class="btn-ghost" :href="siaAd2Url(p.ident, cyc)" target="_blank" rel="noopener" :title="`AIRAC ${cyc.ident} (${fmtDate(cyc.start)} → ${fmtDate(cyc.end)})`">eAIP AD 2 ↗</a>
+      <a v-if="isFrench" class="btn-ghost" :href="siaAd2Url(p.ident, cyc)" target="_blank" rel="noopener" :title="`AIRAC ${cyc.ident} (${fmtDate(cyc.start)} → ${fmtDate(cyc.end)})`">eAIP AD 2 <ExternalLink :size="12" aria-hidden="true" /></a>
     </div>
   </div>
 

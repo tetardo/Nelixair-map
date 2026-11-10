@@ -25,6 +25,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | ![Plan au sol de LFML de nuit](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png) | ![Popup de piste avec vent de face et de travers](https://tetardo.github.io/Nelixair-map/screenshots/piste-vent-lfml.png) |
 | **Bulle de survol et surbrillance** | **Menu Affichage, vue satellite** |
 | ![Survol d'une piste de LFML](https://tetardo.github.io/Nelixair-map/screenshots/survol-lfml.png) | ![Vue satellite de LFML avec le menu Affichage](https://tetardo.github.io/Nelixair-map/screenshots/satellite-lfml.png) |
+| **Barre de navigation, panneau Aéroports** | |
+| ![Barre verticale et liste des cartes d'aéroport](https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png) | |
 
 ## Couverture des données
 
@@ -62,6 +64,9 @@ Conséquences à connaître :
 - Clic : popup (fréquence, coordonnées DMS, région, cycle, source) ; clic sur une
   voie : tronçon, distance, route vraie, MEA, et surbrillance de toute la voie
 - Recherche d'ident (navaid, waypoint ou voie), clavier `/` pour focaliser
+- Barre de navigation verticale (icônes [Lucide](https://lucide.dev), licence ISC) : Fiche, Aéroports
+  (cartes au sol disponibles), Liste, Calques ; en bas Affichage, jour / nuit, sources. Recliquer une
+  section referme le panneau.
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
   waypoints), liste triable des éléments à l'écran, fiche détaillée d'un point (voies qui y passent)
   et log d'une voie (MEA, route vraie, distance, cumul)
@@ -175,3 +180,4 @@ Terrains des cartes d'aéroport : liste `PILOT` de `pipeline/ground.py` (une req
 ## Licence du code
 
 À définir par le propriétaire du dépôt. Les données gardent leurs licences propres (tableau ci-dessus).
+Icônes : [Lucide](https://lucide.dev/license) (ISC), compatible avec un usage commercial.

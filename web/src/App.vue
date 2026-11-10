@@ -2,6 +2,7 @@
 import { onMounted, ref, watch } from "vue";
 import AboutDialog from "./components/AboutDialog.vue";
 import AirportChartBadge from "./components/AirportChartBadge.vue";
+import NavRail from "./components/NavRail.vue";
 import MapOptions from "./components/MapOptions.vue";
 import SideBar from "./components/SideBar.vue";
 import StatusBar from "./components/StatusBar.vue";
@@ -52,7 +53,8 @@ document.addEventListener("keydown", (e) => {
 
 <template>
   <div id="map" ref="mapEl" aria-label="Carte aéronautique"></div>
-  <TopBar ref="search" @about="about?.open()" />
+  <NavRail @about="about?.open()" />
+  <TopBar ref="search" />
   <SideBar />
   <StatusBar />
   <AirportChartBadge />

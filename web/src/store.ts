@@ -18,7 +18,7 @@ export type Detail =
   | { kind: "pirep"; p: Props }
   | { kind: "picker"; items: PickItem[] };
 
-export type Tab = "filters" | "list" | "detail";
+export type Tab = "detail" | "airports" | "list" | "filters";
 
 export interface GroundAirport {
   name: string; bbox: [number, number, number, number]; osm: string;
