@@ -14,6 +14,7 @@ Sortie :
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import math
@@ -361,6 +362,11 @@ def build(raw_dir: str, out_dir: str) -> dict:
             index[icao] = summary
             log.info("%s : %s", icao, summary["counts"])
         out.write("\n]}\n")
+    if not n:  # rien à tuiler : pas de fichiers vides (tippecanoe échoue dessus), le site masque la fonction
+        for fn in ("ground.geojson", "ground-index.json"):
+            with contextlib.suppress(FileNotFoundError):
+                os.remove(os.path.join(out_dir, fn))
+        return index
     with open(os.path.join(out_dir, "ground-index.json"), "w", encoding="utf-8") as fh:
         json.dump({"source": "OpenStreetMap (ODbL 1.0)", "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                    "airports": index}, fh, ensure_ascii=False, separators=(",", ":"))

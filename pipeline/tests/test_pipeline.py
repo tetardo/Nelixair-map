@@ -363,6 +363,38 @@ class TestGround(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.g.fetch(["LFMN"], d)
 
+    def test_build_without_data_writes_nothing(self):
+        """Aucun terrain téléchargé : pas de GeoJSON vide (tippecanoe échoue dessus)."""
+        with tempfile.TemporaryDirectory() as raw, tempfile.TemporaryDirectory() as out:
+            self.assertEqual(self.g.build(raw, out), {})
+            self.assertEqual(os.listdir(out), [])
+
+
+class TestOpenAipRetry(unittest.TestCase):
+    def _run(self, errors):
+        import io
+        import urllib.error
+        from unittest import mock
+        calls = []
+
+        def fake(req, timeout):
+            calls.append(1)
+            if errors:
+                code = errors.pop(0)
+                raise urllib.error.HTTPError(req.full_url, code, "err", {}, None)
+            return io.BytesIO(b'{"items": [], "totalPages": 1}')
+        with mock.patch("urllib.request.urlopen", side_effect=fake), mock.patch.object(openaip.time, "sleep"):
+            return openaip._get_json(openaip.urllib.request.Request("https://x")), len(calls)
+
+    def test_retries_408_then_succeeds(self):
+        body, n = self._run([408, 502])
+        self.assertEqual((body["totalPages"], n), (1, 3))
+
+    def test_401_not_retried(self):
+        import urllib.error
+        with self.assertRaises(urllib.error.HTTPError):
+            self._run([401])
+
 
 
 if __name__ == "__main__":

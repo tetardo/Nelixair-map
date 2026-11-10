@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import time
+import urllib.error
 import urllib.request
 from typing import Iterator, Optional
 
@@ -38,6 +39,21 @@ TYPE_MAP = {
 UNIT_KHZ, UNIT_MHZ = 1, 2
 
 
+def _get_json(req: urllib.request.Request, attempts: int = 4, pause_s: float = 10.0) -> dict:
+    """GET avec reprises : l'API OpenAIP renvoie parfois 408 / 5xx sur une page isolée."""
+    for n in range(attempts):
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                return json.load(resp)
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            code = getattr(e, "code", None)  # None = coupure réseau / timeout
+            retryable = code is None or code in (408, 429) or code >= 500
+            if not retryable or n == attempts - 1:
+                raise
+            time.sleep(pause_s * (n + 1))
+    raise AssertionError("inatteignable")
+
+
 def fetch(api_key: str, out_path: str, page_size: int = 1000, pause_s: float = 0.5,
           endpoint: str = "navaids") -> int:
     items: list = []
@@ -49,8 +65,7 @@ def fetch(api_key: str, out_path: str, page_size: int = 1000, pause_s: float = 0
             headers={"x-openaip-api-key": api_key, "Accept": "application/json",
                      "User-Agent": "nelixair-map-build"},
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = json.load(resp)
+        body = _get_json(req)
         items.extend(body.get("items", []))
         if page >= int(body.get("totalPages", 1)):
             break
