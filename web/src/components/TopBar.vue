@@ -41,7 +41,7 @@ defineExpose({ focus: () => input.value?.focus() });
 
 <template>
   <header class="toolbar">
-    <div class="brand">VAYO<small>par Nelixair</small></div>
+    <div class="brand">TROPO<small>par Nelixair</small></div>
     <form id="search" class="search" autocomplete="off" role="search" @submit.prevent="submit">
       <Search :size="16" aria-hidden="true" />
       <input id="q" ref="input" v-model="q" type="search" placeholder="Ident ou voie" aria-label="Rechercher un ident" spellcheck="false"
