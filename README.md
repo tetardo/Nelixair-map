@@ -1,6 +1,9 @@
 <img src="web/public/img/nelixair-logo.svg" alt="Nelixair" width="64" align="right">
 
-# nelixair-map
+# VAYO
+
+> Carte et sacoche de vol électronique des pilotes de l'association Nelixair (MSFS).
+> Dépôt historique `nelixair-map` : le nom du dépôt et l'adresse du site restent inchangés pour ne pas casser les liens.
 
 Carte web mondiale des **voies aériennes**, **waypoints**, **navaids**, **aéroports** et **espaces aériens**, au style
 d'une carte en route IFR. Site 100 % statique : MapLibre GL + tuiles vectorielles

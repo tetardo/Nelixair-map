@@ -35,7 +35,7 @@ async function share() {
     say("Lien de la vue copié" + note);
   } catch {
     // Presse-papiers refusé (navigateur, contexte non sécurisé) : feuille de partage du système si elle existe
-    try { await navigator.share({ title: "Nelixair", url }); say("Lien partagé" + note); }
+    try { await navigator.share({ title: "VAYO", url }); say("Lien partagé" + note); }
     catch { history.replaceState(history.state, "", url); say("Copie impossible : le lien est dans la barre d'adresse"); }
   }
 }
