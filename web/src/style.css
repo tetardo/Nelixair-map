@@ -140,7 +140,7 @@ body.side-open .sidebar { transform: none; visibility: visible; }
 .sw-mora { width: auto; height: auto; border: 0; font: 700 11px var(--mono); color: #d1a865; }
 .sw-mora::before { content: "14"; }
 .sw-mora::after { content: "6"; font-size: 8px; vertical-align: super; }
-.wx-raw { font: 12px/1.5 var(--mono); background: #0f1626; border: 1px solid var(--chrome-line); border-radius: 6px;
+.wx-raw { font: 12px/1.5 var(--mono); color: #dfe6f3; background: #0f1626; border: 1px solid var(--chrome-line); border-radius: 6px;
   padding: 8px 10px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
 .cat { font: 700 11px var(--mono); padding: 2px 7px; border-radius: 4px; color: #fff; }
 .muted { color: var(--chrome-soft); }
