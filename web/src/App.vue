@@ -2,11 +2,12 @@
 import { onMounted, ref, watch } from "vue";
 import AboutDialog from "./components/AboutDialog.vue";
 import AirportChartBadge from "./components/AirportChartBadge.vue";
+import MapOptions from "./components/MapOptions.vue";
 import SideBar from "./components/SideBar.vue";
 import StatusBar from "./components/StatusBar.vue";
 import TopBar from "./components/TopBar.vue";
 import { CFG } from "./config";
-import { applyFilters, applyTheme, clearSelection, initMap, setSidebar } from "./map/mapView";
+import { applyFilters, applyTheme, applyView, clearSelection, initMap, setSidebar } from "./map/mapView";
 import { isMobile, state } from "./store";
 
 const mapEl = ref<HTMLElement | null>(null);
@@ -16,6 +17,7 @@ const search = ref<InstanceType<typeof TopBar> | null>(null);
 applyTheme(state.theme);
 watch(() => state.theme, applyTheme);
 watch(() => state.filters, applyFilters, { deep: true });
+watch(() => state.view, applyView, { deep: true });
 
 // Métadonnées : sources, cycles, cartes FAA
 fetch(CFG.meta).then((r) => r.json()).then((meta) => {
@@ -48,6 +50,7 @@ document.addEventListener("keydown", (e) => {
   <SideBar />
   <StatusBar />
   <AirportChartBadge />
+  <MapOptions />
   <div class="nfn">NE PAS UTILISER POUR LA NAVIGATION</div>
   <AboutDialog ref="about" />
 </template>

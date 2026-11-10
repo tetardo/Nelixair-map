@@ -367,3 +367,26 @@ details.taf summary { cursor: pointer; font: 600 10.5px var(--sans); letter-spac
 .quick-apt button:hover { transform: translateY(-1px); border-color: var(--accent, #2f6fe0); }
 .quick-apt b { font-family: var(--mono); font-size: 13px; }
 .quick-apt small { opacity: .6; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* Menu « Affichage » au-dessus du zoom */
+#view-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--chrome-ink); stroke-width: 1.8; stroke-linejoin: round; display: block; margin: auto; }
+.view-menu { position: absolute; right: 52px; bottom: 30px; z-index: 5; width: 250px; padding: 10px 12px 12px; border-radius: 10px;
+  background: var(--chrome); color: var(--chrome-ink); border: 1px solid var(--chrome-line); box-shadow: var(--shadow); font: 13px var(--sans); }
+.vm-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.vm-x { background: none; border: 0; color: inherit; font-size: 18px; cursor: pointer; opacity: .7; line-height: 1; }
+.vm-l { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 5px; font: 600 10.5px var(--sans);
+  text-transform: uppercase; letter-spacing: .06em; color: var(--chrome-soft); }
+.vm-link { background: none; border: 0; color: var(--accent, #5aa8ff); font: 600 10.5px var(--sans); text-transform: uppercase; cursor: pointer; }
+.vm-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.vm-seg button { padding: 6px 0; border-radius: 6px; border: 1px solid var(--chrome-line); background: none; color: inherit; cursor: pointer; font: 12px var(--sans);
+  transition: background .15s, border-color .15s; }
+.vm-seg button[aria-pressed="true"] { background: #2f6fe0; border-color: #2f6fe0; color: #fff; }
+.vm-opt { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; cursor: pointer; }
+.vm-opt input { margin-top: 2px; }
+.vm-opt small { display: block; color: var(--chrome-soft); font-size: 11px; }
+.vm-reset { margin-top: 10px; width: 100%; padding: 6px; border-radius: 6px; border: 1px dashed var(--chrome-line); background: none; color: var(--chrome-soft); cursor: pointer; font: 12px var(--sans); }
+.vm-reset:hover { color: var(--chrome-ink); }
+.pop-in-enter-active, .pop-in-leave-active { transition: opacity .15s, transform .15s; transform-origin: bottom right; }
+.pop-in-enter-from, .pop-in-leave-to { opacity: 0; transform: scale(.96) translateY(4px); }
+@media (max-width: 760px) { .view-menu { right: 50px; bottom: 24px; width: min(250px, calc(100vw - 70px)); } }
+.vm-seg2 { grid-template-columns: repeat(2, 1fr); margin-top: 4px; }
+.vm-seg button:disabled { opacity: .35; cursor: default; }

@@ -54,6 +54,9 @@ const SHOTS = [
   // Popup d'une piste : composantes de vent par QFU (panneau fermé, clic au centre sur la piste 13L/31R)
   ["piste-vent-lfml.png", "#map=15.5/43.4372/5.2204", "night", null, null, false, { side: false, click: [720, 450] }],
   // Bulle de survol d'une piste (dimensions + vent) et surbrillance
+  // Menu Affichage ouvert, vue satellite Esri avec routes, sous le plan au sol
+  ["satellite-lfml.png", "#map=14.6/43.4372/5.2204", "day", null, null, false,
+    { side: false, view: { base: "sat", roads: true, buildings: false, landuse: false, places: true, relief: false }, click: null, menu: true }],
   ["survol-lfml.png", "#map=15.5/43.4372/5.2204", "day", null, null, false, { side: false, hover: [720, 450] }],
 ];
 
@@ -62,12 +65,13 @@ const browser = await chromium.launch();
 let failed = 0;
 for (const [name, path, theme, tab, filters, scroll, act = {}] of SHOTS) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
-  await ctx.addInitScript(([t, f, side, open]) => {
+  await ctx.addInitScript(([t, f, side, open, view]) => {
+    if (view) localStorage.setItem("nelixair-view", JSON.stringify(view));
     localStorage.setItem("nelixair-theme", t);
     localStorage.setItem("nelixair-side", side ? "1" : "0");
     if (f) localStorage.setItem("nelixair-filters", JSON.stringify(f));
     for (const id of open) localStorage.setItem("nelixair-sec-" + id, "1");
-  }, [theme, filters || null, act.side !== false, act.open || []]);
+  }, [theme, filters || null, act.side !== false, act.open || [], act.view || null]);
   const page = await ctx.newPage();
   try {
     await page.goto(base + path, { waitUntil: "load" });
@@ -76,6 +80,7 @@ for (const [name, path, theme, tab, filters, scroll, act = {}] of SHOTS) {
     await page.waitForTimeout(8000);
     if (tab && tab !== "detail") await page.evaluate((t) => { const i = { detail: 0, list: 1, filters: 2 }[t]; document.querySelectorAll(".tabs button")[i]?.click(); }, tab);
     if (act.hover) { await page.mouse.move(act.hover[0] - 4, act.hover[1]); await page.mouse.move(...act.hover); await page.waitForTimeout(1500); }
+    if (act.menu) { await page.click("#view-btn"); await page.waitForTimeout(800); }
     if (act.click) { await page.mouse.click(...act.click); await page.waitForTimeout(1500); }
     if (scroll) await page.evaluate(() => { const d = document.querySelector("#tab-detail"); d.scrollTop = d.scrollHeight; });
     await page.screenshot({ path: join(OUT, name) });

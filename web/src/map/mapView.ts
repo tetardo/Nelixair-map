@@ -10,7 +10,7 @@ import { distNm } from "../lib/geo";
 import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIdent, type Hit } from "../services/data";
 import { nightPolygon } from "../services/sun";
 import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
-import { isMobile, state, type GroundAirport, type PickItem, type Props, type Tab } from "../store";
+import { isMobile, state, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
 import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
 import { aspHtml, fixHtml, groundHtml, groundTip, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
@@ -31,7 +31,16 @@ let aspSrc: { source: string; "source-layer"?: string } = { source: "asp" };
 let groundSrc: { source: string; "source-layer"?: string } | null = null;
 
 // ---------- Fond de carte : style libre, épuré façon carte en route ----------
-const DROP = /road|highway|bridge|tunnel|rail|building|poi|aeroway|transit|housenumber|landuse|park|ferry|aerialway|motorway|path|pier|mountain_peak/i;
+// Retirés définitivement (bruit pour un pilote, ou doublon du plan au sol OSM)
+const DROP = /poi|aeroway|housenumber/i;
+// Groupes affichables depuis le menu « Affichage »
+const BASE_GROUPS: [keyof MapView, RegExp][] = [
+  ["roads", /road|highway|bridge|tunnel|rail|transit|ferry|aerialway|motorway|path|pier/i],
+  ["buildings", /building/i],
+  ["landuse", /landuse|park/i],
+];
+const baseGroup = (l: { id: string; type: string }): keyof MapView | null =>
+  BASE_GROUPS.find(([, re]) => re.test(l.id))?.[0] ?? (l.type === "symbol" ? "places" : null);
 async function basemap(): Promise<StyleSpecification> {
   try {
     const r = await fetch(CFG.basemapStyle);
@@ -51,6 +60,9 @@ function paintBasemap(T: (typeof THEMES)[ThemeName]) {
     const set = (k: string, v: unknown) => { try { map.setPaintProperty(l.id, k as never, v as never); } catch { /* propriété absente */ } };
     if (l.type === "background") set("background-color", T.bg);
     else if (l.type === "fill" && /water/i.test(l.id)) set("fill-color", T.water);
+    else if (l.type === "fill" && /building/i.test(l.id)) { set("fill-color", T.bldg); set("fill-outline-color", T.roadCase); }
+    else if (l.type === "fill" && /landuse|park/i.test(l.id)) { set("fill-color", T.landuse); set("fill-opacity", 0.6); }
+    else if (l.type === "line" && BASE_GROUPS[0][1].test(l.id)) set("line-color", /casing|outline/i.test(l.id) ? T.roadCase : T.road);
     else if (l.type === "fill") set("fill-opacity", T.land);
     else if (l.type === "line" && /water|river/i.test(l.id)) set("line-color", T.waterLine);
     else if (l.type === "line" && /boundary|admin/i.test(l.id)) set("line-color", T.border);
@@ -58,6 +70,42 @@ function paintBasemap(T: (typeof THEMES)[ThemeName]) {
       set("text-color", /water|ocean|sea|lake/i.test(l.id) ? T.waterLabel : T.label);
       set("text-halo-color", T.halo);
     }
+  }
+}
+
+// Relief ombré (Terrarium, données ouvertes AWS / Mapzen) et imagerie : ajoutés à la demande sous les couches aéronautiques
+const firstAero = () => map.getStyle().layers[baseLayers.length]?.id;
+export function applyView() {
+  try { localStorage.setItem("nelixair-view", JSON.stringify(state.view)); } catch { /* stockage indisponible */ }
+  if (!state.mapReady) return;
+  const v = state.view;
+  for (const l of baseLayers) {
+    const g = baseGroup(l);
+    if (g) map.setLayoutProperty(l.id, "visibility", v[g] ? "visible" : "none");
+  }
+  if (v.relief && !map.getSource("relief")) {
+    map.addSource("relief", { type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: 14,
+      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      attribution: 'Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen / AWS Terrain Tiles</a>' });
+    map.addLayer({ id: "relief", type: "hillshade", source: "relief",
+      paint: { "hillshade-exaggeration": 0.35, "hillshade-shadow-color": "rgba(0,0,0,.45)", "hillshade-highlight-color": "rgba(255,255,255,.25)" } }, firstAero());
+  }
+  if (map.getLayer("relief")) map.setLayoutProperty("relief", "visibility", v.relief ? "visible" : "none");
+  // Imagerie Esri (choix de l'association : usage non commercial). Insérée sous les routes, bâtiments et noms du fond.
+  const sat = v.base === "sat";
+  if (sat && !map.getSource("sat")) {
+    map.addSource("sat", { type: "raster", tileSize: 256, maxzoom: 19,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      attribution: 'Imagerie <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics' });
+    const above = baseLayers.find((l) => baseGroup(l) && baseGroup(l) !== "landuse")?.id || firstAero();
+    map.addLayer({ id: "sat", type: "raster", source: "sat", paint: { "raster-fade-duration": 150 } }, above);
+  }
+  if (map.getLayer("sat")) map.setLayoutProperty("sat", "visibility", sat ? "visible" : "none");
+  // Sur l'imagerie, les fonds du plan au sol deviennent transparents : on voit la scène réelle sous les taxiways
+  if (map.getLayer("g-boundary")) {
+    map.setPaintProperty("g-boundary", "fill-opacity", sat ? 0 : ["interpolate", ["linear"], ["zoom"], 11, 0, 12.5, 0.85]);
+    map.setPaintProperty("g-apron", "fill-opacity", sat ? 0.25 : 1);
+    map.setPaintProperty("g-building", "fill-opacity", sat ? 0.3 : ["interpolate", ["linear"], ["zoom"], 13, 0.5, 15, 1]);
   }
 }
 
@@ -692,6 +740,18 @@ export async function initMap(container: HTMLElement): Promise<void> {
   });
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+  // Bouton « Affichage » juste au-dessus du zoom : ouvre le menu MapOptions.vue
+  map.addControl({
+    onAdd() {
+      const d = document.createElement("div");
+      d.className = "maplibregl-ctrl maplibregl-ctrl-group";
+      d.innerHTML = `<button type="button" id="view-btn" title="Affichage de la carte" aria-label="Affichage de la carte">` +
+        `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>`;
+      d.querySelector("button")!.addEventListener("click", (e) => { e.stopPropagation(); state.viewMenu = !state.viewMenu; });
+      return d;
+    },
+    onRemove() { /* jamais retiré */ },
+  }, "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "nautical" }), "bottom-right");
   map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
   (window as unknown as { nelixairMap: MlMap }).nelixairMap = map; // débogage et captures d'écran
@@ -748,6 +808,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     addLayers(sources);
     state.mapReady = true;
     applyTheme(state.theme);
+    applyView();
     applyFilters();
     updateGroundInView();
     if (useGeojson) console.info("Mode GeoJSON (pas de PMTiles trouvées)");

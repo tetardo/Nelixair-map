@@ -23,8 +23,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | ![Fiche de KDEN, section Soleil](https://tetardo.github.io/Nelixair-map/screenshots/fiche-soleil.png) | ![Plan au sol de LFML](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png) |
 | **Carte d'aéroport, mode nuit** | **Piste : composantes de vent par QFU** |
 | ![Plan au sol de LFML de nuit](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png) | ![Popup de piste avec vent de face et de travers](https://tetardo.github.io/Nelixair-map/screenshots/piste-vent-lfml.png) |
-| **Bulle de survol et surbrillance** | |
-| ![Survol d'une piste de LFML](https://tetardo.github.io/Nelixair-map/screenshots/survol-lfml.png) | |
+| **Bulle de survol et surbrillance** | **Menu Affichage, vue satellite** |
+| ![Survol d'une piste de LFML](https://tetardo.github.io/Nelixair-map/screenshots/survol-lfml.png) | ![Vue satellite de LFML avec le menu Affichage](https://tetardo.github.io/Nelixair-map/screenshots/satellite-lfml.png) |
 
 ## Couverture des données
 
@@ -35,6 +35,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | cartes d'approche, de départ, d'arrivée et diagrammes (liens vers les PDF officiels) | États-Unis | domaine public |
 | [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (monde), SIGMET (monde), AIRMET / G-AIRMET et PIREP (surtout US) ; relais toutes les 10 min | monde | domaine public |
 | [OpenStreetMap](https://www.openstreetmap.org/copyright) (via Overpass) | plans au sol : pistes, taxiways, aires de trafic, postes de stationnement, points d'attente, bâtiments | terrains pilotes : LFML, LFMN, LFLL, LFBO, LFPO | **ODbL 1.0** |
+| [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a4) | imagerie aérienne et satellite (vue Satellite du menu Affichage), tuiles chargées par le navigateur | monde | conditions Esri, **usage non commercial** avec attribution |
+| [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen) | relief ombré (vue Relief) | monde | données ouvertes, attribution |
 | [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | satellite infrarouge GOES-East, GOES-West, Himawari (Amériques, Pacifique, Asie ; **pas l'Europe ni l'Afrique**) | partielle | données NASA ouvertes |
 
 Conséquences à connaître :
@@ -46,6 +48,8 @@ Conséquences à connaître :
   publique. Le pipeline est prêt pour ça, voir [docs/FORMAT.md](docs/FORMAT.md).
 - **OpenAIP impose un usage non commercial** et une attribution (affichée sur la carte).
   Un usage commercial exige de retirer OpenAIP ou d'obtenir une autre licence.
+- **La vue Satellite (Esri) est aussi limitée au non commercial** : avec un abonnement payant,
+  il faudra un compte Esri / ArcGIS payant ou une autre source d'imagerie.
 - **Les cartes d'aéroport sont générées depuis OpenStreetMap** : données communautaires, non certifiées,
   complétude variable selon le terrain. Pas de SID / STAR / approches hors US (aucune source codée gratuite).
 - Les données X-Plane, Navigraph, Jeppesen, etc. ne sont **pas** utilisées : leurs

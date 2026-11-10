@@ -50,7 +50,12 @@ export const DEFAULT_FILTERS: Record<string, boolean> = {
   ground: true,
 };
 
+// Affichage du fond de carte (menu près du zoom). Par défaut : épuré façon carte en route.
+export interface MapView { base: "plan" | "sat"; relief: boolean; roads: boolean; buildings: boolean; landuse: boolean; places: boolean }
+export const DEFAULT_VIEW: MapView = { base: "plan", relief: false, roads: false, buildings: false, landuse: false, places: true };
+
 export const state = reactive({
+  view: { ...DEFAULT_VIEW, ...storage<Partial<MapView>>("nelixair-view", {}) } as MapView,
   theme: initialTheme(),
   sidebarOpen: false,
   tab: "filters" as Tab,
@@ -69,6 +74,7 @@ export const state = reactive({
   // Carte d'aéroport affichée (terrain pilote au centre de la vue, zoom ≥ 12)
   groundInView: "" as string,
   mapReady: false,
+  viewMenu: false,
   listTick: 0,
 });
 
