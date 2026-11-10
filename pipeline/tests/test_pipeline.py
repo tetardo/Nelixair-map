@@ -508,5 +508,16 @@ class TestOpenAipRetry(unittest.TestCase):
 
 
 
+class TestAirportsFr(unittest.TestCase):
+    def test_lists(self):
+        import re
+        import airports_fr
+        self.assertEqual(len(airports_fr.LARGE), 25)
+        self.assertEqual(len(airports_fr.SMALL), 10)
+        self.assertEqual(len(set(airports_fr.ALL)), 35)
+        self.assertTrue(all(re.fullmatch(r"LF[A-Z]{2}", i) for i in airports_fr.ALL))
+        self.assertTrue(set(airports_fr.CI_SAMPLE) <= set(airports_fr.ALL))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -24,12 +24,12 @@ import time
 import urllib.parse
 import urllib.request
 
+import airports_fr
 import taxigraph
 
 log = logging.getLogger("ground")
 
-# Terrains pilotes (élargir quand la qualité OSM est validée)
-PILOT = ["LFML", "LFMN", "LFLL", "LFBO", "LFPO", "LFPG"]
+PILOT = airports_fr.ALL  # voir airports_fr.py
 # Serveur principal puis miroirs publics (Overpass répond souvent 429 / 504 quand il est chargé)
 OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
             "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
@@ -78,7 +78,7 @@ def _query(icao: str, attempts: int = 2, pause: float = 15.0) -> bytes:
     raise RuntimeError(f"{icao} : Overpass indisponible ({last})")
 
 
-def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0, budget: float = 1500.0) -> dict[str, int]:
+def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0, budget: float = 3600.0) -> dict[str, int]:
     """Une requête Overpass par terrain (politesse : pause entre les requêtes).
 
     Un terrain en échec n'empêche pas les autres ; l'ancien fichier éventuel est conservé.

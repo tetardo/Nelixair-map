@@ -47,7 +47,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         run: |
-          python3 pipeline/ground.py fetch --raw /tmp/ground-raw
+          python3 pipeline/ground.py fetch --raw /tmp/ground-raw --icao "$(python3 -c 'import sys; sys.path.insert(0, "pipeline"); import airports_fr; print(",".join(airports_fr.CI_SAMPLE))')"
           python3 pipeline/ground.py build --raw /tmp/ground-raw --out /tmp/ground-out
           python3 -c "import json; d=json.load(open('/tmp/ground-out/ground-index.json'))['airports']; [print(k, v['osm'], v['counts'], 'taxiways:', len(v['taxiways'])) for k, v in d.items()]" | tee -a "$GITHUB_STEP_SUMMARY"
       # SimBrief : le navigateur peut-il lire l'API directement (en-tête CORS) ? Informatif.
@@ -62,7 +62,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 5
         run: |
-          python3 pipeline/eaip.py fetch --raw /tmp/eaip-raw
+          python3 pipeline/eaip.py fetch --raw /tmp/eaip-raw --icao LFML LFLL LFMN LFPG LFLJ LFHM
           python3 pipeline/eaip.py build --raw /tmp/eaip-raw --out /tmp/eaip-out
           python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
           import json, sys
