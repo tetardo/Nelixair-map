@@ -2,7 +2,8 @@
 // Fiche d'un vol en ligne (VATSIM / IVAO) ou des contrôleurs d'un terrain.
 import { computed } from "vue";
 import { alt } from "../lib/format";
-import { NET_COLOR } from "../map/trafficLayer";
+import { NET_COLOR, airportPos } from "../map/trafficLayer";
+import { setHalo } from "../map/fx";
 import { openAirportByIdent } from "../map/mapView";
 import type { Atc, Pilot } from "../services/traffic";
 import KeyValues from "./KeyValues.vue";
@@ -39,9 +40,9 @@ const rows = computed(() => {
       <span class="badge" :style="{ background: NET_COLOR[p.net] }">{{ NET[p.net] }}</span>
     </div>
     <div v-if="p.dep || p.arr" class="ofp-route trf-route">
-      <button type="button" :disabled="!p.dep" @click="openAirportByIdent(p.dep)"><b>{{ p.dep || "—" }}</b></button>
+      <button type="button" :disabled="!p.dep" @click="openAirportByIdent(p.dep)" @mouseenter="setHalo(airportPos(p.dep))" @mouseleave="setHalo(null)"><b>{{ p.dep || "—" }}</b></button>
       <span class="ofp-arrow">✈</span>
-      <button type="button" :disabled="!p.arr" @click="openAirportByIdent(p.arr)"><b>{{ p.arr || "—" }}</b></button>
+      <button type="button" :disabled="!p.arr" @click="openAirportByIdent(p.arr)" @mouseenter="setHalo(airportPos(p.arr))" @mouseleave="setHalo(null)"><b>{{ p.arr || "—" }}</b></button>
     </div>
     <KeyValues :rows="rows" />
     <template v-if="p.route">

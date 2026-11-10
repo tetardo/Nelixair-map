@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ExternalLink, Map as MapIcon } from "@lucide/vue";
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, ref } from "vue";
 import { airacAt, fmtDate, siaAd2Url } from "../lib/airac";
 import { APT_KIND, SRC, ddm, deg3, dms, ft, pairs, yes, type LngLat } from "../lib/format";
-import { eaipEnds, groundFocus, groundPreview, openAirportChart } from "../map/mapView";
+import { eaipEnds, groundFocus, groundPreview, highlightSector, openAirportChart, showWind } from "../map/mapView";
 import { aptDetails, type AptDetails } from "../services/data";
 import { sunTimes, type SunTime } from "../services/sun";
 import { runwayWinds, splitDesignator, type RwyWind } from "../lib/wind";
@@ -13,6 +13,7 @@ import KeyValues from "./KeyValues.vue";
 import Section from "./Section.vue";
 
 const props = defineProps<{ p: Props; ll: LngLat }>();
+onBeforeUnmount(() => { showWind(null); highlightSector(null); });
 
 const FREQ_LBL: Record<string, string> = { TWR: "Tour", GND: "Sol", APP: "Approche", ATIS: "ATIS", DEL: "Prévol", DEP: "Départ", ARR: "Arrivée",
   AFIS: "AFIS", INFO: "Info", CTAF: "CTAF", UNICOM: "Unicom", MULTICOM: "Multicom", RADAR: "Radar", CTR: "Centre",
@@ -168,7 +169,7 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
         <div class="facts wx-facts">
           <div v-for="[k, v] in wxFacts" :key="k" :class="{ wide: v.length > 11 }"><small>{{ k }}</small><b>{{ v }}</b></div>
         </div>
-        <div class="wx-raw">{{ wx.m.rawOb }}</div>
+        <div class="wx-raw hot-src" title="Survoler : vent sur la carte" @mouseenter="showWind(ll, typeof wx.m.wdir === 'number' ? wx.m.wdir : null, wx.m.wspd ?? null)" @mouseleave="showWind(null)">{{ wx.m.rawOb }}</div>
       </template>
       <p v-else class="muted small">Pas de METAR récent.</p>
       <details v-if="wx.t" class="taf"><summary>TAF</summary><div class="wx-raw">{{ wx.t.rawTAF }}</div></details>
@@ -219,7 +220,7 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
     <span v-if="details === undefined" class="muted">Chargement…</span>
     <table v-else-if="freqs.length" class="tbl freqs">
       <tbody>
-        <tr v-for="([t, mhz, name], i) in freqs" :key="i">
+        <tr v-for="([t, mhz, name], i) in freqs" :key="i" @mouseenter="highlightSector(ll, t)" @mouseleave="highlightSector(null)">
           <td><span class="ftype">{{ FREQ_LBL[t] || t }}</span></td>
           <td><button class="copy" :class="{ ok: copied === Number(mhz).toFixed(3) }" title="Copier" @click="copy(Number(mhz).toFixed(3))">{{ Number(mhz).toFixed(3) }}</button></td>
           <td class="muted">{{ name }}</td>

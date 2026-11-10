@@ -20,6 +20,7 @@ import { addRouteLayers, routeBounds, routeData } from "./flightRoute";
 import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
 import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
+import { flyToFx, initFx } from "./fx";
 import { THEMES, type ThemeName } from "./themes";
 
 // Icône Lucide « map » (ISC), en HTML brut car le contrôle MapLibre n'est pas un composant Vue
@@ -177,6 +178,10 @@ function addLayers(sources: Record<string, unknown>) {
     add({ id, type: "line", ...aspSrc, filter: ASP_LINE_BASE[id], layout: { "line-join": "round" },
       paint: { "line-width": width, "line-opacity": 0.75, ...(dash ? { "line-dasharray": dash } : {}) } });
   }
+  // secteur survolé depuis la fiche (fréquence TWR / APP)
+  add({ id: "asp-hot-fill", type: "fill", ...aspSrc, filter: ["==", ["get", "name"], ""], paint: { "fill-color": "#3d8bfd", "fill-opacity": 0.14 } });
+  add({ id: "asp-hot", type: "line", ...aspSrc, filter: ["==", ["get", "name"], ""],
+    layout: { "line-join": "round" }, paint: { "line-color": "#3d8bfd", "line-width": 3, "line-opacity": 0.95 } });
   add({ id: "asp-lbl", type: "symbol", ...aspSrc, minzoom: 6,
     layout: {
       "symbol-placement": "line", "symbol-spacing": 500, "text-max-angle": 30,
@@ -455,6 +460,8 @@ export function setSidebar(open: boolean, persist = true) {
   setTimeout(() => map?.resize(), 220);
   scheduleList();
 }
+/** Redimensionne la carte après un changement de largeur du panneau. */
+export function resizeMap() { map?.resize(); scheduleList(); }
 export function setTab(name: Tab) {
   state.tab = name;
   if (name === "list") scheduleList();
@@ -462,6 +469,27 @@ export function setTab(name: Tab) {
 function showDetail(d: typeof state.detail) {
   state.detail = d;
   setTab("detail");
+}
+
+// ---------- Survol carte → panneau ----------
+const ROUTE_HOVER = ["ofp-fix", "ofp-toc", "ofp-term"];
+let legFromMap = false;
+/** Note l'élément survolé (state.mapHover) pour que le panneau allume la ligne correspondante. */
+function setMapHover(pt: maplibregl.Point | null, f?: MapGeoJSONFeature) {
+  let key = "";
+  if (pt) {
+    const rl = ROUTE_HOVER.filter((l) => map.getLayer(l));
+    const r = rl.length ? map.queryRenderedFeatures(box(pt, 5), { layers: rl })[0] : undefined;
+    if (r) key = r.properties.t === "term" ? "apt:" + r.properties.lbl : "ofp:" + r.properties.i;
+    else if (f && !f.layer.id.startsWith("g-")) {
+      const p = f.properties;
+      key = p.cls === "airport" ? "apt:" + p.ident : f.geometry.type === "Point" ? "fix:" + p.ident : p.ident ? "awy:" + p.ident : "";
+    }
+  }
+  if (key === state.mapHover) return;
+  state.mapHover = key;
+  if (key.startsWith("ofp:")) { highlightLeg(Number(key.slice(4))); legFromMap = true; }
+  else if (legFromMap) { highlightLeg(-1); legFromMap = false; }
 }
 
 // ---------- Sélection / popups ----------
@@ -490,7 +518,7 @@ export function clearSelection() {
 }
 
 export function flyTo(ll: LngLat, zoom?: number) {
-  map.flyTo({ center: ll, zoom: zoom ?? Math.max(map.getZoom(), 8), duration: 700 });
+  flyToFx(ll, zoom ?? Math.max(map.getZoom(), 8));
 }
 
 // Point d'entrée commun (clic carte, recherche, liste)
@@ -498,7 +526,7 @@ export function openFix(p: Props, ll: LngLat, { fly = false } = {}) {
   setSel(p.ident);
   selectAirway(null);
   selectPoint(ll);
-  if (fly) map.flyTo({ center: ll, zoom: Math.max(map.getZoom(), p.cls === "waypoint" ? 8.5 : 7.5), duration: 800 });
+  if (fly) flyToFx(ll, Math.max(map.getZoom(), p.cls === "waypoint" ? 8.5 : 7.5));
   if (state.sidebarOpen) { closePopup(); showFixDetail(p, ll); }
   else showPopup(ll, fixHtml(p, ll));
   if (isMobile() && state.sidebarOpen && fly) setSidebar(false);
@@ -537,10 +565,43 @@ export function openAirportChart(ident: string) {
 
 // Manche à air au point de référence du terrain affiché, orientée selon le METAR (la manche pointe sous le vent)
 let sock: maplibregl.Marker | null = null;
+
+/** Position de référence d'un terrain (eAIP, sinon centre du plan au sol). */
+export function airportLL(apt: string): LngLat | null {
+  const g = state.ground[apt];
+  return state.eaip[apt]?.arp || (g ? [(g.bbox[0] + g.bbox[2]) / 2, (g.bbox[1] + g.bbox[3]) / 2] as LngLat : null);
+}
+
+/** Survol d'une fréquence dans la fiche : allume le secteur du terrain (TWR → CTR/ATZ, APP → TMA/CTA). */
+const SECTOR: Record<string, string[]> = { TWR: ["CTR", "ATZ", "RMZ"], AFIS: ["ATZ", "CTR", "RMZ"], APP: ["TMA", "CTA"], DEP: ["TMA", "CTA"], ARR: ["TMA", "CTA"], RADAR: ["TMA", "CTA"] };
+export function highlightSector(ll: LngLat | null, kind = "") {
+  if (!map?.getLayer("asp-hot")) return;
+  let name = "";
+  const types = SECTOR[kind];
+  if (ll && types) {
+    const pt = map.project(ll);
+    const fs = map.queryRenderedFeatures(pt, { layers: ["asp-fill"] });
+    for (const t of types) { const f = fs.find((x) => String(x.properties.type || "").toUpperCase() === t); if (f) { name = String(f.properties.name); break; } }
+  }
+  const flt = ["==", ["get", "name"], name] as never;
+  map.setFilter("asp-hot", flt); map.setFilter("asp-hot-fill", flt);
+}
+
+/** Survol du METAR dans la fiche : flèche de vent animée sur le terrain (direction d'où vient le vent). */
+let windMk: maplibregl.Marker | null = null;
+export function showWind(ll: LngLat | null, dir?: number | null, spd?: number | null) {
+  windMk?.remove(); windMk = null;
+  if (!ll || !state.mapReady) return;
+  const el = document.createElement("div");
+  el.className = "wind-arrow" + (state.anim ? " live" : "");
+  const calm = !spd, vrb = typeof dir !== "number";
+  el.innerHTML = calm || vrb ? `<span>${calm ? "CALME" : `VRB ${spd} kt`}</span>`
+    : `<svg viewBox="0 0 24 64" style="transform: rotate(${(Number(dir) + 180) % 360}deg)" aria-hidden="true"><path d="M12 62V6M4 16l8-12 8 12"/></svg><span>${String(dir).padStart(3, "0")}° ${spd} kt</span>`;
+  windMk = new maplibregl.Marker({ element: el }).setLngLat(ll).addTo(map);
+}
 export function setWindsock(apt: string, wdir: unknown, wspd: number | null | undefined) {
   sock?.remove(); sock = null;
-  const g = state.ground[apt];
-  const at = state.eaip[apt]?.arp || (g ? [(g.bbox[0] + g.bbox[2]) / 2, (g.bbox[1] + g.bbox[3]) / 2] as LngLat : null);
+  const at = airportLL(apt);
   if (!apt || !at || !state.mapReady || wspd == null) return;
   const el = document.createElement("div");
   el.className = "windsock";
@@ -855,7 +916,7 @@ export function choose(h: Hit) {
   const [ident, cls, lon, lat, name, region] = h.r;
   selectAirway(null);
   selectPoint([lon, lat]);
-  map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), cls === "waypoint" ? 8.5 : 7.5), duration: 900 });
+  flyToFx([lon, lat], Math.max(map.getZoom(), cls === "waypoint" ? 8.5 : 7.5));
   const basic: Props = { ident, cls, name, region, src: "", freq: null };
   if (state.sidebarOpen) showFixDetail(basic, [lon, lat]);
   else showPopup([lon, lat], fixHtml(basic, [lon, lat]));
@@ -953,11 +1014,14 @@ export async function initMap(container: HTMLElement): Promise<void> {
   map.addControl(new maplibregl.ScaleControl({ unit: "nautical" }), "bottom-right");
   map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
   // Crédits repliés par défaut (bouton « i ») : MapLibre les déplie au chargement, on les referme une fois
-  map.once("idle", () => {
+  // (« idle » n'arrive jamais quand les animations tournent : on replie aussi à heures fixes après le chargement)
+  const fold = () => {
     const el = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
     el?.classList.remove("maplibregl-compact-show");
     el?.removeAttribute("open");
-  });
+  };
+  map.once("idle", fold);
+  map.once("load", () => { for (const ms of [500, 2500, 6000]) setTimeout(fold, ms); });
   (window as unknown as { nelixairMap: MlMap }).nelixairMap = map; // débogage et captures d'écran
 
   // Index des cartes d'aéroport (terrains pilotes)
@@ -984,6 +1048,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     map.getCanvas().style.cursor = fs.length ? "pointer" : "";
     if (matchMedia("(hover: none)").matches) return;
     const f = fs[0];
+    setMapHover(e.point, f);
     const gp = f?.layer.id.startsWith("g-") ? f.properties : null;
     const key = gp ? `${gp.apt}|${gp.kind}|${gp.ref}` : "";
     if (key !== hlKey) { hlKey = key; groundHighlight(map, gp || focused); }
@@ -997,7 +1062,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     tip.style.transform = `translate(${e.point.x + 14}px, ${e.point.y + 14}px)`;
     tip.hidden = false;
   });
-  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, focused); });
+  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, focused); setMapHover(null); });
   // Itinéraire de roulage depuis la popup d'un poste
   map.getContainer().addEventListener("click", (ev) => {
     const t = ev.target as HTMLElement;
@@ -1021,6 +1086,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     addLayers(sources);
     initRuler(map);
     initTraffic(map);
+    initFx(map);
     state.mapReady = true;
     updateAutoTheme();
     applyTheme(state.theme);

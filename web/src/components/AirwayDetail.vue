@@ -3,6 +3,8 @@ import { computed, ref } from "vue";
 import { CLS, LVL_SHORT, alt, deg3, pairs, type LngLat } from "../lib/format";
 import { bearing, distNm } from "../lib/geo";
 import { fitAirway, flyTo, selectPoint } from "../map/mapView";
+import { setHalo } from "../map/fx";
+import { state } from "../store";
 import { getRoute, loadRoutes, type Route } from "../services/data";
 import KeyValues from "./KeyValues.vue";
 
@@ -53,11 +55,11 @@ function go(row: Row) {
     <button id="d-fit" class="ghost" @click="fitAirway(ident)">Afficher toute la voie</button>
     <template v-for="(part, pi) in parts" :key="pi">
       <h3 v-if="parts.length > 1">Portion {{ pi + 1 }} · {{ LVL_SHORT[part.lv] }}</h3>
-      <table class="log">
+      <table class="log" @mouseleave="setHalo(null)">
         <thead><tr><th>Point</th><th>MEA</th><th>Rte</th><th>NM</th><th>Cumul</th></tr></thead>
         <tbody>
           <template v-for="(r, i) in part.rows" :key="i">
-            <tr :data-lon="r.ll[0]" :data-lat="r.ll[1]" @click="go(r)">
+            <tr :data-lon="r.ll[0]" :data-lat="r.ll[1]" :class="{ 'map-hot': state.mapHover === 'fix:' + r.id }" @click="go(r)" @mouseenter="setHalo(r.ll)">
               <td><b>{{ r.id }}</b><small>{{ r.cls === "waypoint" ? "" : CLS[r.cls] || r.cls }}</small></td>
               <td>{{ r.mea }}</td><td>{{ r.trk }}</td><td>{{ r.d }}</td><td>{{ r.cum }}</td>
             </tr>

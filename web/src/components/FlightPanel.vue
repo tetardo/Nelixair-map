@@ -4,6 +4,8 @@ import RouteWeather from "./RouteWeather.vue";
 import { computed, ref } from "vue";
 import { alt } from "../lib/format";
 import { fitOfp, flyTo, highlightLeg, openAirportByIdent, selectPoint, setOfp } from "../map/mapView";
+import { setHalo } from "../map/fx";
+import { useMapHotScroll } from "../lib/mapHot";
 import { demoOfp, fetchOfp, hhmm } from "../services/simbrief";
 import { state } from "../store";
 import Section from "./Section.vue";
@@ -50,6 +52,9 @@ function go(i: number) {
   selectPoint([f.lon, f.lat]);
   flyTo([f.lon, f.lat], 8);
 }
+// Survol d'un point de la route sur la carte : la ligne du nav log s'allume et défile en vue
+const logEl = ref<HTMLElement | null>(null);
+useMapHotScroll(() => logEl.value?.closest(".tabpanel") as HTMLElement | null);
 </script>
 
 <template>
@@ -70,9 +75,9 @@ function go(i: number) {
     <template v-if="o">
       <div class="ofp-head">
         <div class="ofp-route">
-          <button type="button" :title="'Fiche ' + o.orig.icao" @click="openAirportByIdent(o.orig.icao)"><b>{{ o.orig.icao }}</b><small>{{ o.orig.rwy && "RWY " + o.orig.rwy }}</small></button>
+          <button type="button" :title="'Fiche ' + o.orig.icao" :class="{ 'map-hot': state.mapHover === 'apt:' + o.orig.icao }" @click="openAirportByIdent(o.orig.icao)" @mouseenter="setHalo([o.orig.lon, o.orig.lat])" @mouseleave="setHalo(null)"><b>{{ o.orig.icao }}</b><small>{{ o.orig.rwy && "RWY " + o.orig.rwy }}</small></button>
           <span class="ofp-arrow"><Plane :size="16" aria-hidden="true" /><small>{{ n(o.distance) }} NM · {{ hhmm(o.ete) }}</small></span>
-          <button type="button" :title="'Fiche ' + o.dest.icao" @click="openAirportByIdent(o.dest.icao)"><b>{{ o.dest.icao }}</b><small>{{ o.dest.rwy && "RWY " + o.dest.rwy }}</small></button>
+          <button type="button" :title="'Fiche ' + o.dest.icao" :class="{ 'map-hot': state.mapHover === 'apt:' + o.dest.icao }" @click="openAirportByIdent(o.dest.icao)" @mouseenter="setHalo([o.dest.lon, o.dest.lat])" @mouseleave="setHalo(null)"><b>{{ o.dest.icao }}</b><small>{{ o.dest.rwy && "RWY " + o.dest.rwy }}</small></button>
         </div>
         <p class="ofp-sub">{{ [o.callsign, o.aircraft, o.reg].filter(Boolean).join(" · ") }}<span v-if="isDemo" class="badge b-demo">Démo fictive</span></p>
         <div class="facts">
@@ -102,12 +107,12 @@ function go(i: number) {
       </Section>
 
       <Section id="ofp-log" title="Nav log" :badge="String(o.fixes.length)">
-        <table class="log ofp-log" @mouseleave="highlightLeg(-1)">
+        <table ref="logEl" class="log ofp-log" @mouseleave="highlightLeg(-1); setHalo(null)">
           <thead><tr><th>Point</th><th>Alt</th><th>Rm</th><th>NM</th><th>Cumul</th><th>Temps</th><th>{{ u }}</th></tr></thead>
           <tbody>
             <template v-for="(f, i) in o.fixes" :key="i">
               <tr v-if="i === 0 || f.via !== o.fixes[i - 1].via" class="note"><td colspan="7"><ArrowRight :size="11" aria-hidden="true" /> {{ f.via || "DCT" }}</td></tr>
-              <tr :data-lon="f.lon" :data-lat="f.lat" :class="'st-' + f.stage" @click="go(i)" @mouseenter="highlightLeg(i)">
+              <tr :data-lon="f.lon" :data-lat="f.lat" :class="['st-' + f.stage, { 'map-hot': state.mapHover === 'ofp:' + i }]" @click="go(i)" @mouseenter="highlightLeg(i); setHalo([f.lon, f.lat])">
                 <td><b>{{ f.ident }}</b><small :title="STAGE[f.stage]">{{ f.stage }}</small></td>
                 <td>{{ f.alt != null ? alt(f.alt) : "" }}</td>
                 <td>{{ f.trk != null ? String(Math.round(f.trk) % 360).padStart(3, "0") : "" }}</td>

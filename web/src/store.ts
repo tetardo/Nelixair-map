@@ -75,6 +75,12 @@ function initialTheme(mode: ThemeMode): ThemeName {
 }
 const MODE0 = initialThemeMode();
 
+/** Animations de la carte : actives sauf si l'utilisateur les a coupées ou si le système demande moins de mouvement. */
+function initialAnim(): boolean {
+  try { const v = localStorage.getItem("tropo-anim"); if (v != null) return v === "1"; } catch { /* stockage indisponible */ }
+  return !matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 // Filtres par défaut (cochés / décochés comme dans la version précédente)
 export const DEFAULT_FILTERS: Record<string, boolean> = {
   H: true, L: true, rnav: true, conv: true,
@@ -93,6 +99,9 @@ export const DEFAULT_VIEW: MapView = { base: "plan", relief: false, roads: false
 export const state = reactive({
   view: { ...DEFAULT_VIEW, ...storage<Partial<MapView>>("nelixair-view", {}) } as MapView,
   themeMode: MODE0,
+  anim: initialAnim(),
+  /** Élément survolé sur la carte, pour allumer sa ligne dans le panneau : "apt:LFML", "fix:MTL", "awy:UN852", "ofp:3" */
+  mapHover: "" as string,
   /** Thème effectivement affiché (résolu depuis themeMode) */
   theme: initialTheme(MODE0),
   sidebarOpen: false,

@@ -629,3 +629,51 @@ body.side-open .profile { left: calc(var(--rail) + var(--side) + 12px); }
 .trf-atc code { font: 600 12px var(--mono); }
 .trf-atc .wx-raw { grid-column: 2 / -1; margin: 0; }
 .trf-ctr { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 11.5px var(--mono); margin-top: 6px; }
+
+/* ---------- Liens carte ↔ panneau ---------- */
+/* ligne dont l'élément est survolé sur la carte */
+.log tr.map-hot td, .vis-list li.map-hot { background: var(--accent-soft); color: var(--chrome-ink); }
+.log tr.map-hot td:first-child, .vis-list li.map-hot b { color: var(--accent-text); }
+.apt-cards button.map-hot { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ofp-route > button.map-hot b { color: var(--accent-text); }
+.log tr, .vis-list li { transition: background .15s; }
+.freqs tr { transition: background .15s; }
+.freqs tbody tr:hover { background: var(--wash); }
+.wx-raw.hot-src { cursor: help; transition: border-color .15s; }
+.wx-raw.hot-src:hover { border-color: var(--accent); }
+/* flèche de vent (survol du METAR) */
+.wind-arrow { display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none; }
+.wind-arrow svg { width: 26px; height: 68px; fill: none; stroke: #ffb020; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .55)); }
+.wind-arrow span { font: 700 11px var(--mono); color: #fff; background: rgba(15, 23, 42, .88); padding: 1px 6px; border-radius: 4px; }
+.wind-arrow.live svg { animation: wind-sway 2.4s ease-in-out infinite; }
+@keyframes wind-sway { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .wind-arrow.live svg { animation: none; } }
+
+/* ---- Poignée de largeur du panneau ---- */
+.side-grip { position: absolute; top: 0; bottom: 0; right: -5px; width: 10px; cursor: ew-resize; z-index: 4; touch-action: none; }
+.side-grip::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; transition: background .15s; }
+.side-grip:hover::after, .side-grip:focus-visible::after, body.side-resizing .side-grip::after { background: var(--accent); }
+.side-grip:focus-visible { outline: none; }
+body.side-resizing, body.side-resizing * { cursor: ew-resize !important; user-select: none !important; }
+body.side-resizing .sidebar { transition: none; }
+@media (max-width: 760px) { .side-grip { display: none; } }
+
+/* ---- Rail compact / large ---- */
+.rail { transition: width .2s ease; }
+.toolbar, .sidebar { transition: left .2s ease, transform .2s ease; }
+.rail-lbl { display: none; }
+.rail-size { margin-top: 4px; }
+.rail-size[aria-pressed="true"] { background: none; color: var(--chrome-soft); }
+.rail-size[aria-pressed="true"]::before { display: none; }
+@media (min-width: 641px) {
+  body.rail-wide { --rail: 176px; }
+  body.rail-wide .rail { align-items: stretch; padding-inline: 8px; }
+  body.rail-wide .rail-logo { margin-inline: -8px; width: auto; }
+  body.rail-wide .rail-btn { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 0 10px; }
+  body.rail-wide .rail-btn svg { flex: none; }
+  body.rail-wide .rail-lbl { display: block; font: 600 13px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.rail-wide .rail-tip { display: none; }
+  body.rail-wide .rail-btn[aria-pressed="true"]::before { left: -8px; }
+}
+@media (max-width: 640px) { .rail-size { display: none; } }

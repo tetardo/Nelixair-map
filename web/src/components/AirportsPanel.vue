@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ChevronRight, Route, Signpost, SquareParking, TowerControl } from "@lucide/vue";
 import { computed, ref } from "vue";
-import { openAirportChart } from "../map/mapView";
+import { airportLL, openAirportChart } from "../map/mapView";
+import { setHalo } from "../map/fx";
+import { useMapHotScroll } from "../lib/mapHot";
 import { state } from "../store";
 
 // Aéroports qui ont une carte au sol (OSM), avec ce qu'elle contient
@@ -10,15 +12,18 @@ const rows = computed(() => Object.entries(state.ground)
   .filter(([id, g]) => !q.value || (id + " " + (g.name || "")).toLowerCase().includes(q.value.toLowerCase()))
   .sort(([a], [b]) => a.localeCompare(b)));
 const n = (g: { counts: Record<string, number> }, k: string) => g.counts?.[k] ?? 0;
+const root = ref<HTMLElement | null>(null);
+useMapHotScroll(() => root.value);
 </script>
 
 <template>
-  <section id="tab-airports" class="tabpanel" role="tabpanel">
+  <section id="tab-airports" ref="root" class="tabpanel" role="tabpanel">
     <div class="list-ctl"><input v-model="q" type="search" placeholder="Filtrer (ident ou nom)" aria-label="Filtrer les aéroports"></div>
     <p v-if="!rows.length" class="muted small">{{ Object.keys(state.ground).length ? "Aucun aéroport ne correspond." : "Chargement des cartes d'aéroport…" }}</p>
     <ul class="apt-cards">
       <li v-for="[id, g] in rows" :key="id">
-        <button type="button" :title="'Ouvrir la carte de ' + id" @click="openAirportChart(String(id))">
+        <button type="button" :title="'Ouvrir la carte de ' + id" :class="{ 'map-hot': state.mapHover === 'apt:' + id }"
+          @click="openAirportChart(String(id))" @mouseenter="setHalo(airportLL(String(id)))" @mouseleave="setHalo(null)">
           <span class="ac-h"><b>{{ id }}</b><small>{{ g.name }}</small><ChevronRight :size="16" aria-hidden="true" /></span>
           <span class="ac-m">
             <span title="Pistes"><TowerControl :size="13" aria-hidden="true" />{{ g.runways.length }} pistes</span>
