@@ -1,5 +1,6 @@
 // Carte MapLibre : sources, couches, thèmes, filtres, interactions. Pilote l'état partagé (store) ;
 // les composants Vue appellent les actions exportées (openFix, openAirway, setSidebar…).
+import { initRuler, rulerControl } from "./ruler";
 import * as maplibregl from "maplibre-gl";
 import { type Map as MlMap, type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -728,6 +729,7 @@ function gndCtx(apt: string): GndCtx {
 }
 
 function onClick(e: maplibregl.MapMouseEvent) {
+  if (state.ruler) return; // la règle capte les clics
   const tipEl = document.getElementById("hover-tip"); if (tipEl) tipEl.hidden = true;
   const feats = map.queryRenderedFeatures(box(e.point, 6), { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
   const pts: MapGeoJSONFeature[] = [], legs: MapGeoJSONFeature[] = [], seen = new Set<string>();
@@ -915,6 +917,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     },
     onRemove() { /* jamais retiré */ },
   }, "bottom-right");
+  map.addControl(rulerControl(), "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "nautical" }), "bottom-right");
   map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
   (window as unknown as { nelixairMap: MlMap }).nelixairMap = map; // débogage et captures d'écran
@@ -978,6 +981,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
   await new Promise<void>((resolve) => map.on("load", () => {
     baseLayers = map.getStyle().layers.slice();
     addLayers(sources);
+    initRuler(map);
     state.mapReady = true;
     applyTheme(state.theme);
     applyView();

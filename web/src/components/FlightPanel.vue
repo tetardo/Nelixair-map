@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ArrowRight, Crosshair, Download, FlaskConical, Plane, Trash2 } from "@lucide/vue";
+import { ArrowRight, ChartArea, Crosshair, Download, FlaskConical, Plane, Trash2 } from "@lucide/vue";
+import RouteWeather from "./RouteWeather.vue";
 import { computed, ref } from "vue";
 import { alt } from "../lib/format";
 import { fitOfp, flyTo, highlightLeg, openAirportByIdent, selectPoint, setOfp } from "../map/mapView";
@@ -81,9 +82,12 @@ function go(i: number) {
         </div>
         <div class="apt-actions">
           <button class="primary" type="button" @click="fitOfp"><Crosshair :size="14" aria-hidden="true" />Voir toute la route</button>
+          <button class="btn-ghost" type="button" :aria-pressed="state.profileOpen" @click="state.profileOpen = !state.profileOpen"><ChartArea :size="14" aria-hidden="true" />Profil vertical</button>
           <button class="btn-ghost" type="button" title="Retirer le plan de vol" @click="setOfp(null)"><Trash2 :size="14" aria-hidden="true" /></button>
         </div>
       </div>
+
+      <RouteWeather :ofp="o" />
 
       <Section id="ofp-route" title="Route" :open="false">
         <p class="wx-raw">{{ o.route || "—" }}</p>
