@@ -127,7 +127,7 @@ web/                 front Vue 3 + TypeScript (Vite)
 
 ## Captures d'écran
 
-Générées automatiquement sur les données réelles, chaque semaine (jeudi) ou au lancement manuel du déploiement (Actions → « Build données + déploiement Pages » → Run workflow). Cliquer une vignette pour l'agrandir.
+Générées automatiquement sur les données réelles à chaque déploiement qui change l'interface, chaque semaine (jeudi) ou au lancement manuel du déploiement (Actions → « Build données + déploiement Pages » → Run workflow). Cliquer une vignette pour l'agrandir.
 
 <table>
 <tr>
@@ -153,6 +153,16 @@ Générées automatiquement sur les données réelles, chaque semaine (jeudi) ou
 <tr>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png" alt="Barre verticale et liste des cartes d&#x27;aéroport" width="260"></a><br><sub><b>Barre de navigation, panneau Aéroports</b></sub></td>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png" alt="Route LFML-LFPG et nav log" width="260"></a><br><sub><b>Plan de vol SimBrief</b><br>(vol de démo)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/aeroport-volet.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/aeroport-volet.png" alt="Fiche LFML ouverte à côté de la liste des aéroports" width="260"></a><br><sub><b>Fiche aéroport à côté de la liste</b><br>(panneau élargi)</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/mes-vols.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/mes-vols.png" alt="Carnet de vol avec un vol ouvert dans le volet" width="260"></a><br><sub><b>Mes vols</b><br>(carnet du pilote, vol ouvert à côté)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/controles-espaces.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/controles-espaces.png" alt="Contrôles du plan de vol, espaces traversés et profil vertical" width="260"></a><br><sub><b>Contrôles et espaces traversés</b><br>(semi-circulaire, relief, carburant, nuit ; coupe dans le profil)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/relecture.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/relecture.png" alt="Relecture animée du vol de démo" width="260"></a><br><sub><b>Relecture animée</b><br>(avion sur la route, profil comme barre de temps)</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/trafic.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/trafic.png" alt="Trafic VATSIM et IVAO en direct" width="260"></a><br><sub><b>Trafic en ligne</b><br>(VATSIM / IVAO, contrôleurs, traînées)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/accueil-code.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/accueil-code.png" alt="Écran d'accueil avec code d'accès" width="260"></a><br><sub><b>Écran d'accueil</b><br>(code d'accès)</sub></td>
 </tr>
 </table>
 
