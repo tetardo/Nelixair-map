@@ -27,17 +27,22 @@ function levelOk(ft: number, magTrk: number): boolean | null {
 export function semicircular(o: Ofp): Check {
   const bad: string[] = [];
   let checked = 0, first = "";
-  let prev: LngLat = [o.orig.lon, o.orig.lat];
+  let prev: LngLat = [o.orig.lon, o.orig.lat], prevStage = "CLB";
+  const crz = Number(o.cruise) || null;
   for (const f of o.fixes) {
     const ll: LngLat = [f.lon, f.lat];
     const trk = (bearing(prev, ll) - magVar(f.lat, f.lon) + 360) % 360;
     prev = ll;
-    if (f.stage !== "CRZ" || f.alt == null) continue;
-    const ok = levelOk(f.alt, trk);
+    // tronçon en croisière : point en croisière, ou tronçon qui passe de la montée à la descente (TOC et TOD dessus)
+    const across = prevStage === "CLB" && f.stage === "DSC";
+    prevStage = f.stage;
+    const lvl = f.stage === "CRZ" ? f.alt : across ? crz : null;
+    if (lvl == null) continue;
+    const ok = levelOk(lvl, trk);
     if (ok == null) continue;
     checked++;
-    if (!first) first = `${flTxt(f.alt)} au cap ${String(Math.round(trk)).padStart(3, "0")}°M`;
-    if (!ok) bad.push(`${f.ident} : ${flTxt(f.alt)} au cap ${String(Math.round(trk)).padStart(3, "0")}°M (${trk < 180 ? "impair" : "pair"} attendu)`);
+    if (!first) first = `${flTxt(lvl)} au cap ${String(Math.round(trk)).padStart(3, "0")}°M`;
+    if (!ok) bad.push(`${f.ident} : ${flTxt(lvl)} au cap ${String(Math.round(trk)).padStart(3, "0")}°M (${trk < 180 ? "impair" : "pair"} attendu)`);
   }
   if (!checked) return { id: "semi", title: "Niveau semi-circulaire", status: "info", text: "Pas de croisière IFR à vérifier (vol bas ou niveau VFR)." };
   return bad.length
