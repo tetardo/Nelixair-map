@@ -39,7 +39,8 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
 // [fichier, chemin, thème, onglet du panneau, filtres forcés, défilement du panneau en bas, actions]
-// actions : side (panneau ouvert, défaut oui), click / hover [x, y] en px CSS, open (sections de fiche à ouvrir), demo (vol de démo SimBrief)
+// actions : side (panneau ouvert, défaut oui), click / hover [x, y] en px CSS, open (sections de fiche à ouvrir), demo (vol de démo SimBrief),
+//   splash (garder l'écran d'accueil), steps (suite de { click | fill | scroll : sélecteur, wait : ms })
 const WX = { hazards: true, pireps: true, sat: true, night: true };
 const SHOTS = [
   ["accueil-france.png", "", "day", "filters"],
@@ -62,6 +63,19 @@ const SHOTS = [
   ["satellite-lfml.png", "#map=14.6/43.4372/5.2204", "day", null, null, false,
     { side: false, view: { base: "sat", roads: true, buildings: false, landuse: false, places: true, relief: false }, click: null, menu: true }],
   ["survol-lfml.png", "#map=15.5/43.4372/5.2204", "day", null, null, false, { side: false, hover: [748, 476] }],
+  // Écran d'accueil (code d'accès)
+  ["accueil-code.png", "", "day", null, null, false, { splash: true }],
+  // Aéroports : fiche ouverte à côté de la liste (panneau élargi)
+  ["aeroport-volet.png", "", "day", "airports", null, false, { steps: [{ fill: ["#tab-airports input[type=search]", "LFML"] }, { click: "#tab-airports .apt-cards button" }, { wait: 4000 }] }],
+  // Mes vols : carnet du pilote, vol ouvert dans le volet
+  ["mes-vols.png", "", "day", "flights", null, false, { steps: [{ click: "#tab-flights .lb-list li:nth-child(2) .lb-row" }, { wait: 5000 }] }],
+  // Plan de vol : contrôles (semi-circulaire, relief, carburant, nuit), espaces traversés, profil vertical
+  ["controles-espaces.png", "", "night", "flight", null, false, { demo: true, steps: [
+    { click: "#tab-flight button:has-text('Profil vertical')" }, { wait: 5000 }, { scroll: "#tab-flight .chk-list" }] }],
+  // Relecture animée du vol de démo
+  ["relecture.png", "", "day", "flight", null, false, { demo: true, steps: [{ click: "#tab-flight button:has-text('Rejouer')" }, { wait: 6000 }] }],
+  // Trafic VATSIM / IVAO en direct (traînées et vecteurs vitesse)
+  ["trafic.png", "#map=6/48.6/4", "night", null, { vatsim: true, ivao: true }],
 ];
 
 mkdirSync(OUT, { recursive: true });
@@ -69,13 +83,14 @@ const browser = await chromium.launch();
 let failed = 0;
 for (const [name, path, theme, tab, filters, scroll, act = {}] of SHOTS) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
-  await ctx.addInitScript(([t, f, side, open, view]) => {
+  await ctx.addInitScript(([t, f, side, open, view, splash]) => {
+    if (!splash) localStorage.setItem("tropo-access", String(Date.now())); // passe l'écran d'accueil
     if (view) localStorage.setItem("nelixair-view", JSON.stringify(view));
     localStorage.setItem("nelixair-theme", t);
     localStorage.setItem("nelixair-side", side ? "1" : "0");
     if (f) localStorage.setItem("nelixair-filters", JSON.stringify(f));
     for (const id of open) localStorage.setItem("nelixair-sec-" + id, "1");
-  }, [theme, filters || null, act.side !== false, act.open || [], act.view || null]);
+  }, [theme, filters || null, act.side !== false, act.open || [], act.view || null, !!act.splash]);
   const page = await ctx.newPage();
   try {
     await page.goto(base + path, { waitUntil: "load" });
@@ -84,6 +99,12 @@ for (const [name, path, theme, tab, filters, scroll, act = {}] of SHOTS) {
     await page.waitForTimeout(8000);
     if (tab && tab !== "detail") await page.evaluate((t) => { const b = document.querySelector(`.rail-btn[data-tab="${t}"]`); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }, tab);
     if (act.demo) { await page.click(".sb-demo"); await page.waitForTimeout(3000); }
+    for (const st of act.steps || []) {
+      if (st.click) await page.locator(st.click).first().click();
+      if (st.fill) await page.locator(st.fill[0]).first().fill(st.fill[1]);
+      if (st.scroll) await page.locator(st.scroll).first().scrollIntoViewIfNeeded();
+      await page.waitForTimeout(st.wait || 600);
+    }
     if (act.hover) { await page.mouse.move(act.hover[0] - 4, act.hover[1]); await page.mouse.move(...act.hover); await page.waitForTimeout(1500); }
     if (act.menu) { await page.click("#view-btn"); await page.waitForTimeout(800); }
     if (act.click) { await page.mouse.click(...act.click); await page.waitForTimeout(1500); }

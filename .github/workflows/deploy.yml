@@ -52,18 +52,19 @@ jobs:
           npm ci
           npm run build
       # Captures d'écran sur les données réelles (affichées par le README) ; un échec ne bloque pas le déploiement.
-      # ~9 min : refaites seulement au passage hebdomadaire ou au lancement manuel ; sinon on reprend les dernières.
+      # ~10 min : refaites quand l'interface ou le script de captures change, au passage hebdomadaire ou au lancement manuel ;
+      # sinon on reprend les dernières (clé = empreinte de web/src et du script).
       - name: Dernières captures d'écran
         id: shots
         if: github.event_name == 'push'
         uses: actions/cache/restore@v4
         with:
           path: dist/screenshots
-          key: screenshots-${{ github.run_id }}
+          key: screenshots-${{ hashFiles('web/src/**', 'scripts/screenshots.mjs') }}
           restore-keys: screenshots-
       - name: Captures d'écran
         id: newshots
-        if: github.event_name != 'push' || steps.shots.outputs.cache-matched-key == ''
+        if: github.event_name != 'push' || steps.shots.outputs.cache-hit != 'true'
         continue-on-error: true
         run: |
           npm install --no-save --no-package-lock playwright@1.48.2
@@ -74,7 +75,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: dist/screenshots
-          key: screenshots-${{ github.run_id }}
+          key: screenshots-${{ hashFiles('web/src/**', 'scripts/screenshots.mjs') }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
