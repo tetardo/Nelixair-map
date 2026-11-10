@@ -148,6 +148,8 @@ const ASP_LINE_IDS = ASP_LINES.map((l) => l[0]);
 const HZ_COLOR_EXPR = ["match", ["get", "fam"], "conv", "#e0342f", "turb", "#f08a24", "ice", "#2bb3e6", "ifr", "#9b5de5", "ash", "#8d6e63",
   "tc", "#c2185b", "#7d8aa5"];
 
+const DECLUTTER_Z = 12;
+const DECLUTTER = ["awy-H", "awy-L", "awy-B", "awy-lbl-H", "awy-lbl-L", "awy-lbl-B", "wpt", "nav", "nav-lbl", "asp-lbl", "asp-fill", "mora-line", "mora-lbl", "hz-lbl"];
 function addLayers(sources: Record<string, unknown>) {
   const add = (l: L) => map.addLayer(l);
   for (const [id, s] of Object.entries(sources)) if (!map.getSource(id)) map.addSource(id, s as never);
@@ -294,6 +296,12 @@ function addLayers(sources: Record<string, unknown>) {
 
   add({ id: "sel-pt", type: "circle", source: "sel",
     paint: { "circle-radius": 14, "circle-color": "rgba(0,0,0,0)", "circle-stroke-width": 2.5 } });
+
+  // Épuration automatique : au zoom terrain (≥ 12), la navigation en route s'efface au profit du plan au sol
+  for (const id of DECLUTTER) {
+    const l = map.getLayer(id);
+    if (l) map.setLayerZoomRange(id, l.minzoom ?? 0, DECLUTTER_Z);
+  }
 }
 
 // ---------- Thème ----------
@@ -1053,6 +1061,20 @@ function updateGroundInView() {
 }
 
 // ---------- Initialisation ----------
+/** Reprise de session : dernière vue de la carte (l'adresse #map=…, si présente, reste prioritaire). */
+const CAM_KEY = "tropo-cam";
+function savedCamera(): { center: [number, number]; zoom: number } {
+  try {
+    const c = JSON.parse(localStorage.getItem(CAM_KEY) || "null");
+    if (c && Number.isFinite(c.z) && Array.isArray(c.c) && c.c.every(Number.isFinite)) return { center: c.c, zoom: c.z };
+  } catch { /* stockage indisponible ou valeur illisible */ }
+  return { center: CFG.center as [number, number], zoom: CFG.zoom };
+}
+function saveCamera() {
+  const c = map.getCenter();
+  try { localStorage.setItem(CAM_KEY, JSON.stringify({ c: [+c.lng.toFixed(4), +c.lat.toFixed(4)], z: +map.getZoom().toFixed(2) })); } catch { /* stockage indisponible */ }
+}
+
 export async function initMap(container: HTMLElement): Promise<void> {
   maplibregl.setWorkerUrl(workerUrl); // MapLibre 6 (ESM) : le bundler doit fournir l'URL du worker
   const protocol = new Protocol();
@@ -1091,8 +1113,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
   map = new maplibregl.Map({
     container,
     style: await basemap(),
-    center: CFG.center,
-    zoom: CFG.zoom,
+    ...savedCamera(),
     minZoom: 1.5,
     maxZoom: CFG.maxZoom,
     hash: "map",
@@ -1101,6 +1122,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     pitchWithRotate: false,
   });
   map.touchZoomRotate.disableRotation();
+  map.on("moveend", saveCamera);
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
   // Bouton « Affichage » juste au-dessus du zoom : ouvre le menu MapOptions.vue
   map.addControl({

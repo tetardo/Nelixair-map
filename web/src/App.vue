@@ -28,6 +28,10 @@ watch(() => state.themeMode, (m) => {
   updateAutoTheme();
 }, { immediate: true }); // mémorisé dès le départ : sinon le dernier thème affiché passerait pour un choix explicite
 watch(() => state.filters, applyFilters, { deep: true });
+// Reprise de session : onglet et profil vertical (la vue de la carte est mémorisée par mapView)
+const keep = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } };
+watch(() => state.tab, (t) => keep("tropo-tab", t));
+watch(() => state.profileOpen, (o) => keep("tropo-profile", o));
 watch(() => state.view, applyView, { deep: true });
 
 // Métadonnées : sources, cycles, cartes FAA
@@ -50,6 +54,7 @@ onMounted(async () => {
   try { saved = localStorage.getItem("nelixair-side"); } catch { /* stockage indisponible */ }
   await initMap(mapEl.value!);
   setSidebar(!isMobile() && saved !== "0", false);
+  if (!shared) setTab(state.tab); // onglet repris : la liste se remplit à l'ouverture
   if (shared) applySharedAfterMap((tab) => {
     if (tab) setTab(tab);
     setSidebar(!!tab, false);

@@ -47,6 +47,11 @@ export interface EaipApt {
 
 export interface SourceMeta { id: string; name: string; license?: string; url: string; coverage?: string; cycle?: string }
 
+/** Dernier onglet ouvert (la fiche, vide au démarrage, n'est pas reprise). */
+function restoredTab(): Tab {
+  const t = storage<string>("tropo-tab", "filters");
+  return (["flight", "flights", "airports", "list", "filters"] as string[]).includes(t) ? (t as Tab) : "filters";
+}
 function storage<T>(key: string, fallback: T): T {
   try {
     const v = localStorage.getItem(key);
@@ -105,7 +110,7 @@ export const state = reactive({
   /** Thème effectivement affiché (résolu depuis themeMode) */
   theme: initialTheme(MODE0),
   sidebarOpen: false,
-  tab: "filters" as Tab,
+  tab: restoredTab(), // reprise de session : dernier onglet ouvert
   ofp: storage<Ofp | null>("nelixair-ofp", null),
   filters: { ...DEFAULT_FILTERS, ...storage<Record<string, boolean>>("nelixair-filters", {}) },
   detail: { kind: "empty" } as Detail,
@@ -130,7 +135,7 @@ export const state = reactive({
   logbookMap: false, // « Mes vols » : tous les trajets affichés sur la carte
   aptPane: null as { p: Props; ll: LngLat } | null, // fiche ouverte dans l'onglet Aéroports (liste gardée)
   replay: { on: false, playing: false, t: 0, total: 0, speed: 120, follow: true }, // relecture animée du plan de vol (t en s de vol)
-  profileOpen: false, // profil vertical du plan de vol (bandeau bas)
+  profileOpen: storage<boolean>("tropo-profile", false), // profil vertical du plan de vol (bandeau bas)
   ruler: false, // outil règle actif
   listTick: 0,
 });
