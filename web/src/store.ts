@@ -22,7 +22,7 @@ export type Detail =
   | { kind: "atc"; icao: string; list: Atc[] }
   | { kind: "picker"; items: PickItem[] };
 
-export type Tab = "detail" | "flight" | "airports" | "list" | "filters";
+export type Tab = "detail" | "flight" | "flights" | "airports" | "list" | "filters";
 
 export interface GroundAirport {
   name: string; bbox: [number, number, number, number]; osm: string;
@@ -127,6 +127,7 @@ export const state = reactive({
   mapReady: false,
   viewMenu: false,
   profileAt: null as number | null, // curseur du profil placé par un clic sur la route (NM)
+  logbookMap: false, // « Mes vols » : tous les trajets affichés sur la carte
   profileOpen: false, // profil vertical du plan de vol (bandeau bas)
   ruler: false, // outil règle actif
   listTick: 0,

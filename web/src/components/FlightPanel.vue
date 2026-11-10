@@ -35,7 +35,7 @@ async function demo() {
 }
 
 const o = computed(() => state.ofp);
-const isDemo = computed(() => o.value?.user === "démo");
+const isDemo = computed(() => !!o.value?.user.startsWith("démo"));
 const u = computed(() => (o.value?.units === "lbs" ? "lb" : "kg"));
 const n = (v: number | null | undefined) => (v == null ? "—" : Math.round(v).toLocaleString("fr-FR"));
 const fl = (v: string) => { const x = Number(v); return x ? alt(x) : v; };

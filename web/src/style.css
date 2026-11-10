@@ -683,3 +683,74 @@ body.side-resizing .sidebar { transition: none; }
 .trf-ctr button:hover, .trf-ctr button:focus-visible { background: var(--accent-soft); border-color: var(--accent); outline: none; }
 .trf-ctr button.nosec { cursor: default; opacity: .7; }
 .trf-ctr button.nosec:hover { background: none; border-color: transparent; }
+
+/* ---- Mes vols ---- */
+#tab-flights { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.lb-pilot { display: flex; align-items: center; gap: 10px; }
+.lb-avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); flex: none; }
+.lb-who { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.lb-who b { font: 700 14px var(--sans); }
+.lb-who small { color: var(--chrome-soft); font-size: 11.5px; }
+.lb-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.lb-stats div { border: 1px solid var(--chrome-line); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; background: var(--chrome-2); }
+.lb-stats small { font: 600 9.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--chrome-soft); }
+.lb-stats b { font: 700 13px var(--mono); white-space: nowrap; }
+.lb-actions { margin: 0; }
+.lb-actions .primary { flex: 1; justify-content: center; }
+.lb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lb-row { width: 100%; text-align: left; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; cursor: pointer;
+  border: 1px solid var(--chrome-line); border-radius: 8px; background: var(--chrome); color: var(--chrome-ink); font: inherit; transition: border-color .15s, background .15s; }
+.lb-row:hover, .lb-row:focus-visible { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+.lb-row.cur { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.lb-route { display: flex; align-items: center; gap: 5px; font: 700 14px var(--mono); }
+.lb-route svg { color: var(--chrome-soft); }
+.lb-date { font-size: 11.5px; color: var(--chrome-soft); align-self: center; }
+.lb-sub { grid-column: 1 / -1; font-size: 12px; color: var(--chrome-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-meta { grid-column: 1 / -1; font: 11px var(--mono); color: var(--chrome-soft); }
+
+/* ---- Écran d'accueil (code d'accès de test) ---- */
+.splash { position: fixed; inset: 0; z-index: 100; background: #070d1a; color: #e7ecf5; font-family: var(--sans); overflow: hidden;
+  transition: opacity .7s ease, transform .7s ease; }
+.splash.leaving { opacity: 0; transform: scale(1.03); pointer-events: none; }
+.splash-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.splash-fade { position: absolute; inset: 0; background: linear-gradient(90deg, #070d1a 0%, rgba(7,13,26,.85) 30%, rgba(7,13,26,0) 58%); pointer-events: none; }
+.splash-ticker { position: absolute; left: 0; right: 0; top: 0; height: 30px; overflow: hidden; border-bottom: 1px solid #16223a; background: rgba(7,13,26,.7);
+  font: 500 11px/30px var(--mono); color: #5d7096; }
+.splash-ticker div { white-space: nowrap; display: inline-block; animation: sp-tick 80s linear infinite; }
+@keyframes sp-tick { to { transform: translateX(-50%); } }
+.splash-card { position: absolute; left: clamp(16px, 7.5vw, 120px); top: 50%; transform: translateY(-50%); width: min(400px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 28px; margin: 0; }
+.splash-brand { display: flex; align-items: center; gap: 16px; }
+.splash-brand img { display: block; }
+.splash-brand h1 { margin: 0; font: 700 34px/1 var(--mono); letter-spacing: .28em; }
+.splash-brand span { font-size: 13px; color: #94a1bb; letter-spacing: .04em; }
+.splash-lead { margin: 0; font-size: 18px; line-height: 1.5; color: #c9d3e6; max-width: 360px; }
+.splash-box { display: flex; flex-direction: column; gap: 12px; padding: 22px; border-radius: 14px; background: rgba(18,26,43,.82);
+  border: 1px solid #2a3650; box-shadow: 0 20px 60px rgba(0,0,0,.45); backdrop-filter: blur(6px); }
+.splash-box label { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #94a1bb; }
+.splash-row { display: flex; gap: 10px; }
+.splash-row input { flex: 1; min-width: 0; height: 46px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; border: 1px solid #2a3650;
+  background: #0b1220; color: #e7ecf5; font: 500 15px var(--sans); outline: none; transition: border-color .15s, box-shadow .15s; }
+.splash-row input::placeholder { color: #6b7891; }
+.splash-row input:focus { border-color: #2b6fe6; box-shadow: 0 0 0 3px rgba(43,111,230,.25); }
+.splash-row input.bad { border-color: #e5484d; animation: sp-shake .35s; }
+.splash-row input.ok { border-color: #2fbf71; }
+.splash-row button { height: 46px; padding: 0 20px; border: 0; border-radius: 10px; background: #2b6fe6; color: #fff; font: 600 15px var(--sans); cursor: pointer; }
+.splash-row button:hover { background: #3a7cf0; }
+.splash-row button:focus-visible { outline: 2px solid #82b4ff; outline-offset: 2px; }
+.splash-msg { font-size: 13px; color: #6b7891; }
+.splash-msg.bad { color: #ff8a8f; }
+.splash-msg.ok { color: #4cd68d; }
+.splash-foot { position: absolute; left: clamp(16px, 7.5vw, 120px); right: clamp(16px, 7.5vw, 120px); bottom: 24px; display: flex; justify-content: space-between;
+  gap: 12px; font: 500 11px var(--mono); color: #55637f; letter-spacing: .06em; }
+.sp-in { animation: sp-enter .9s cubic-bezier(.2,.7,.2,1) both; }
+.sp-in2 { animation: sp-enter .9s cubic-bezier(.2,.7,.2,1) .15s both; }
+.sp-in3 { animation: sp-enter .9s cubic-bezier(.2,.7,.2,1) .3s both; }
+@keyframes sp-enter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes sp-shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.splash.still .splash-ticker div, .splash.still .sp-in, .splash.still .sp-in2, .splash.still .sp-in3 { animation: none; }
+@media (max-width: 760px) {
+  .splash-fade { background: linear-gradient(180deg, rgba(7,13,26,.6), rgba(7,13,26,.9)); }
+  .splash-card { left: 16px; right: 16px; width: auto; }
+  .splash-foot span:last-child { display: none; }
+}

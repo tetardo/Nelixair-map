@@ -4,6 +4,7 @@ import AboutDialog from "./components/AboutDialog.vue";
 import AirportChartBadge from "./components/AirportChartBadge.vue";
 import NavRail from "./components/NavRail.vue";
 import RouteProfile from "./components/RouteProfile.vue";
+import SplashScreen from "./components/SplashScreen.vue";
 import MapOptions from "./components/MapOptions.vue";
 import SideBar from "./components/SideBar.vue";
 import StatusBar from "./components/StatusBar.vue";
@@ -75,4 +76,5 @@ document.addEventListener("keydown", (e) => {
   <RouteProfile />
   <div class="nfn">NE PAS UTILISER POUR LA NAVIGATION</div>
   <AboutDialog ref="about" />
+  <SplashScreen />
 </template>
