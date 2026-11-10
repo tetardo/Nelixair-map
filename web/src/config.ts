@@ -1,5 +1,9 @@
-// Configuration du front. Modifiable sans toucher au code.
-window.NELIXAIR_CONFIG = {
+// Configuration du front. Modifiable sans toucher au reste du code.
+// Les chemins relatifs sont résolus par rapport à la page (GitHub Pages sert le site dans un sous-dossier).
+
+const satLayers = ["GOES-East_ABI_Band13_Clean_Infrared", "GOES-West_ABI_Band13_Clean_Infrared", "Himawari_AHI_Band13_Clean_Infrared"];
+
+export const CFG = {
   // Tuiles vectorielles produites par scripts/build.sh
   pmtiles: "data/nav.pmtiles",
   airspacesPmtiles: "data/airspaces.pmtiles",
@@ -9,6 +13,10 @@ window.NELIXAIR_CONFIG = {
     fixes: "data/fixes.geojson", airways: "data/airways.geojson",
     airports: "data/airports.geojson", airspaces: "data/airspaces.geojson",
   },
+  // Cartes d'aéroport : plan au sol OSM (terrains pilotes) ; repli GeoJSON en développement
+  groundPmtiles: "data/ground.pmtiles",
+  groundGeojson: "data/ground.geojson",
+  groundIndex: "data/ground-index.json",
   search: "data/search.json",
   routes: "data/routes.json",
   meta: "data/meta.json",
@@ -22,8 +30,8 @@ window.NELIXAIR_CONFIG = {
   wxPireps: "https://raw.githubusercontent.com/tetardo/Nelixair-map/wx-data/pireps.geojson",
   // Satellite infrarouge géostationnaire NASA GIBS (domaine public, sans clé).
   // Couverture : Amériques (GOES-Est/Ouest) et Asie-Pacifique (Himawari). Pas de Meteosat (Europe/Afrique) chez GIBS.
-  satellite: ["GOES-East_ABI_Band13_Clean_Infrared", "GOES-West_ABI_Band13_Clean_Infrared", "Himawari_AHI_Band13_Clean_Infrared"]
-    .map((l) => `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l}/default/default/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`),
+  satellite: satLayers.map((l) =>
+    `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l}/default/default/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`),
   // Fond de carte vectoriel libre, sans clé (schéma OpenMapTiles)
   basemapStyle: "https://tiles.openfreemap.org/styles/positron",
   glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
@@ -35,6 +43,9 @@ window.NELIXAIR_CONFIG = {
     '<a href="https://www.openaip.net" target="_blank" rel="noopener">OpenAIP</a> (CC BY-NC 4.0) · ' +
     'Météo <a href="https://aviationweather.gov" target="_blank" rel="noopener">NOAA AWC</a> · ' +
     'Satellite <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener">NASA GIBS</a>',
-  center: [-98, 39],
+  groundAttribution:
+    'Plans au sol © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contributeurs OpenStreetMap</a> (ODbL)',
+  center: [-98, 39] as [number, number],
   zoom: 3.6,
+  maxZoom: 17.5,
 };

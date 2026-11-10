@@ -33,10 +33,16 @@ jobs:
         run: scripts/build.sh
       - name: Résumé
         run: cat build/meta.json >> "$GITHUB_STEP_SUMMARY"
-      # Captures d'écran sur les données réelles (affichées par le README) ; un échec ne bloque pas le déploiement.
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+      # Front Vue : typage + build Vite dans dist/ (les données web/data y sont copiées)
+      - name: Build du front
+        run: |
+          npm ci
+          npm run build
+      # Captures d'écran sur les données réelles (affichées par le README) ; un échec ne bloque pas le déploiement.
       - name: Captures d'écran
         continue-on-error: true
         run: |
@@ -45,7 +51,7 @@ jobs:
           node scripts/screenshots.mjs
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: dist
   deploy:
     needs: build
     runs-on: ubuntu-24.04

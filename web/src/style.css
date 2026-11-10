@@ -277,3 +277,27 @@ summary small { color: var(--chrome-soft); font-weight: 400; margin-left: 4px; }
 .c-pirep { background: #f08a24; box-shadow: 0 0 0 2px #4dd6ff inset; }
 .c-hz-conv { background: #e0342f; } .c-hz-turb { background: #f08a24; } .c-hz-ice { background: #2bb3e6; }
 .c-hz-ifr { background: #9b5de5; } .c-hz-ash { background: #8d6e63; } .c-hz-tc { background: #c2185b; } .c-hz-other { background: #7d8aa5; }
+
+/* ---- Carte d'aéroport ---- */
+.sw-ground { width: 16px; height: 10px; border: 0; border-radius: 2px; background: linear-gradient(90deg, #3a4252 0 40%, #b3bac6 40% 100%); }
+.primary { display: block; width: 100%; margin: 4px 0 8px; font: 600 13px var(--sans); padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+.primary:hover { filter: brightness(1.1); }
+.gfacts { grid-template-columns: 1.6fr 1fr 1fr; }
+.gfacts b { white-space: normal; }
+.twy-chips { margin: 8px 0 4px; gap: 4px; }
+.twy { font: 700 11px var(--mono); padding: 1px 5px; border-radius: 2px; background: #ffd21f; color: #111; border: 1px solid #1b1f27; }
+a.ext { color: #7cb6ff; text-decoration: none; font-family: var(--mono); }
+a.ext::after { content: " ↗"; color: var(--chrome-soft); }
+a.ext:hover { text-decoration: underline; }
+.chart-badge { position: absolute; z-index: 2; top: calc(var(--bar) + 40px); left: 50%; transform: translateX(-50%); transition: left .2s ease;
+  display: flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: 7px; background: rgba(23, 32, 51, .94);
+  border: 1px solid var(--chrome-line); box-shadow: var(--shadow); white-space: nowrap; pointer-events: none; max-width: calc(100vw - 24px); }
+.chart-badge b { font: 700 14px var(--mono); color: #ffd21f; }
+.chart-badge span { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+.chart-badge small { color: var(--chrome-soft); font-size: 11px; }
+body.side-open .chart-badge { left: calc(50% + var(--side) / 2); }
+@media (max-width: 760px) {
+  body.side-open .chart-badge { left: 50%; }
+  .chart-badge small { display: none; }
+}

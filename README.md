@@ -1,10 +1,10 @@
-<img src="web/img/nelixair-logo.svg" alt="Nelixair" width="64" align="right">
+<img src="web/public/img/nelixair-logo.svg" alt="Nelixair" width="64" align="right">
 
 # nelixair-map
 
 Carte web mondiale des **voies aériennes**, **waypoints**, **navaids**, **aéroports** et **espaces aériens**, au style
 d'une carte en route IFR. Site 100 % statique : MapLibre GL + tuiles vectorielles
-PMTiles, hébergeable sur GitHub Pages ou n'importe quel CDN.
+PMTiles, interface Vue 3 + TypeScript (Vite), hébergeable sur GitHub Pages ou n'importe quel CDN.
 
 > ⚠️ **Ne pas utiliser pour la navigation.** Carte d'illustration, sans garantie.
 
@@ -17,6 +17,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | ![Carte en route des États-Unis](https://tetardo.github.io/Nelixair-map/screenshots/carte.png) | ![Espaces aériens autour de Paris, mode nuit](https://tetardo.github.io/Nelixair-map/screenshots/europe-nuit.png) |
 | **Fiche aéroport** (météo, pistes, fréquences, cartes FAA) | **Log d'une voie aérienne** |
 | ![Fiche de KSFO](https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png) | ![Log de la voie J80](https://tetardo.github.io/Nelixair-map/screenshots/log-voie.png) |
+| **Carte d'aéroport** (plan au sol OSM, LFML) | **Carte d'aéroport, mode nuit** |
+| ![Plan au sol de LFML](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png) | ![Plan au sol de LFML de nuit](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png) |
 
 ## Couverture des données
 
@@ -26,6 +28,7 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | [OpenAIP](https://www.openaip.net) | VOR/DME/TACAN/NDB, aéroports, espaces aériens (CTR, TMA, zones R/P/D, FIR…) | monde | **CC BY-NC 4.0** |
 | [FAA d-TPP](https://www.faa.gov/air_traffic/flight_info/aeronav/digital_products/dtpp/) | cartes d'approche, de départ, d'arrivée et diagrammes (liens vers les PDF officiels) | États-Unis | domaine public |
 | [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (monde), SIGMET (monde), AIRMET / G-AIRMET et PIREP (surtout US) ; relais toutes les 10 min | monde | domaine public |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) (via Overpass) | plans au sol : pistes, taxiways, aires de trafic, postes de stationnement, points d'attente, bâtiments | terrains pilotes : LFML, LFMN, LFLL, LFBO, LFPO | **ODbL 1.0** |
 | [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | satellite infrarouge GOES-East, GOES-West, Himawari (Amériques, Pacifique, Asie ; **pas l'Europe ni l'Afrique**) | partielle | données NASA ouvertes |
 
 Conséquences à connaître :
@@ -37,6 +40,8 @@ Conséquences à connaître :
   publique. Le pipeline est prêt pour ça, voir [docs/FORMAT.md](docs/FORMAT.md).
 - **OpenAIP impose un usage non commercial** et une attribution (affichée sur la carte).
   Un usage commercial exige de retirer OpenAIP ou d'obtenir une autre licence.
+- **Les cartes d'aéroport sont générées depuis OpenStreetMap** : données communautaires, non certifiées,
+  complétude variable selon le terrain. Pas de SID / STAR / approches hors US (aucune source codée gratuite).
 - Les données X-Plane, Navigraph, Jeppesen, etc. ne sont **pas** utilisées : leurs
   licences interdisent la redistribution.
 
@@ -64,6 +69,10 @@ Conséquences à connaître :
 - Zone de nuit sur la carte, et dans la fiche aéroport : lever, coucher, début et fin de la nuit aéronautique
   (crépuscule civil, définition EASA), calcul local approché à ± 2 min
 - Grid MORA (US) en milliers / centaines de pieds
+- **Cartes d'aéroport** (terrains pilotes) : en zoomant sur le terrain, plan au sol à l'échelle (pistes et désignations
+  aux seuils, taxiways avec identifiants en cartouche jaune, aires, postes numérotés, points d'attente, aérogares),
+  jour et nuit ; bouton « Afficher le plan au sol » dans la fiche ; lien vers la page AD 2 de l'eAIP du SIA pour les
+  terrains français, avec le cycle AIRAC en vigueur (calculé localement, 28 jours)
 - Clic sur plusieurs objets superposés : liste de choix ; survol : nom de l'objet sous la souris
 - Lien partageable vers une fiche (`?sel=KSFO`) ; raccourcis `/` (recherche), `F` (panneau), `Échap`
 - Habillage type EFB : barre d'outils sombre, carte en mode jour ou nuit (mémorisé)
@@ -76,9 +85,11 @@ Conséquences à connaître :
 ```
 sources brutes ──adaptateurs──▶ format interne NDJSON ──fusion──▶ GeoJSON ──tippecanoe──▶ nav.pmtiles
  (CIFP, OpenAIP,                 (docs/FORMAT.md)                 + search.json, routes.json   │ + airspaces.pmtiles
-                                                                  + mora.geojson
-  futur ARINC mondial)                                            + meta.json                  ▼
-                                                                              web/ (MapLibre, statique)
+                                                                  + mora.geojson               │
+  futur ARINC mondial)                                            + meta.json                  │
+OSM (Overpass) ──pipeline/ground.py──▶ ground.geojson ──tippecanoe──▶ ground.pmtiles ─────────┤
+                                                                                              ▼
+                                                        web/ (Vue 3 + MapLibre) ──Vite──▶ dist/ (statique)
 ```
 
 ```
@@ -88,20 +99,29 @@ pipeline/            Python 3.10+, bibliothèque standard uniquement
   nelixair/sources/  un adaptateur par source
   nelixair/merge.py  déduplication multi-sources, résolution des voies
   nelixair/export.py GeoJSON + index de recherche + métadonnées
-  tests/             tests unitaires + fixtures ARINC 424 synthétiques
+  tests/             tests unitaires + fixtures synthétiques (ARINC 424, OpenAIP, Overpass)
+pipeline/ground.py   cartes d'aéroport : plan au sol OSM des terrains pilotes
 scripts/build.sh     chaîne complète jusqu'aux PMTiles
-web/                 front statique (index.html, app.js, symbols.js, weather.js, config.js)
+web/                 front Vue 3 + TypeScript (Vite)
+  src/config.ts      chemins des données, fond de carte, attribution
+  src/map/           MapLibre : couches, thèmes jour/nuit, symboles, carte d'aéroport (ground.ts)
+  src/components/    interface : barre d'outils, panneau, fiches
+  src/services/      météo, soleil, index de recherche, détails aéroport
+  src/lib/           formatage, géodésie, cycles AIRAC
+  public/            fichiers statiques (logo)
 ```
 
 ## Build local
 
-Prérequis : Python ≥ 3.10, [tippecanoe](https://github.com/felt/tippecanoe) ≥ 2.17.
+Prérequis : Python ≥ 3.10, [tippecanoe](https://github.com/felt/tippecanoe) ≥ 2.17, Node.js ≥ 20.
 
 ```bash
+npm install                           # une fois : Vue, MapLibre, Vite
 # clé gratuite sur https://www.openaip.net (Profil > API) ; sans clé : US uniquement
 export OPENAIP_API_KEY=...
-scripts/build.sh                      # télécharge le cycle CIFP en vigueur + OpenAIP, construit les tuiles
-python3 -m http.server -d web 8000    # http://localhost:8000
+scripts/build.sh                      # télécharge CIFP + OpenAIP + plans au sol OSM, construit les tuiles dans web/data/
+npm run dev                           # http://localhost:5173 (rechargement à chaud)
+npm run build                         # typage + site final dans dist/ (données copiées)
 ```
 
 Sans tippecanoe, le front sait lire le GeoJSON directement (pratique pour développer
@@ -110,8 +130,9 @@ sur une petite zone, trop lourd pour la donnée complète) :
 ```bash
 python3 pipeline/build.py all --cifp pipeline/tests/fixtures/FAACIFP18.sample \
   --openaip pipeline/tests/fixtures/openaip_navaids.json
+python3 pipeline/ground.py build --raw pipeline/tests/fixtures/ground   # plan au sol synthétique
 mkdir -p web/data && cp build/*.geojson build/*.json web/data/
-python3 -m http.server -d web 8000    # ouvrir http://localhost:8000/?geojson
+npm run dev                           # ouvrir http://localhost:5173/?geojson
 ```
 
 Tests : `python3 -m unittest discover -s pipeline/tests`
@@ -135,8 +156,11 @@ l'onglet *Actions*.
 
 ## Configuration du front
 
-`web/config.js` : chemins des données, style de fond (OpenFreeMap par défaut,
-sans clé), polices, attribution, vue initiale.
+`web/src/config.ts` : chemins des données, style de fond (OpenFreeMap par défaut,
+sans clé), polices, attribution, vue initiale, zoom maximal.
+
+Terrains des cartes d'aéroport : liste `PILOT` de `pipeline/ground.py` (une requête Overpass par terrain,
+à garder raisonnable : l'API Overpass est un service communautaire).
 
 ## Licence du code
 
