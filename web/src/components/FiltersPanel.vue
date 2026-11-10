@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { enrouteAtc } from "../map/trafficLayer";
+import { enrouteAtc, hasAtcSector, highlightAtcSector } from "../map/trafficLayer";
+import { flyToAtc } from "../map/mapView";
 import { state } from "../store";
 import Section from "./Section.vue";
 
@@ -41,7 +42,11 @@ const setAll = (it: Item[], v: boolean) => it.forEach(([k]) => (state.filters[k]
     <p v-if="state.wxStatus" id="wx-status" class="muted small">{{ state.wxStatus }}</p>
     <p v-if="state.trafficStatus" class="muted small">{{ state.trafficStatus }} · rafraîchi toutes les 30 s</p>
     <details v-if="ctr.length" class="taf"><summary>Contrôleurs en route en ligne ({{ ctr.length }})</summary>
-      <div class="trf-ctr"><span v-for="a in ctr" :key="a.net + a.callsign"><b>{{ a.callsign }}</b> {{ a.freq }}</span></div>
+      <div class="trf-ctr" @mouseleave="highlightAtcSector(null)">
+        <button v-for="a in ctr" :key="a.net + a.callsign" type="button" :class="{ nosec: !hasAtcSector(a) }"
+          :title="hasAtcSector(a) ? 'Survol : secteur sur la carte · clic : y aller' : 'Secteur inconnu'"
+          @mouseenter="highlightAtcSector(a)" @focus="highlightAtcSector(a)" @click="flyToAtc(a)"><b>{{ a.callsign }}</b> {{ a.freq }}</button>
+      </div>
     </details>
     <p class="muted small">Raccourcis : <kbd>/</kbd> chercher un ident · <kbd>F</kbd> afficher / masquer le panneau · <kbd>Échap</kbd> effacer la sélection.
       Cliquer un objet ouvre sa fiche ; l'adresse de la page permet de la partager.</p>

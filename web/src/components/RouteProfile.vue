@@ -69,12 +69,17 @@ const minMargin = computed(() => {
   return m;
 });
 
+// curseur : survol du profil, sinon point choisi en cliquant la route sur la carte
+const cur = computed(() => hover.value ?? (state.profileAt != null ? Math.min(total.value, state.profileAt) : null));
 const hv = computed(() => {
-  if (hover.value == null) return null;
-  const a = along(verts.value, hover.value);
-  const t = terrain.value.length ? terrain.value.reduce((b, p) => (Math.abs(p.d - hover.value!) < Math.abs(b.d - hover.value!) ? p : b)) : null;
-  return { d: hover.value, alt: a.alt, ll: a.ll, terr: t?.ft ?? null };
+  const d = cur.value;
+  if (d == null) return null;
+  const a = along(verts.value, d);
+  const t = terrain.value.length ? terrain.value.reduce((b, p) => (Math.abs(p.d - d) < Math.abs(b.d - d) ? p : b)) : null;
+  return { d, alt: a.alt, ll: a.ll, terr: t?.ft ?? null };
 });
+watch(() => state.profileAt, (d) => { if (d != null && hover.value == null) selectPoint(hv.value?.ll ?? null); });
+watch(() => [state.ofp, state.profileOpen], () => { if (!state.profileOpen) state.profileAt = null; });
 function move(e: PointerEvent) {
   const r = (e.currentTarget as SVGElement).getBoundingClientRect();
   const px = ((e.clientX - r.left) * W.value) / r.width;
@@ -82,7 +87,7 @@ function move(e: PointerEvent) {
   hover.value = Math.max(0, Math.min(total.value, d));
   selectPoint(hv.value!.ll);
 }
-function leave() { hover.value = null; selectPoint(null); }
+function leave() { hover.value = null; selectPoint(hv.value?.ll ?? null); }
 function click() { if (hv.value) flyTo(hv.value.ll, 8); }
 
 // le bandeau n'existe qu'une fois ouvert : on observe sa largeur dès qu'il apparaît

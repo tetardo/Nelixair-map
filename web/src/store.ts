@@ -126,6 +126,7 @@ export const state = reactive({
   groundInView: "" as string,
   mapReady: false,
   viewMenu: false,
+  profileAt: null as number | null, // curseur du profil placé par un clic sur la route (NM)
   profileOpen: false, // profil vertical du plan de vol (bandeau bas)
   ruler: false, // outil règle actif
   listTick: 0,

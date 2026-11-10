@@ -23,6 +23,11 @@ defineExpose({ open: () => dlg.value?.showModal() });
         <small>© contributeurs OpenStreetMap, licence ODbL 1.0 · non certifié ·
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">openstreetmap.org/copyright</a></small>
       </li>
+      <li v-if="state.filters.vatsim || state.filters.ivao">
+        <b>Trafic en ligne</b> — VATSIM et IVAO (flux publics) ; secteurs des centres en route : VATSpy Data Project<br>
+        <small>Licence des secteurs : CC BY-SA 4.0 ·
+          <a href="https://github.com/vatsimnetwork/vatspy-data-project" target="_blank" rel="noopener">github.com/vatsimnetwork/vatspy-data-project</a></small>
+      </li>
       <li v-if="state.counts"><small>Génération : {{ state.built }} · {{ state.counts.fixes.toLocaleString("fr-FR") }} points,
         {{ state.counts.airways.toLocaleString("fr-FR") }} voies · AIRAC en vigueur {{ cyc.ident }} ({{ fmtDate(cyc.start) }} → {{ fmtDate(cyc.end) }})</small></li>
     </ul>

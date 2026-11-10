@@ -677,3 +677,9 @@ body.side-resizing .sidebar { transition: none; }
   body.rail-wide .rail-btn[aria-pressed="true"]::before { left: -8px; }
 }
 @media (max-width: 640px) { .rail-size { display: none; } }
+
+/* ---- Centres en route : liste reliée aux secteurs ---- */
+.trf-ctr button { font: inherit; color: var(--chrome-ink); background: none; border: 1px solid transparent; border-radius: 5px; padding: 2px 5px; cursor: pointer; }
+.trf-ctr button:hover, .trf-ctr button:focus-visible { background: var(--accent-soft); border-color: var(--accent); outline: none; }
+.trf-ctr button.nosec { cursor: default; opacity: .7; }
+.trf-ctr button.nosec:hover { background: none; border-color: transparent; }
