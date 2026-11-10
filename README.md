@@ -56,14 +56,21 @@ Conséquences à connaître :
   directement par le navigateur), route en magenta avec TOC / TOD et dégagement, nav log (altitude, route
   magnétique, distances, temps, carburant), carburant et masses. Bouton « Vol de démo » sans compte.
 - Profil vertical du plan de vol : altitude prévue au-dessus du relief, relief maximal et marge minimale en route,
-  survol synchronisé avec la carte.
+  survol synchronisé avec la carte, zones R / D / P traversées en hachuré, altitude de transition (eAIP en France,
+  18 000 ft aux États-Unis).
+- Contrôles du plan de vol : niveau semi-circulaire, relief, carburant, jour / nuit, zones R / D / P traversées.
+- Dégagements en route : terrains à portée de la route (piste mini, distance, procédures IFR, météo VFR), catégorie
+  du dernier METAR, trous de couverture, cercles sur la carte.
+- « Ce qu'il faut ici » : clic sur la carte, espaces à l'altitude choisie avec leurs exigences simplifiées
+  (clairance, radio, transpondeur, 250 kt sous FL100), ce qu'il y a au-dessus et en dessous.
 - Météo de la route : METAR / TAF du départ, de l'arrivée et des dégagements, SIGMET / AIRMET en vigueur traversés
   par la route (avec recoupement des niveaux).
 - Règle : distance en NM, route magnétique et vraie de chaque tronçon (orthodromie), total. Déclinaison calculée
   avec le modèle mondial WMM de la NOAA (paquet [geomagnetism](https://github.com/naturalatlas/geomagnetism), Apache-2.0).
 - Trafic en ligne VATSIM et IVAO (calques, rafraîchis toutes les 30 s) : avions orientés avec indicatif, fiche du vol
   (appareil, altitude, vitesse, plan de vol déposé, trajet départ → position → arrivée), terrains contrôlés
-  (DEL, GND, TWR, APP, ATIS avec fréquences) et liste des centres en route. Noms des membres jamais affichés.
+  (DEL, GND, TWR, APP, ATIS avec fréquences) et liste des centres en route. Dans la fiche d'un terrain contrôlé :
+  bloc « En ligne maintenant » (fréquences à copier, ATIS, arrivées dans 30 min). Noms des membres jamais affichés.
 - Partager la vue (icône lien de la barre latérale) : copie un lien qui rouvre la carte à l'identique (position,
   zoom, fond, calques, thème, panneau ouvert, objet sélectionné et plan de vol, compressé dans le lien).
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
@@ -163,6 +170,10 @@ Générées automatiquement sur les données réelles à chaque déploiement qui
 <tr>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/trafic.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/trafic.png" alt="Trafic VATSIM et IVAO en direct" width="260"></a><br><sub><b>Trafic en ligne</b><br>(VATSIM / IVAO, contrôleurs, traînées)</sub></td>
 <td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/accueil-code.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/accueil-code.png" alt="Écran d'accueil avec code d'accès" width="260"></a><br><sub><b>Écran d'accueil</b><br>(code d'accès)</sub></td>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/degagements.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/degagements.png" alt="Dégagements le long de la route du vol de démo" width="260"></a><br><sub><b>Dégagements en route</b><br>(piste, distance, IFR, météo ; trous de couverture)</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top" width="33%"><a href="https://tetardo.github.io/Nelixair-map/screenshots/ce-qu-il-faut-ici.png"><img src="https://tetardo.github.io/Nelixair-map/screenshots/ce-qu-il-faut-ici.png" alt="Exigences de l&#x27;espace aérien au point cliqué" width="260"></a><br><sub><b>Ce qu'il faut ici</b><br>(classe, clairance, radio, transpondeur à l'altitude choisie)</sub></td>
 </tr>
 </table>
 

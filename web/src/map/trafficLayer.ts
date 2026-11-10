@@ -4,6 +4,7 @@ import type { Map as MlMap } from "maplibre-gl";
 import type { LngLat } from "../lib/format";
 import { loadIndex } from "../services/data";
 import { filedRoute } from "../lib/filedRoute";
+import { distNm } from "../lib/geo";
 import { loadSectors, sectorFor } from "../services/atcSectors";
 import { fetchTraffic, type Atc, type Net, type Pilot, type Traffic } from "../services/traffic";
 import { state } from "../store";
@@ -222,6 +223,7 @@ export async function refreshTraffic() {
     await airportIndex();
     await Promise.all(nets.map((n) => fetchTraffic(n).then((t) => (data[n] = t)).catch((e) => { console.warn(e); delete data[n]; })));
     fetchedAt = Date.now();
+    state.trafficTick++;
     recordTrails();
     timer = window.setTimeout(refreshTraffic, document.hidden ? EVERY * 4 : EVERY);
   }
@@ -255,3 +257,19 @@ export function atcAt(f: maplibregl.MapGeoJSONFeature): { icao: string; list: At
 export function enrouteAtc(): Atc[] {
   return (["vatsim", "ivao"] as Net[]).filter((n) => state.filters[n]).flatMap((n) => (data[n]?.atc || []).filter((a) => a.kind === "CTR" || a.kind === "FSS"));
 }
+
+export interface AirportOnline { net: Net; atc: Atc[]; atis: Atc[]; arrivals: { p: Pilot; min: number }[]; onGround: number; age: number }
+/** Contrôle et trafic en ligne pour un terrain (réseaux affichés seulement). Lire `state.trafficTick` pour suivre les relevés. */
+export function airportOnline(icao: string, ll: LngLat): AirportOnline[] {
+  void state.trafficTick;
+  const ORD = ["DEL", "GND", "TWR", "APP", "CTR", "FSS"];
+  return (["vatsim", "ivao"] as Net[]).filter((n) => state.filters[n] && data[n]).map((net) => {
+    const d = data[net]!;
+    const here = d.atc.filter((a) => a.where === icao);
+    const arrivals = d.pilots.filter((p) => p.arr === icao && !p.ground && p.gs > 50)
+      .map((p) => ({ p, min: Math.round((distNm([p.lon, p.lat], ll) / p.gs) * 60) })).filter((x) => x.min <= 30).sort((a, b) => a.min - b.min);
+    return { net, atc: here.filter((a) => a.kind !== "ATIS").sort((a, b) => ORD.indexOf(a.kind) - ORD.indexOf(b.kind)), atis: here.filter((a) => a.kind === "ATIS"),
+      arrivals, onGround: d.pilots.filter((p) => p.dep === icao && p.ground).length, age: Math.round((Date.now() - fetchedAt) / 1000) };
+  }).filter((o) => o.atc.length || o.atis.length);
+}
+export { NET_NAME };

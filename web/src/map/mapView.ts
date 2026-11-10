@@ -982,16 +982,17 @@ function onClick(e: maplibregl.MapMouseEvent) {
   }
   if (state.sidebarOpen) {
     const n = pts.length + awys.length + (asp.length ? 1 : 0) + hz.length + pr.length;
-    if (!n) { selectAirway(null); selectPoint(null); return; }
+    const here = () => { selectAirway(null); selectPoint(null); showDetail({ kind: "here", ll: [e.lngLat.lng, e.lngLat.lat] }); };
+    if (!n) return here();
     if (n === 1) {
       if (pts.length) return openFix(pts[0].properties, ptLL(pts[0]));
       if (awys.length) return openAirway(awys[0]);
       selectAirway(null); selectPoint(null);
-      if (asp.length) return showDetail({ kind: "airspaces", list: asp });
+      if (asp.length) return here();
       if (hz.length) return showDetail({ kind: "hazard", p: hz[0] });
       return showDetail({ kind: "pirep", p: pr[0] });
     }
-    return showPicker(pts, awys, asp, hz, pr);
+    return showPicker(pts, awys, asp, hz, pr, [e.lngLat.lng, e.lngLat.lat]);
   }
   if (pts.length) {
     selectPoint(ptLL(pts[0]));
@@ -1009,7 +1010,7 @@ function onClick(e: maplibregl.MapMouseEvent) {
 }
 
 // Plusieurs objets sous le clic : on laisse choisir plutôt que de deviner
-function showPicker(pts: MapGeoJSONFeature[], awys: string[], asp: Props[], hz: Props[], pr: Props[]) {
+function showPicker(pts: MapGeoJSONFeature[], awys: string[], asp: Props[], hz: Props[], pr: Props[], at: LngLat) {
   closePopup();
   selectAirway(null); selectPoint(null);
   const items: PickItem[] = [];
@@ -1023,8 +1024,8 @@ function showPicker(pts: MapGeoJSONFeature[], awys: string[], asp: Props[], hz: 
       go: () => openFix(p, ll) });
   }
   for (const a of awys) items.push({ label: a, sub: "Voie aérienne", cls: "airway", go: () => openAirway(a) });
-  if (asp.length) items.push({ label: `${asp.length} espace${asp.length > 1 ? "s" : ""} aérien${asp.length > 1 ? "s" : ""}`,
-    sub: asp.slice(0, 3).map((x) => x.name).join(" · "), cls: "airspace", go: () => showDetail({ kind: "airspaces", list: asp }) });
+  if (asp.length) items.push({ label: "Ce qu'il faut ici",
+    sub: asp.slice(0, 3).map((x) => x.name).join(" · "), cls: "airspace", go: () => showDetail({ kind: "here", ll: at }) });
   for (const h of hz) items.push({ label: `${h.kind} ${h.hazard}`, sub: `${HZ[h.fam] || ""}${h.fir ? " · " + h.fir : ""}`,
     cls: `hz-${h.fam}`, go: () => showDetail({ kind: "hazard", p: h }) });
   for (const p of pr) items.push({ label: p.alt != null ? `PIREP ${p.alt >= 18000 ? "FL" + Math.round(p.alt / 100) : p.alt + " ft"}` : "PIREP",
