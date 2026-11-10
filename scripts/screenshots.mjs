@@ -38,12 +38,15 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-// [fichier, chemin, thème, onglet du panneau]
+// [fichier, chemin, thème, onglet du panneau, filtres forcés, défilement du panneau en bas]
+const WX = { hazards: true, pireps: true, sat: true, night: true };
 const SHOTS = [
   ["carte.png", "#map=5.3/37.6/-99.5", "day", null],
   ["europe-nuit.png", "#map=7.2/48.9/2.4", "night", null],
   ["fiche-aeroport.png", "?sel=KSFO#map=10/37.62/-122.38", "day", "detail"],
   ["log-voie.png", "?sel=J80#map=5/39.5/-98", "night", "detail"],
+  ["meteo.png", "#map=4.1/37.5/-97", "night", null, WX],
+  ["fiche-soleil.png", "?sel=KDEN#map=8/39.86/-104.67", "day", "detail", WX, true],
   ["carte-aeroport-lfml.png", "?sel=LFML#map=14.4/43.4364/5.2153", "day", "detail"],
   ["carte-aeroport-lfml-nuit.png", "#map=16/43.4405/5.2120", "night", null],
 ];
@@ -51,18 +54,20 @@ const SHOTS = [
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 let failed = 0;
-for (const [name, path, theme, tab] of SHOTS) {
+for (const [name, path, theme, tab, filters, scroll] of SHOTS) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
-  await ctx.addInitScript((t) => {
+  await ctx.addInitScript(([t, f]) => {
     localStorage.setItem("nelixair-theme", t);
     localStorage.setItem("nelixair-side", "1");
-  }, theme);
+    if (f) localStorage.setItem("nelixair-filters", JSON.stringify(f));
+  }, [theme, filters || null]);
   const page = await ctx.newPage();
   try {
     await page.goto(base + path, { waitUntil: "load" });
     if (tab === "detail") await page.waitForSelector("#tab-detail h2", { timeout: 20000 });
     // laisse le temps aux tuiles, à la météo et aux détails de se charger
     await page.waitForTimeout(8000);
+    if (scroll) await page.evaluate(() => { const d = document.querySelector("#tab-detail"); d.scrollTop = d.scrollHeight; });
     await page.screenshot({ path: join(OUT, name) });
     console.log("ok", name);
   } catch (e) {

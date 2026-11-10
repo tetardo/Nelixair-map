@@ -17,6 +17,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | ![Carte en route des États-Unis](https://tetardo.github.io/Nelixair-map/screenshots/carte.png) | ![Espaces aériens autour de Paris, mode nuit](https://tetardo.github.io/Nelixair-map/screenshots/europe-nuit.png) |
 | **Fiche aéroport** (météo, pistes, fréquences, cartes FAA) | **Log d'une voie aérienne** |
 | ![Fiche de KSFO](https://tetardo.github.io/Nelixair-map/screenshots/fiche-aeroport.png) | ![Log de la voie J80](https://tetardo.github.io/Nelixair-map/screenshots/log-voie.png) |
+| **Météo** (SIGMET / AIRMET, PIREP, satellite IR, zone de nuit) | **Éphémérides** (lever, coucher, nuit aéronautique) |
+| ![SIGMET, AIRMET, PIREP et satellite sur les États-Unis](https://tetardo.github.io/Nelixair-map/screenshots/meteo.png) | ![Fiche de KDEN, section Soleil](https://tetardo.github.io/Nelixair-map/screenshots/fiche-soleil.png) |
 | **Carte d'aéroport** (plan au sol OSM, LFML) | **Carte d'aéroport, mode nuit** |
 | ![Plan au sol de LFML](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml.png) | ![Plan au sol de LFML de nuit](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png) |
 
