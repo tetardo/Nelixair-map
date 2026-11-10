@@ -9,10 +9,10 @@ import { CLS, dms, esc, type LngLat } from "../lib/format";
 import { distNm } from "../lib/geo";
 import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIdent, type Hit } from "../services/data";
 import { nightPolygon } from "../services/sun";
-import { WX_COLORS, flightCat, loadJson, metarsInBbox, wxAge } from "../services/weather";
+import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
 import { isMobile, state, type GroundAirport, type PickItem, type Props, type Tab } from "../store";
-import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, themeGround } from "./ground";
-import { aspHtml, fixHtml, groundHtml, hazardHtml, legHtml, pirepHtml } from "./popups";
+import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
+import { aspHtml, fixHtml, groundHtml, groundTip, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
 import { THEMES, type ThemeName } from "./themes";
 
@@ -505,7 +505,19 @@ function propsAt(point: maplibregl.Point, layers: string[], b: number, keyOf: (p
 const airspacesAt = (pt: maplibregl.Point) => propsAt(pt, ["asp-fill", ...ASP_LINE_IDS], 3, (p) => `${p.name}|${p.type}|${p.lower}|${p.upper}`);
 const overlayAt = (pt: maplibregl.Point, layers: string[], b = 4) => propsAt(pt, layers, b, (p) => p.raw || JSON.stringify(p));
 
+// METAR des aérodromes à plan au sol, pour les composantes de vent dans les bulles (rafraîchi toutes les 10 min)
+const gndWx = new Map<string, { m: Metar | null; t: number }>();
+function gndCtx(apt: string): GndCtx {
+  const c = gndWx.get(apt);
+  if (!c || Date.now() - c.t > 600_000) {
+    gndWx.set(apt, { m: c?.m ?? null, t: Date.now() });
+    metar(apt).then((m) => gndWx.set(apt, { m, t: Date.now() })).catch(() => {});
+  }
+  return { ends: state.ground[apt]?.ends, m: gndWx.get(apt)?.m };
+}
+
 function onClick(e: maplibregl.MapMouseEvent) {
+  const tipEl = document.getElementById("hover-tip"); if (tipEl) tipEl.hidden = true;
   const feats = map.queryRenderedFeatures(box(e.point, 6), { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
   const pts: MapGeoJSONFeature[] = [], legs: MapGeoJSONFeature[] = [], seen = new Set<string>();
   for (const f of feats) {
@@ -526,7 +538,8 @@ function onClick(e: maplibregl.MapMouseEvent) {
   closePopup();
   if (!pts.length && !awys.length && gnd.length) {
     selectAirway(null); selectPoint(null);
-    return showPopup(e.lngLat, groundHtml(gnd[0].properties));
+    const g0 = gnd[0];
+    return showPopup(e.lngLat, groundHtml(g0.properties, g0.geometry.type === "Point" ? ptLL(g0) : undefined, gndCtx(g0.properties.apt)));
   }
   if (state.sidebarOpen) {
     const n = pts.length + awys.length + (asp.length ? 1 : 0) + hz.length + pr.length;
@@ -696,6 +709,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
   map.on("click", onClick);
 
   // Survol : pointeur + nom de l'objet sous le curseur (souris uniquement)
+  let hlKey = "";
   const tip = document.createElement("div");
   tip.id = "hover-tip"; tip.hidden = true;
   map.getContainer().appendChild(tip);
@@ -706,9 +720,12 @@ export async function initMap(container: HTMLElement): Promise<void> {
     map.getCanvas().style.cursor = fs.length ? "pointer" : "";
     if (matchMedia("(hover: none)").matches) return;
     const f = fs[0];
+    const gp = f?.layer.id.startsWith("g-") ? f.properties : null;
+    const key = gp ? `${gp.apt}|${gp.kind}|${gp.ref}` : "";
+    if (key !== hlKey) { hlKey = key; groundHighlight(map, gp); }
     if (!f) { tip.hidden = true; return; }
     const p = f.properties;
-    if (f.layer.id.startsWith("g-")) tip.innerHTML = `<b>${esc(p.ref || p.name || "")}</b> ${esc(p.apt || "")}`;
+    if (gp) tip.innerHTML = groundTip(gp, f.geometry.type === "Point" ? (f.geometry as GeoJSON.Point).coordinates as LngLat : undefined, gndCtx(gp.apt));
     else {
       const what = p.cls === "airport" ? (p.name || "Aéroport") : f.geometry.type === "Point" ? (CLS[p.cls] || "") : `${p.from} → ${p.to}`;
       tip.innerHTML = `<b>${esc(p.ident)}</b> ${esc(what)}`;
@@ -716,7 +733,13 @@ export async function initMap(container: HTMLElement): Promise<void> {
     tip.style.transform = `translate(${e.point.x + 14}px, ${e.point.y + 14}px)`;
     tip.hidden = false;
   });
-  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; });
+  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, null); });
+  // Boutons « copier » des popups (coordonnées d'un poste pour l'IRS/FMS)
+  map.getContainer().addEventListener("click", (ev) => {
+    const b = (ev.target as HTMLElement).closest?.("[data-copy]") as HTMLElement | null;
+    if (!b) return;
+    navigator.clipboard?.writeText(b.dataset.copy || "").then(() => { b.textContent = "✓"; setTimeout(() => (b.textContent = "⧉"), 900); }).catch(() => {});
+  });
 
   setInterval(() => refreshOverlays(), 60 * 1000);
 

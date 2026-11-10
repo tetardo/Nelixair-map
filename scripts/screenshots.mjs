@@ -38,35 +38,45 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-// [fichier, chemin, thème, onglet du panneau, filtres forcés, défilement du panneau en bas]
+// [fichier, chemin, thème, onglet du panneau, filtres forcés, défilement du panneau en bas, actions]
+// actions : side (panneau ouvert, défaut oui), click / hover [x, y] en px CSS, open (sections de fiche à ouvrir)
 const WX = { hazards: true, pireps: true, sat: true, night: true };
 const SHOTS = [
+  ["accueil-france.png", "", "day", "filters"],
   ["carte.png", "#map=5.3/37.6/-99.5", "day", null],
   ["europe-nuit.png", "#map=7.2/48.9/2.4", "night", null],
   ["fiche-aeroport.png", "?sel=KSFO#map=10/37.62/-122.38", "day", "detail"],
   ["log-voie.png", "?sel=J80#map=5/39.5/-98", "night", "detail"],
   ["meteo.png", "#map=4.1/37.5/-97", "night", null, WX],
-  ["fiche-soleil.png", "?sel=KDEN#map=8/39.86/-104.67", "day", "detail", WX, true],
+  ["fiche-soleil.png", "?sel=KDEN#map=8/39.86/-104.67", "day", "detail", WX, true, { open: ["site"] }],
   ["carte-aeroport-lfml.png", "?sel=LFML#map=14.4/43.4364/5.2153", "day", "detail"],
   ["carte-aeroport-lfml-nuit.png", "#map=16/43.4405/5.2120", "night", null],
+  // Popup d'une piste : composantes de vent par QFU (panneau fermé, clic au centre sur la piste 13L/31R)
+  ["piste-vent-lfml.png", "#map=15.5/43.4372/5.2204", "night", null, null, false, { side: false, click: [720, 450] }],
+  // Bulle de survol d'une piste (dimensions + vent) et surbrillance
+  ["survol-lfml.png", "#map=15.5/43.4372/5.2204", "day", null, null, false, { side: false, hover: [720, 450] }],
 ];
 
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 let failed = 0;
-for (const [name, path, theme, tab, filters, scroll] of SHOTS) {
+for (const [name, path, theme, tab, filters, scroll, act = {}] of SHOTS) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
-  await ctx.addInitScript(([t, f]) => {
+  await ctx.addInitScript(([t, f, side, open]) => {
     localStorage.setItem("nelixair-theme", t);
-    localStorage.setItem("nelixair-side", "1");
+    localStorage.setItem("nelixair-side", side ? "1" : "0");
     if (f) localStorage.setItem("nelixair-filters", JSON.stringify(f));
-  }, [theme, filters || null]);
+    for (const id of open) localStorage.setItem("nelixair-sec-" + id, "1");
+  }, [theme, filters || null, act.side !== false, act.open || []]);
   const page = await ctx.newPage();
   try {
     await page.goto(base + path, { waitUntil: "load" });
     if (tab === "detail") await page.waitForSelector("#tab-detail h2", { timeout: 20000 });
     // laisse le temps aux tuiles, à la météo et aux détails de se charger
     await page.waitForTimeout(8000);
+    if (tab && tab !== "detail") await page.evaluate((t) => { const i = { detail: 0, list: 1, filters: 2 }[t]; document.querySelectorAll(".tabs button")[i]?.click(); }, tab);
+    if (act.hover) { await page.mouse.move(act.hover[0] - 4, act.hover[1]); await page.mouse.move(...act.hover); await page.waitForTimeout(1500); }
+    if (act.click) { await page.mouse.click(...act.click); await page.waitForTimeout(1500); }
     if (scroll) await page.evaluate(() => { const d = document.querySelector("#tab-detail"); d.scrollTop = d.scrollHeight; });
     await page.screenshot({ path: join(OUT, name) });
     console.log("ok", name);

@@ -45,7 +45,7 @@ export const CFG = {
     'Satellite <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener">NASA GIBS</a>',
   groundAttribution:
     'Plans au sol © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contributeurs OpenStreetMap</a> (ODbL)',
-  center: [-98, 39] as [number, number],
-  zoom: 3.6,
+  center: [2.5, 46.6] as [number, number], // France métropolitaine (base de la compagnie)
+  zoom: 5.3,
   maxZoom: 17.5,
 };

@@ -1,7 +1,9 @@
 // Contenu HTML des popups MapLibre (panneau latéral fermé). Le panneau ouvert utilise les composants Vue.
 import type { Props } from "../store";
+import { runwayWinds, splitDesignator } from "../lib/wind";
+import { wind, type Metar } from "../services/weather";
 import {
-  APT_KIND, ASP_GROUP, CLS, HZ_COLORS, HZ_LBL, LVL, SEV_LBL, SRC, SURF, alt, dms, esc, freq, ft, pairs, zt, type LngLat,
+  APT_KIND, ASP_GROUP, CLS, HZ_COLORS, HZ_LBL, LVL, SEV_LBL, SRC, SURF, alt, ddm, dms, esc, freq, ft, pairs, zt, type LngLat,
 } from "../lib/format";
 
 function rows(list: [string, unknown][]): string {
@@ -53,12 +55,53 @@ export function pirepHtml(p: Props): string {
     (p.raw ? `<div class="wx-raw">${esc(p.raw)}</div>` : "") + "</div>";
 }
 
+/** Contexte d'un objet au sol : caps vrais des QFU (plan OSM) et METAR de l'aérodrome. */
+export interface GndCtx { ends?: Record<string, number>; m?: Metar | null }
+
+const GKIND: Record<string, string> = { stand: "Poste de stationnement", gate: "Porte", taxiway: "Taxiway", taxilane: "Voie de desserte",
+  runway: "Piste", holding: "Point d'attente", apron: "Aire de trafic", building: "Bâtiment", helipad: "Hélisurface" };
+const GKIND_SHORT: Record<string, string> = { stand: "Poste", gate: "Porte", taxiway: "Taxiway", taxilane: "Desserte",
+  runway: "Piste", holding: "Point d'attente", building: "Bâtiment" };
+
+/** Composantes de vent des QFU d'une piste, meilleure en premier. */
+function rwyWinds(p: Props, ctx?: GndCtx) {
+  const m = ctx?.m;
+  if (p.kind !== "runway" || !m) return [];
+  const qs = splitDesignator(p.ref || "");
+  const ends = Object.fromEntries(Object.entries(ctx?.ends || {}).filter(([q]) => qs.includes(q)));
+  return runwayWinds(m.wdir, m.wspd, m.wgst, ends, [[p.ref || "", null, ""]]).filter((w) => qs.includes(w.qfu));
+}
+const sideTxt = (w: { cross: number; side: string }) => `${w.cross}${w.side ? " " + w.side : ""}`;
+const headTxt = (h: number) => (h >= 0 ? `face ${h}` : `arrière ${-h}`);
+const dim = (p: Props) => (p.len ? `${Number(p.len).toLocaleString("fr-FR")}${p.width ? " × " + p.width : ""} m` : null);
+
+/** Bulle de survol, deux lignes max : nom + nature, puis l'info utile au pilote. */
+export function groundTip(p: Props, pt?: LngLat, ctx?: GndCtx): string {
+  const head = `<b>${esc(p.ref || p.name || "")}</b>${esc(GKIND_SHORT[p.kind] || "")} <span class="tip-apt">${esc(p.apt || "")}</span>`;
+  let sub = "";
+  if (p.kind === "runway") {
+    const w = rwyWinds(p, ctx);
+    sub = [dim(p), w[0] ? `${w[0].qfu} ${headTxt(w[0].head)} / trav. ${sideTxt(w[0])} kt` : null].filter(Boolean).join(" · ");
+  } else if ((p.kind === "stand" || p.kind === "gate") && pt) sub = `${ddm(pt[1], true)} ${ddm(pt[0], false)}`;
+  else if (p.kind === "holding") sub = "Ne pas franchir sans clairance";
+  return head + (sub ? `<div class="tip-sub">${esc(sub)}</div>` : "");
+}
+
+const copyBtn = (v: string) => `<button class="pop-copy" data-copy="${esc(v)}" title="Copier">⧉</button>`;
+
 /** Objet de la carte d'aéroport (poste, taxiway, piste…). */
-export function groundHtml(p: Props): string {
-  const KIND: Record<string, string> = { stand: "Poste de stationnement", gate: "Porte", taxiway: "Taxiway", taxilane: "Voie de desserte",
-    runway: "Piste", holding: "Point d'attente", apron: "Aire de trafic", building: "Bâtiment", helipad: "Hélisurface" };
-  return `<div class="pop"><h3>${esc(p.ref || p.name || "—")} <small>${esc(KIND[p.kind] || p.kind)}</small></h3>` +
-    rows([["Aérodrome", p.apt], ["Longueur", p.len ? `${Number(p.len).toLocaleString("fr-FR")} m` : null],
-      ["Largeur", p.kind === "runway" && p.width ? `${p.width} m` : null], ["Revêtement", p.surface]]) +
-    `<div class="src">OpenStreetMap (ODbL) · non certifié</div></div>`;
+export function groundHtml(p: Props, pt?: LngLat, ctx?: GndCtx): string {
+  const pos = pt && (p.kind === "stand" || p.kind === "gate") ? `${ddm(pt[1], true)} ${ddm(pt[0], false)}` : null;
+  const w = rwyWinds(p, ctx);
+  const wx = w.length && ctx?.m ? `<table class="pop-wind"><thead><tr><th>QFU</th><th>Face</th><th>Travers</th></tr></thead><tbody>` +
+    w.map((r, i) => `<tr${i === 0 && r.head > 0 ? ' class="best"' : ""}><td>${esc(r.qfu)}${r.approx ? "~" : ""}</td>` +
+      `<td class="${r.head < 0 ? "neg" : ""}">${r.head}${r.gustHead != null ? `<small>/${r.gustHead}</small>` : ""}</td>` +
+      `<td>${r.cross}${r.side ? " " + r.side : ""}${r.gustCross != null ? `<small>/${r.gustCross}</small>` : ""}</td></tr>`).join("") +
+    `</tbody></table><div class="src">Vent ${esc(wind(ctx.m) || "")} · composantes en kt (rafales après /)</div>` : "";
+  return `<div class="pop"><h3>${esc(p.ref || p.name || "—")} <small>${esc(GKIND[p.kind] || p.kind)}</small></h3>` +
+    rows([["Aérodrome", p.apt], ["Dimensions", p.kind === "runway" ? dim(p) : null],
+      ["Longueur", p.kind !== "runway" && p.len ? `${Number(p.len).toLocaleString("fr-FR")} m` : null], ["Revêtement", p.surface]]) +
+    (pos ? `<div class="pop-pos"><span>${esc(pos)}</span>${copyBtn(pos)}</div>` : "") +
+    (p.kind === "holding" ? `<div class="pop-note">Point d'attente : arrêt obligatoire sauf clairance d'entrer ou de traverser.</div>` : "") +
+    wx + `<div class="src">OpenStreetMap (ODbL) · non certifié</div></div>`;
 }

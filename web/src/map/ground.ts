@@ -7,10 +7,10 @@ type L = any; // spécifications de couche MapLibre (expressions trop dynamiques
 
 export const GROUND_LAYERS = [
   "g-boundary", "g-apron", "g-apron-line", "g-taxi-edge", "g-taxi", "g-taxi-center", "g-stopway", "g-runway", "g-runway-line",
-  "g-rwy-axis", "g-building", "g-holding-line", "g-holding", "g-stand", "g-stand-lbl", "g-twy-lbl", "g-rwy-lbl", "g-building-lbl",
+  "g-rwy-axis", "g-building", "g-holding-line", "g-holding", "g-holding-lbl", "g-holding-lbl-line", "g-hl-line", "g-hl-pt", "g-stand", "g-stand-lbl", "g-twy-lbl", "g-rwy-lbl", "g-building-lbl",
 ];
 /** Couches cliquables (fiche de l'objet au sol). */
-export const GROUND_CLICKABLE = ["g-stand", "g-stand-lbl", "g-twy-lbl", "g-taxi", "g-runway", "g-holding"];
+export const GROUND_CLICKABLE = ["g-building-lbl", "g-stand", "g-stand-lbl", "g-twy-lbl", "g-taxi", "g-runway", "g-holding", "g-holding-line", "g-holding-lbl", "g-holding-lbl-line"];
 
 const kind = (...k: string[]) => (k.length === 1 ? ["==", ["get", "kind"], k[0]] : ["in", ["get", "kind"], ["literal", k]]);
 
@@ -44,6 +44,20 @@ export function addGroundLayers(map: MlMap, src: { source: string; "source-layer
     paint: { "line-width": 2.5 } });
   add({ id: "g-holding", type: "circle", minzoom: 14, filter: ["all", kind("holding"), ["==", ["geometry-type"], "Point"]],
     paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 2, 17, 4], "circle-stroke-width": 1.2 } });
+  // Nom des points d'attente (A1, CAT III…) : un pilote les reçoit dans la clairance de roulage
+  const holdLbl = { "text-field": ["get", "ref"], "text-font": fontBold, "text-size": ["interpolate", ["linear"], ["zoom"], 15, 9, 18, 12],
+    "text-optional": true, "text-padding": 1 };
+  add({ id: "g-holding-lbl", type: "symbol", minzoom: 15, filter: ["all", kind("holding"), ["has", "ref"], ["==", ["geometry-type"], "Point"]],
+    layout: { ...holdLbl, "text-offset": [0, -1], "text-anchor": "bottom" }, paint: { "text-halo-width": 1.4 } });
+  add({ id: "g-holding-lbl-line", type: "symbol", minzoom: 15, filter: ["all", kind("holding"), ["has", "ref"], ["==", ["geometry-type"], "LineString"]],
+    layout: { ...holdLbl, "symbol-placement": "line-center", "text-offset": [0, -0.9] }, paint: { "text-halo-width": 1.4 } });
+  // Surbrillance au survol : tout le taxiway (tous ses tronçons), la piste ou le poste visé
+  add({ id: "g-hl-line", type: "line", minzoom: 11, filter: ["==", ["get", "kind"], "__none"],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#ffd84d", "line-opacity": 0.75, "line-width": ["interpolate", ["linear"], ["zoom"], 13, 3, 17, 9], "line-blur": 1 } });
+  add({ id: "g-hl-pt", type: "circle", minzoom: 13, filter: ["==", ["get", "kind"], "__none"],
+    paint: { "circle-color": "rgba(0,0,0,0)", "circle-stroke-color": "#ffd84d", "circle-stroke-width": 2.5,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 6, 17, 11] } });
   add({ id: "g-stand", type: "circle", minzoom: 14, filter: kind("stand", "gate"),
     paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 1.8, 17, 5], "circle-stroke-width": 1 } });
   add({ id: "g-stand-lbl", type: "symbol", minzoom: 15.5, filter: ["all", kind("stand", "gate"), ["has", "ref"]],
@@ -65,6 +79,21 @@ export function addGroundLayers(map: MlMap, src: { source: string; "source-layer
     paint: { "text-halo-width": 1.2 } });
 }
 
+/** Filtre de surbrillance pour l'objet survolé (null = aucun). */
+export function groundHighlight(map: MlMap, p: Record<string, any> | null) {
+  if (!map.getLayer("g-hl-line")) return;
+  const none = ["==", ["get", "kind"], "__none"];
+  let line: unknown = none, pt: unknown = none;
+  if (p?.ref && (p.kind === "taxiway" || p.kind === "taxilane"))
+    line = ["all", ["==", ["get", "apt"], p.apt], ["in", ["get", "kind"], ["literal", ["taxiway", "taxilane"]]], ["==", ["get", "ref"], p.ref]];
+  else if (p?.ref && (p.kind === "runway" || p.kind === "holding"))
+    line = ["all", ["==", ["get", "apt"], p.apt], ["==", ["get", "kind"], p.kind], ["==", ["get", "ref"], p.ref], ["!=", ["geometry-type"], "Point"]];
+  if (p?.ref && ["stand", "gate", "holding"].includes(p.kind))
+    pt = ["all", ["==", ["get", "apt"], p.apt], ["==", ["get", "kind"], p.kind], ["==", ["get", "ref"], p.ref], ["==", ["geometry-type"], "Point"]];
+  map.setFilter("g-hl-line", line as never);
+  map.setFilter("g-hl-pt", pt as never);
+}
+
 export function themeGround(map: MlMap, name: string, T: Theme) {
   const g = T.g;
   const P = (id: string, k: string, v: unknown) => map.setPaintProperty(id, k as never, v as never);
@@ -76,6 +105,7 @@ export function themeGround(map: MlMap, name: string, T: Theme) {
   P("g-building", "fill-color", ["case", ["==", ["get", "sub"], "terminal"], g.terminal, g.building]);
   P("g-holding-line", "line-color", g.holding);
   P("g-holding", "circle-color", g.holding); P("g-holding", "circle-stroke-color", g.halo);
+  for (const id of ["g-holding-lbl", "g-holding-lbl-line"]) { P(id, "text-color", g.holding); P(id, "text-halo-color", g.halo); }
   P("g-stand", "circle-color", g.stand); P("g-stand", "circle-stroke-color", g.halo);
   P("g-stand-lbl", "text-color", g.standText); P("g-stand-lbl", "text-halo-color", g.halo);
   map.setLayoutProperty("g-twy-lbl", "icon-image", `${name}-box-twy`); P("g-twy-lbl", "text-color", g.twyLblText);

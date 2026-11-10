@@ -240,6 +240,7 @@ def parse(data: dict, icao: str) -> tuple[list[dict], dict]:
     counts: dict[str, int] = {}
     taxi_refs: set[str] = set()
     runways: list[str] = []
+    ends: dict[str, float] = {}  # QFU -> cap vrai (degrés), pour les composantes de vent
     bbox = [180.0, 90.0, -180.0, -90.0]
     name = ""
 
@@ -304,6 +305,7 @@ def parse(data: dict, icao: str) -> tuple[list[dict], dict]:
                 runways.append(ref or "?")
                 for des, p, hdg in runway_ends(ref, pts):
                     add("rwy_end", _pt(p), ref=des, hdg=round(hdg, 1))
+                    ends.setdefault(des, round(hdg, 1))
         elif aw in ("taxiway", "taxilane"):
             lat = pts[0][1]
             w = _width(tags, aw)
@@ -336,6 +338,7 @@ def parse(data: dict, icao: str) -> tuple[list[dict], dict]:
         "osm": (data.get("osm3s") or {}).get("timestamp_osm_base", ""),
         "counts": counts,
         "runways": sorted(set(runways)),
+        "ends": dict(sorted(ends.items())),
         "taxiways": sorted(taxi_refs, key=lambda s: (len(s), s)),
     }
     return feats, summary

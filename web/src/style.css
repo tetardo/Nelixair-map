@@ -291,8 +291,12 @@ a.ext { color: #7cb6ff; text-decoration: none; font-family: var(--mono); }
 a.ext::after { content: " ↗"; color: var(--chrome-soft); }
 a.ext:hover { text-decoration: underline; }
 .chart-badge { position: absolute; z-index: 2; top: calc(var(--bar) + 40px); left: 50%; transform: translateX(-50%); transition: left .2s ease;
-  display: flex; align-items: baseline; gap: 8px; padding: 6px 12px; border-radius: 7px; background: rgba(23, 32, 51, .94);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 12px; border-radius: 7px; background: rgba(23, 32, 51, .94);
   border: 1px solid var(--chrome-line); box-shadow: var(--shadow); white-space: nowrap; pointer-events: none; max-width: calc(100vw - 24px); }
+.chart-badge .cb-row { display: flex; align-items: baseline; gap: 8px; max-width: 100%; }
+.chart-badge .cb-info { flex-wrap: wrap; justify-content: center; gap: 4px 10px; font: 11.5px var(--mono); white-space: normal; }
+.chart-badge .cb-info i { font: 600 9.5px var(--sans); font-style: normal; letter-spacing: .05em; color: var(--chrome-soft); margin-right: 4px; }
+.chart-badge .cb-wind { color: #ffd21f; }
 .chart-badge b { font: 700 14px var(--mono); color: #ffd21f; }
 .chart-badge span { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
 .chart-badge small { color: var(--chrome-soft); font-size: 11px; }
@@ -301,3 +305,65 @@ body.side-open .chart-badge { left: calc(50% + var(--side) / 2); }
   body.side-open .chart-badge { left: 50%; }
   .chart-badge small { display: none; }
 }
+
+/* ---------- Sections repliables de la fiche ---------- */
+.fold { padding-top: 0; }
+.fold-h { display: flex; align-items: center; gap: 6px; width: 100%; padding: 10px 0 8px; background: none; border: 0; color: inherit; cursor: pointer; text-align: left; }
+.fold-h:hover .fold-t { color: var(--chrome-ink); }
+.fold-h .chev { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--chrome-soft); stroke-width: 2.2; transition: transform .18s ease; }
+.fold.open .chev { transform: rotate(90deg); }
+.fold-t { font: 600 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--chrome-soft); transition: color .15s; }
+.fold-b { font: 600 10px var(--mono); padding: 1px 6px; border-radius: 3px; background: var(--chrome-line); color: var(--chrome-ink); }
+.fold-n { margin-left: auto; font: 10.5px var(--mono); color: var(--chrome-soft); }
+.fold-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .2s ease; }
+.fold.open .fold-body { grid-template-rows: 1fr; }
+.fold-in { overflow: hidden; min-height: 0; }
+.fold.open .fold-in { padding-bottom: 6px; }
+@media (prefers-reduced-motion: reduce) { .fold-body, .fold-h .chev { transition: none; } }
+
+/* ---------- Fiche aéroport (lecture pilote) ---------- */
+.apt-head { position: sticky; top: -12px; z-index: 1; box-shadow: 0 8px 10px -10px rgba(0, 0, 0, .6); }
+.apt-head .facts { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+.head-cat { margin-left: auto; font-size: 11px; }
+.facts .f-night b { color: #a8b7ff; }
+.facts .f-day b { color: #ffd88a; }
+.apt-actions { display: flex; gap: 8px; margin-top: 8px; }
+.apt-actions .primary { flex: 1; margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.apt-actions .primary svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; }
+.btn-ghost { display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--chrome-line); border-radius: 6px; color: var(--chrome-ink);
+  font: 600 12px var(--sans); text-decoration: none; transition: background .15s, border-color .15s; }
+.btn-ghost:hover { background: rgba(255, 255, 255, .06); border-color: var(--accent); }
+.qfu-tbl td small { display: block; font-size: 10px; color: var(--chrome-soft); }
+.qfu-tbl .head { color: #5fd38d; }
+.qfu-tbl .tail { color: #ff7b72; }
+.qfu-tbl tr.best td:first-child b { color: #ffd21f; }
+.qfu-tbl tr { transition: background .15s; }
+.qfu-tbl tbody tr:hover { background: rgba(255, 255, 255, .04); }
+details.taf summary { cursor: pointer; font: 600 10.5px var(--sans); letter-spacing: .06em; color: var(--chrome-soft); margin: 6px 0 2px; }
+/* Bulles et popups du plan au sol */
+#hover-tip { white-space: normal; max-width: 300px; }
+#hover-tip .tip-apt { opacity: .6; font-size: 11px; }
+#hover-tip .tip-sub { font: 11.5px var(--mono); color: #ffd84d; white-space: nowrap; margin-top: 1px; }
+.pop-pos { display: flex; align-items: center; gap: 6px; margin: 6px 0 2px; font: 12px var(--mono); }
+.pop-copy { border: 1px solid currentColor; background: none; color: inherit; opacity: .7; border-radius: 4px; padding: 0 5px; cursor: pointer; font-size: 12px; }
+.pop-copy:hover { opacity: 1; }
+.pop-note { margin: 6px 0 2px; font-size: 11.5px; color: #e0342f; font-weight: 600; }
+.pop-wind { width: 100%; border-collapse: collapse; margin-top: 6px; font: 12px var(--mono); }
+.pop-wind th { text-align: left; font: 600 10px var(--sans); text-transform: uppercase; opacity: .6; padding: 2px 4px; }
+.pop-wind td { padding: 2px 4px; border-top: 1px solid rgba(127, 127, 127, .25); }
+.pop-wind td small { opacity: .6; }
+.pop-wind tr.best td { background: rgba(34, 165, 89, .15); font-weight: 700; }
+.pop-wind td.neg { color: #e0342f; }
+/* Calques : raccourcis tout / aucun */
+#tab-filters .fold { position: relative; }
+.f-all { display: flex; gap: 4px; position: absolute; right: 0; top: 8px; }
+.f-all button { font: 600 10px var(--sans); text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 4px;
+  border: 1px solid var(--line, rgba(127,127,127,.3)); background: none; color: inherit; opacity: .7; cursor: pointer; }
+.f-all button:hover { opacity: 1; }
+/* Fiche vide : accès direct aux plans au sol */
+.quick-apt { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.quick-apt button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--line, rgba(127,127,127,.3)); background: none; color: inherit; text-align: left; transition: transform .12s, border-color .12s; }
+.quick-apt button:hover { transform: translateY(-1px); border-color: var(--accent, #2f6fe0); }
+.quick-apt b { font-family: var(--mono); font-size: 13px; }
+.quick-apt small { opacity: .6; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
