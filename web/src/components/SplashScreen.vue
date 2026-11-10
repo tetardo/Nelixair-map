@@ -1,16 +1,19 @@
 <script setup lang="ts">
 // Écran d'accueil : illustration de carte animée et code d'accès de test.
 // ATTENTION : le code est en clair dans le code de la page. C'est un rideau pour la phase de test, pas une protection.
-import { nextTick, onMounted, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { state } from "../store";
 
 const TEST_CODE = "caca";
 const KEY = "tropo-access";
 const logo = import.meta.env.BASE_URL + "img/nelixair-logo.svg";
 
-let unlocked = false;
-try { unlocked = localStorage.getItem(KEY) === "1"; } catch { /* stockage indisponible */ }
-const open = ref(!unlocked);
+// L'accès expire après 10 min sans activité : l'écran d'accueil revient (heure de la dernière activité mémorisée)
+const IDLE_MS = 10 * 60 * 1000;
+const lastSeen = () => { try { return Number(localStorage.getItem(KEY)) || 0; } catch { return 0; } };
+const touch = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch { /* stockage indisponible */ } };
+const expired = () => Date.now() - lastSeen() >= IDLE_MS;
+const open = ref(expired());
 const leaving = ref(false);
 const code = ref("");
 const res = ref<"" | "bad" | "ok">("");
@@ -20,15 +23,36 @@ const input = ref<HTMLInputElement | null>(null);
 function submit() {
   if (code.value.trim().toLowerCase() !== TEST_CODE) { res.value = "bad"; input.value?.select(); return; }
   res.value = "ok";
-  try { localStorage.setItem(KEY, "1"); } catch { /* stockage indisponible */ }
+  touch();
   setTimeout(() => { leaving.value = true; }, 500);
   setTimeout(() => { open.value = false; }, 1200);
 }
-onMounted(async () => {
-  if (!open.value) return;
+async function show() {
+  code.value = ""; res.value = ""; leaving.value = false; open.value = true;
   await nextTick();
   input.value?.focus();
   if (!state.anim) svg.value?.pauseAnimations(); // « réduire les animations » ou bouton Animations coupé
+}
+// Activité (souris, clic, touche, molette) : repousse l'expiration, au plus une écriture toutes les 20 s
+let lastTouch = 0;
+function onActivity() {
+  if (open.value || Date.now() - lastTouch < 20000) return;
+  if (expired()) { show(); return; }
+  lastTouch = Date.now(); touch();
+}
+function check() { if (!open.value && expired()) show(); }
+const EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"] as const;
+let timer = 0;
+onMounted(() => {
+  if (open.value) show(); else touch();
+  EVENTS.forEach((e) => window.addEventListener(e, onActivity, { passive: true, capture: true }));
+  document.addEventListener("visibilitychange", check);
+  timer = window.setInterval(check, 30000);
+});
+onBeforeUnmount(() => {
+  EVENTS.forEach((e) => window.removeEventListener(e, onActivity, { capture: true }));
+  document.removeEventListener("visibilitychange", check);
+  clearInterval(timer);
 });
 const ROUTE = "M930 640 L900 560 L880 420 L860 330 L800 220 L760 172";
 const PLANE = "M0 -12 Q2 -10 2 -5 L2 -3 L11 2 L11 4 L2 1.5 L1.8 6.5 L5 9 L5 10.5 L0 9.5 L-5 10.5 L-5 9 L-1.8 6.5 L-2 1.5 L-11 4 L-11 2 L-2 -3 L-2 -5 Q-2 -10 0 -12 Z";
