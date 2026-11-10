@@ -2,6 +2,7 @@
 import { reactive } from "vue";
 import type { LngLat } from "./lib/format";
 import type { Ofp } from "./services/simbrief";
+import type { Atc, Pilot } from "./services/traffic";
 import type { ThemeName } from "./map/themes";
 import { THEMES } from "./map/themes";
 
@@ -17,6 +18,8 @@ export type Detail =
   | { kind: "airspaces"; list: Props[] }
   | { kind: "hazard"; p: Props }
   | { kind: "pirep"; p: Props }
+  | { kind: "traffic"; p: Pilot }
+  | { kind: "atc"; icao: string; list: Atc[] }
   | { kind: "picker"; items: PickItem[] };
 
 export type Tab = "detail" | "flight" | "airports" | "list" | "filters";
@@ -64,6 +67,7 @@ export const DEFAULT_FILTERS: Record<string, boolean> = {
   asp_controlled: true, asp_special: true, asp_fir: true, asp_other: false,
   wx: true, hazards: true, pireps: false, sat: false, night: false, mora: true,
   ground: true, approach: true,
+  vatsim: false, ivao: false,
 };
 
 // Affichage du fond de carte (menu près du zoom). Par défaut : épuré façon carte en route.
@@ -79,6 +83,7 @@ export const state = reactive({
   filters: { ...DEFAULT_FILTERS, ...storage<Record<string, boolean>>("nelixair-filters", {}) },
   detail: { kind: "empty" } as Detail,
   wxStatus: "" as string,
+  trafficStatus: "" as string,
   cursor: "—",
   cycleText: "",
   sources: [] as SourceMeta[],

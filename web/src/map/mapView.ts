@@ -1,6 +1,7 @@
 // Carte MapLibre : sources, couches, thèmes, filtres, interactions. Pilote l'état partagé (store) ;
 // les composants Vue appellent les actions exportées (openFix, openAirway, setSidebar…).
 import { initRuler, rulerControl } from "./ruler";
+import { TRAFFIC_LAYERS, atcAt, drawFlight, initTraffic, pilotAt, refreshTraffic } from "./trafficLayer";
 import * as maplibregl from "maplibre-gl";
 import { type Map as MlMap, type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
@@ -332,9 +333,12 @@ function fadeAirportsWithGround() {
 // ---------- Filtres ----------
 const NAV_CLASSES = ["vor", "vordme", "vortac", "tacan", "dme", "ndb"];
 let overlayKey = "";
+let lastNets = "";
 export function applyFilters() {
   if (!state.mapReady) return;
   const on = state.filters;
+  const nets = `${!!on.vatsim}${!!on.ivao}`;
+  if (nets !== lastNets) { lastNets = nets; refreshTraffic(); }
   const rnav = ["coalesce", ["get", "rnav"], false];
   const typeF = on.rnav && on.conv ? true : on.rnav ? ["==", rnav, true] : on.conv ? ["==", rnav, false] : false;
   const vis: Record<string, boolean> = { H: on.H, L: on.L, B: on.H || on.L };
@@ -730,6 +734,23 @@ function gndCtx(apt: string): GndCtx {
 
 function onClick(e: maplibregl.MapMouseEvent) {
   if (state.ruler) return; // la règle capte les clics
+  // Trafic en ligne : avion ou terrain contrôlé, prioritaire sur le reste
+  const tr = map.queryRenderedFeatures(box(e.point, 6), { layers: TRAFFIC_LAYERS.filter((l) => map.getLayer(l) && map.getLayoutProperty(l, "visibility") !== "none") });
+  if (tr.length) {
+    const f = tr.find((x) => x.layer.id === "traffic-ac") || tr[0];
+    closePopup();
+    if (f.layer.id === "traffic-ac") {
+      const p = pilotAt(f);
+      if (p) { drawFlight(p); showDetail({ kind: "traffic", p }); }
+    } else {
+      const a = atcAt(f);
+      drawFlight(null);
+      showDetail({ kind: "atc", icao: a.icao, list: a.list });
+    }
+    if (!state.sidebarOpen) setSidebar(true);
+    return;
+  }
+  drawFlight(null);
   const tipEl = document.getElementById("hover-tip"); if (tipEl) tipEl.hidden = true;
   const feats = map.queryRenderedFeatures(box(e.point, 6), { layers: CLICKABLE.filter((l) => map.getLayer(l)) });
   const pts: MapGeoJSONFeature[] = [], legs: MapGeoJSONFeature[] = [], seen = new Set<string>();
@@ -920,6 +941,12 @@ export async function initMap(container: HTMLElement): Promise<void> {
   map.addControl(rulerControl(), "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "nautical" }), "bottom-right");
   map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
+  // Crédits repliés par défaut (bouton « i ») : MapLibre les déplie au chargement, on les referme une fois
+  map.once("idle", () => {
+    const el = map.getContainer().querySelector(".maplibregl-ctrl-attrib");
+    el?.classList.remove("maplibregl-compact-show");
+    el?.removeAttribute("open");
+  });
   (window as unknown as { nelixairMap: MlMap }).nelixairMap = map; // débogage et captures d'écran
 
   // Index des cartes d'aéroport (terrains pilotes)
@@ -982,6 +1009,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     baseLayers = map.getStyle().layers.slice();
     addLayers(sources);
     initRuler(map);
+    initTraffic(map);
     state.mapReady = true;
     applyTheme(state.theme);
     applyView();
