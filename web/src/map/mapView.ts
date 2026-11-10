@@ -493,6 +493,61 @@ export function openAirportChart(ident: string) {
   map.fitBounds([[w, s], [e, n]], { padding: isMobile() ? 20 : 50, maxZoom: 16, duration: 1000 });
 }
 
+// ---------- Objets du plan au sol pilotés depuis la fiche (puces pistes / taxiways) ----------
+type GKind = "runway" | "taxiway";
+let hoverPop: maplibregl.Popup | null = null;
+let focused: { apt: string; kind: GKind; ref: string } | null = null; // objet ouvert au clic (surbrillance gardée)
+function groundFeatures(apt: string, kind: GKind, ref: string) {
+  if (!groundSrc || !map.getSource(groundSrc.source)) return [];
+  const kinds = kind === "runway" ? ["runway"] : ["taxiway", "taxilane"];
+  return map.querySourceFeatures(groundSrc.source, { sourceLayer: groundSrc["source-layer"],
+    filter: ["all", ["==", ["get", "apt"], apt], ["==", ["get", "ref"], ref], ["in", ["get", "kind"], ["literal", kinds]]] as never });
+}
+/** Étendue et point d'ancrage (sommet le plus proche du centre) des tronçons chargés. */
+function groundExtent(apt: string, kind: GKind, ref: string) {
+  const fs = groundFeatures(apt, kind, ref);
+  const pts: LngLat[] = [];
+  const walk = (c: unknown): void => { if (typeof (c as number[])[0] === "number") pts.push(c as LngLat); else (c as unknown[]).forEach(walk); };
+  for (const f of fs) walk((f.geometry as GeoJSON.LineString | GeoJSON.Polygon).coordinates);
+  if (!pts.length) return null;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const b: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  const anchor = pts.reduce((a, p) => (Math.hypot(p[0] - cx, p[1] - cy) < Math.hypot(a[0] - cx, a[1] - cy) ? p : a));
+  return { bbox: b, anchor, props: fs[0].properties };
+}
+/** Survol d'une puce : surbrillance et bulle éphémère ; null = fin du survol. */
+export function groundPreview(apt: string, kind: GKind | null, ref = "") {
+  hoverPop?.remove(); hoverPop = null;
+  if (!state.mapReady) return;
+  if (!kind) { groundHighlight(map, focused); return; }
+  groundHighlight(map, { apt, kind, ref });
+  const ex = groundExtent(apt, kind, ref);
+  if (!ex) return;
+  hoverPop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "hover-pop", focusAfterOpen: false, offset: 8 })
+    .setLngLat(ex.anchor).setHTML(groundTip(ex.props, undefined, gndCtx(apt))).addTo(map);
+}
+/** Clic sur une puce : cadre l'objet et ouvre sa bulle détaillée (reste ouverte). */
+export function groundFocus(apt: string, kind: GKind, ref: string) {
+  hoverPop?.remove(); hoverPop = null;
+  const open = () => {
+    const ex = groundExtent(apt, kind, ref);
+    if (!ex) return false;
+    const side = state.sidebarOpen && !isMobile() ? 380 : 40;
+    map.fitBounds([[ex.bbox[0], ex.bbox[1]], [ex.bbox[2], ex.bbox[3]]],
+      { padding: { top: 90, bottom: 60, left: side, right: 60 }, maxZoom: 16.5, duration: 700 });
+    map.once("moveend", () => {
+      showPopup(ex.anchor, groundHtml(ex.props, undefined, gndCtx(apt)));
+      focused = { apt, kind, ref };
+      groundHighlight(map, focused);
+      popup?.on("close", () => { focused = null; groundHighlight(map, null); });
+    });
+    return true;
+  };
+  // Plan pas encore chargé à l'écran : on l'affiche d'abord, puis on réessaie une fois les tuiles prêtes
+  if (!open()) { openAirportChart(apt); map.once("idle", () => open()); }
+}
+
 // ---------- Liste des éléments visibles ----------
 export interface ListItem { p: Props; ll: LngLat; d: number }
 export interface AwyItem { ident: string; lv: Set<string>; rnav: boolean; n: number }
@@ -782,7 +837,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     const f = fs[0];
     const gp = f?.layer.id.startsWith("g-") ? f.properties : null;
     const key = gp ? `${gp.apt}|${gp.kind}|${gp.ref}` : "";
-    if (key !== hlKey) { hlKey = key; groundHighlight(map, gp); }
+    if (key !== hlKey) { hlKey = key; groundHighlight(map, gp || focused); }
     if (!f) { tip.hidden = true; return; }
     const p = f.properties;
     if (gp) tip.innerHTML = groundTip(gp, f.geometry.type === "Point" ? (f.geometry as GeoJSON.Point).coordinates as LngLat : undefined, gndCtx(gp.apt));
@@ -793,7 +848,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     tip.style.transform = `translate(${e.point.x + 14}px, ${e.point.y + 14}px)`;
     tip.hidden = false;
   });
-  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, null); });
+  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, focused); });
   // Boutons « copier » des popups (coordonnées d'un poste pour l'IRS/FMS)
   map.getContainer().addEventListener("click", (ev) => {
     const b = (ev.target as HTMLElement).closest?.("[data-copy]") as HTMLElement | null;

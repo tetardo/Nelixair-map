@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { airacAt, fmtDate, siaAd2Url } from "../lib/airac";
 import { APT_KIND, SRC, ddm, deg3, dms, ft, pairs, yes, type LngLat } from "../lib/format";
-import { openAirportChart } from "../map/mapView";
+import { groundFocus, groundPreview, openAirportChart } from "../map/mapView";
 import { aptDetails, type AptDetails } from "../services/data";
 import { sunTimes, type SunTime } from "../services/sun";
 import { runwayWinds, splitDesignator, type RwyWind } from "../lib/wind";
@@ -201,12 +201,22 @@ const today = `${now.toISOString().slice(8, 10)}/${now.toISOString().slice(5, 7)
   <Section id="ground" title="Carte d'aéroport" :open="!!ground" :note="ground ? 'OSM ' + ground.osm.slice(0, 10) : ''">
     <template v-if="ground">
       <div class="facts gfacts">
-        <div><small>Pistes</small><b>{{ ground.runways.join(" · ") || "—" }}</b></div>
         <div><small>Postes</small><b>{{ (ground.counts.stand || 0) + (ground.counts.gate || 0) }}</b></div>
         <div><small>Points d'attente</small><b>{{ ground.counts.holding || 0 }}</b></div>
       </div>
-      <div v-if="ground.taxiways.length" class="chips twy-chips"><span v-for="t in ground.taxiways" :key="t" class="twy">{{ t }}</span></div>
-      <p class="muted small">Survol : nom et position de chaque objet · clic : fiche détaillée. Données OpenStreetMap (ODbL), non certifiées.</p>
+      <div v-if="ground.runways.length" class="g-lbl">Pistes</div>
+      <div v-if="ground.runways.length" class="chips twy-chips">
+        <button v-for="r in ground.runways" :key="r" type="button" class="rwy" @mouseenter="groundPreview(p.ident, 'runway', r)"
+          @mouseleave="groundPreview(p.ident, null)" @focus="groundPreview(p.ident, 'runway', r)" @blur="groundPreview(p.ident, null)"
+          @click="groundFocus(p.ident, 'runway', r)">{{ r }}</button>
+      </div>
+      <div v-if="ground.taxiways.length" class="g-lbl">Taxiways</div>
+      <div v-if="ground.taxiways.length" class="chips twy-chips">
+        <button v-for="t in ground.taxiways" :key="t" type="button" class="twy" @mouseenter="groundPreview(p.ident, 'taxiway', t)"
+          @mouseleave="groundPreview(p.ident, null)" @focus="groundPreview(p.ident, 'taxiway', t)" @blur="groundPreview(p.ident, null)"
+          @click="groundFocus(p.ident, 'taxiway', t)">{{ t }}</button>
+      </div>
+      <p class="muted small">Survol d'une puce : repérage sur la carte · clic : cadrage et fiche. Données OpenStreetMap (ODbL), non certifiées.</p>
     </template>
     <p v-else class="muted small">Pas encore de plan au sol pour ce terrain (phase pilote : {{ Object.keys(state.ground).join(", ") || "aucun terrain chargé" }}).</p>
   </Section>
