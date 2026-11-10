@@ -71,7 +71,7 @@ const nm = (v: number) => Math.round(v).toLocaleString("fr-FR");
       </div>
       <div v-if="a.m" class="wx-raw">{{ a.m.rawOb }}</div>
       <p v-else class="muted small">Pas de METAR.</p>
-      <details v-if="a.t" class="taf"><summary>TAF</summary><div class="wx-raw">{{ a.t }}</div></details>
+      <details v-if="a.t" class="taf" open><summary>TAF</summary><div class="wx-raw">{{ a.t }}</div></details>
     </div>
 
     <h4 class="rwx-sub">SIGMET / AIRMET sur la route</h4>
