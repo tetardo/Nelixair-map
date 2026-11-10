@@ -50,6 +50,13 @@ jobs:
           python3 pipeline/ground.py fetch --raw /tmp/ground-raw
           python3 pipeline/ground.py build --raw /tmp/ground-raw --out /tmp/ground-out
           python3 -c "import json; d=json.load(open('/tmp/ground-out/ground-index.json'))['airports']; [print(k, v['osm'], v['counts'], 'taxiways:', len(v['taxiways'])) for k, v in d.items()]" | tee -a "$GITHUB_STEP_SUMMARY"
+      # SimBrief : le navigateur peut-il lire l'API directement (en-tête CORS) ? Informatif.
+      - name: SimBrief CORS
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          curl -s -o /dev/null -D - -H "Origin: https://tetardo.github.io" \
+            "https://www.simbrief.com/api/xml.fetcher.php?username=nelixair_ci_probe&json=1" | grep -iE "^HTTP|access-control" | tee -a "$GITHUB_STEP_SUMMARY"
       # eAIP SIA réel : vérifie la lecture des pages AD 2 du cycle en cours (informatif, le SIA peut être indisponible)
       - name: eAIP SIA réel (terrains pilotes)
         continue-on-error: true

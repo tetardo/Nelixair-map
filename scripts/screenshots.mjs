@@ -39,12 +39,14 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
 // [fichier, chemin, thème, onglet du panneau, filtres forcés, défilement du panneau en bas, actions]
-// actions : side (panneau ouvert, défaut oui), click / hover [x, y] en px CSS, open (sections de fiche à ouvrir)
+// actions : side (panneau ouvert, défaut oui), click / hover [x, y] en px CSS, open (sections de fiche à ouvrir), demo (vol de démo SimBrief)
 const WX = { hazards: true, pireps: true, sat: true, night: true };
 const SHOTS = [
   ["accueil-france.png", "", "day", "filters"],
   // Panneau Aéroports : cartes au sol disponibles
   ["aeroports.png", "#map=6/46.6/2.5", "night", "airports"],
+  // Plan de vol : vol de démo SimBrief (LFML -> LFPO) tracé, nav log dans le panneau
+  ["plan-de-vol.png", "", "night", "flight", null, false, { demo: true }],
   ["carte.png", "#map=5.3/37.6/-99.5", "day", null],
   ["europe-nuit.png", "#map=7.2/48.9/2.4", "night", null],
   ["fiche-aeroport.png", "?sel=KSFO#map=10/37.62/-122.38", "day", "detail"],
@@ -81,6 +83,7 @@ for (const [name, path, theme, tab, filters, scroll, act = {}] of SHOTS) {
     // laisse le temps aux tuiles, à la météo et aux détails de se charger
     await page.waitForTimeout(8000);
     if (tab && tab !== "detail") await page.evaluate((t) => { const b = document.querySelector(`.rail-btn[data-tab="${t}"]`); if (b && b.getAttribute("aria-pressed") !== "true") b.click(); }, tab);
+    if (act.demo) { await page.click(".sb-demo"); await page.waitForTimeout(3000); }
     if (act.hover) { await page.mouse.move(act.hover[0] - 4, act.hover[1]); await page.mouse.move(...act.hover); await page.waitForTimeout(1500); }
     if (act.menu) { await page.click("#view-btn"); await page.waitForTimeout(800); }
     if (act.click) { await page.mouse.click(...act.click); await page.waitForTimeout(1500); }

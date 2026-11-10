@@ -25,8 +25,8 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | ![Plan au sol de LFML de nuit](https://tetardo.github.io/Nelixair-map/screenshots/carte-aeroport-lfml-nuit.png) | ![Popup de piste avec vent de face et de travers](https://tetardo.github.io/Nelixair-map/screenshots/piste-vent-lfml.png) |
 | **Bulle de survol et surbrillance** | **Menu Affichage, vue satellite** |
 | ![Survol d'une piste de LFML](https://tetardo.github.io/Nelixair-map/screenshots/survol-lfml.png) | ![Vue satellite de LFML avec le menu Affichage](https://tetardo.github.io/Nelixair-map/screenshots/satellite-lfml.png) |
-| **Barre de navigation, panneau Aéroports** | |
-| ![Barre verticale et liste des cartes d'aéroport](https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png) | |
+| **Barre de navigation, panneau Aéroports** | **Plan de vol SimBrief (vol de démo)** |
+| ![Barre verticale et liste des cartes d'aéroport](https://tetardo.github.io/Nelixair-map/screenshots/aeroports.png) | ![Route LFML-LFPO et nav log](https://tetardo.github.io/Nelixair-map/screenshots/plan-de-vol.png) |
 
 ## Couverture des données
 
@@ -40,6 +40,7 @@ Générées automatiquement à chaque déploiement, sur les données réelles du
 | [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a4) | imagerie aérienne et satellite (vue Satellite du menu Affichage), tuiles chargées par le navigateur | monde | conditions Esri, **usage non commercial** avec attribution |
 | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen) | relief ombré (vue Relief) | monde | données ouvertes, attribution |
 | [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | satellite infrarouge GOES-East, GOES-West, Himawari (Amériques, Pacifique, Asie ; **pas l'Europe ni l'Afrique**) | partielle | données NASA ouvertes |
+| [SimBrief](https://developers.navigraph.com/docs/simbrief/fetching-ofp-data) (Navigraph) | plan de vol du pilote (OFP), lu à la demande par son navigateur ; rien n'est stocké côté serveur | monde | [conditions développeurs Navigraph](https://developers.navigraph.com) — à vérifier avant tout usage commercial |
 
 Conséquences à connaître :
 
@@ -67,6 +68,9 @@ Conséquences à connaître :
 - Barre de navigation verticale (icônes [Lucide](https://lucide.dev), licence ISC) : Fiche, Aéroports
   (cartes au sol disponibles), Liste, Calques ; en bas Affichage, jour / nuit, sources. Recliquer une
   section referme le panneau.
+- Plan de vol : import du dernier OFP [SimBrief](https://www.simbrief.com) d'un pilote (pseudo ou Pilot ID, lu
+  directement par le navigateur), route en magenta avec TOC / TOD et dégagement, nav log (altitude, route
+  magnétique, distances, temps, carburant), carburant et masses. Bouton « Vol de démo » sans compte.
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
   waypoints), liste triable des éléments à l'écran, fiche détaillée d'un point (voies qui y passent)
   et log d'une voie (MEA, route vraie, distance, cumul)
