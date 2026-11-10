@@ -2,11 +2,12 @@
 import { onMounted, ref, watch } from "vue";
 import AboutDialog from "./components/AboutDialog.vue";
 import AirportChartBadge from "./components/AirportChartBadge.vue";
+import MapOptions from "./components/MapOptions.vue";
 import SideBar from "./components/SideBar.vue";
 import StatusBar from "./components/StatusBar.vue";
 import TopBar from "./components/TopBar.vue";
 import { CFG } from "./config";
-import { applyFilters, applyTheme, clearSelection, initMap, setSidebar } from "./map/mapView";
+import { applyFilters, applyTheme, applyView, clearSelection, initMap, setEaip, setSidebar } from "./map/mapView";
 import { isMobile, state } from "./store";
 
 const mapEl = ref<HTMLElement | null>(null);
@@ -16,6 +17,7 @@ const search = ref<InstanceType<typeof TopBar> | null>(null);
 applyTheme(state.theme);
 watch(() => state.theme, applyTheme);
 watch(() => state.filters, applyFilters, { deep: true });
+watch(() => state.view, applyView, { deep: true });
 
 // Métadonnées : sources, cycles, cartes FAA
 fetch(CFG.meta).then((r) => r.json()).then((meta) => {
@@ -27,6 +29,12 @@ fetch(CFG.meta).then((r) => r.json()).then((meta) => {
 }).catch(() => { state.metaError = true; });
 
 onMounted(async () => {
+  // Données de piste officielles France (eAIP SIA) : facultatives
+  fetch(CFG.eaip).then((r) => (r.ok ? r.json() : null)).then((j) => {
+    if (!j?.airports) return;
+    state.eaipCycle = j.cycle || "";
+    setEaip(j.airports);
+  }).catch(() => { /* pas de données eAIP */ });
   let saved: string | null = null;
   try { saved = localStorage.getItem("nelixair-side"); } catch { /* stockage indisponible */ }
   await initMap(mapEl.value!);
@@ -48,6 +56,7 @@ document.addEventListener("keydown", (e) => {
   <SideBar />
   <StatusBar />
   <AirportChartBadge />
+  <MapOptions />
   <div class="nfn">NE PAS UTILISER POUR LA NAVIGATION</div>
   <AboutDialog ref="about" />
 </template>

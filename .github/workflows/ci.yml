@@ -45,10 +45,34 @@ jobs:
       # Plan au sol réel des terrains pilotes : informatif (Overpass peut être saturé), ne bloque pas la CI
       - name: Qualité OSM des terrains pilotes (Overpass)
         continue-on-error: true
+        timeout-minutes: 5
         run: |
           python3 pipeline/ground.py fetch --raw /tmp/ground-raw
           python3 pipeline/ground.py build --raw /tmp/ground-raw --out /tmp/ground-out
           python3 -c "import json; d=json.load(open('/tmp/ground-out/ground-index.json'))['airports']; [print(k, v['osm'], v['counts'], 'taxiways:', len(v['taxiways'])) for k, v in d.items()]" | tee -a "$GITHUB_STEP_SUMMARY"
+      # eAIP SIA réel : vérifie la lecture des pages AD 2 du cycle en cours (informatif, le SIA peut être indisponible)
+      - name: eAIP SIA réel (terrains pilotes)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          python3 pipeline/eaip.py fetch --raw /tmp/eaip-raw
+          python3 pipeline/eaip.py build --raw /tmp/eaip-raw --out /tmp/eaip-out
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          sys.path.insert(0, "pipeline")
+          import eaip
+          d = json.load(open("/tmp/eaip-out/eaip.json"))
+          print("cycle", d["cycle"])
+          for k, a in d["airports"].items():
+              print(k, "TA", a.get("ta_ft"), "magvar", a.get("magvar"), "ARP", a.get("arp"))
+              for q, r in a["rwys"].items():
+                  print("  ", q, {x: r.get(x) for x in ("true", "mag", "len", "tora", "lda", "papi", "ils")})
+          # Structure brute de sections encore mal lues (diagnostic)
+          for icao, sec, n in (("LFML", 17, 12), ("LFLL", 12, 3), ("LFMN", 12, 3)):
+              h = open(f"/tmp/eaip-raw/FR-AD-2.{icao}-fr-FR.html", encoding="utf-8").read()
+              for row in eaip.rows(eaip.sections(h, icao).get(sec, ""))[:n]:
+                  print(f"{icao} AD2.{sec}", row)
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

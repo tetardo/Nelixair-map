@@ -7,12 +7,14 @@ import { Protocol } from "pmtiles";
 import { CFG } from "../config";
 import { CLS, dms, esc, type LngLat } from "../lib/format";
 import { distNm } from "../lib/geo";
+import { loadTaxi, nearestStand, routeToRunway } from "../lib/taxiRoute";
 import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIdent, type Hit } from "../services/data";
 import { nightPolygon } from "../services/sun";
 import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
-import { isMobile, state, type GroundAirport, type PickItem, type Props, type Tab } from "../store";
+import { isMobile, state, type EaipApt, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
+import { APT_DRAW_LAYERS, addAptDrawLayers, aptDrawData, themeAptDraw } from "./aptDraw";
 import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
-import { aspHtml, fixHtml, groundHtml, groundTip, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
+import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
 import { THEMES, type ThemeName } from "./themes";
 
@@ -31,7 +33,16 @@ let aspSrc: { source: string; "source-layer"?: string } = { source: "asp" };
 let groundSrc: { source: string; "source-layer"?: string } | null = null;
 
 // ---------- Fond de carte : style libre, épuré façon carte en route ----------
-const DROP = /road|highway|bridge|tunnel|rail|building|poi|aeroway|transit|housenumber|landuse|park|ferry|aerialway|motorway|path|pier|mountain_peak/i;
+// Retirés définitivement (bruit pour un pilote, ou doublon du plan au sol OSM)
+const DROP = /poi|aeroway|housenumber/i;
+// Groupes affichables depuis le menu « Affichage »
+const BASE_GROUPS: [keyof MapView, RegExp][] = [
+  ["roads", /road|highway|bridge|tunnel|rail|transit|ferry|aerialway|motorway|path|pier/i],
+  ["buildings", /building/i],
+  ["landuse", /landuse|park/i],
+];
+const baseGroup = (l: { id: string; type: string }): keyof MapView | null =>
+  BASE_GROUPS.find(([, re]) => re.test(l.id))?.[0] ?? (l.type === "symbol" ? "places" : null);
 async function basemap(): Promise<StyleSpecification> {
   try {
     const r = await fetch(CFG.basemapStyle);
@@ -51,6 +62,9 @@ function paintBasemap(T: (typeof THEMES)[ThemeName]) {
     const set = (k: string, v: unknown) => { try { map.setPaintProperty(l.id, k as never, v as never); } catch { /* propriété absente */ } };
     if (l.type === "background") set("background-color", T.bg);
     else if (l.type === "fill" && /water/i.test(l.id)) set("fill-color", T.water);
+    else if (l.type === "fill" && /building/i.test(l.id)) { set("fill-color", T.bldg); set("fill-outline-color", T.roadCase); }
+    else if (l.type === "fill" && /landuse|park/i.test(l.id)) { set("fill-color", T.landuse); set("fill-opacity", 0.6); }
+    else if (l.type === "line" && BASE_GROUPS[0][1].test(l.id)) set("line-color", /casing|outline/i.test(l.id) ? T.roadCase : T.road);
     else if (l.type === "fill") set("fill-opacity", T.land);
     else if (l.type === "line" && /water|river/i.test(l.id)) set("line-color", T.waterLine);
     else if (l.type === "line" && /boundary|admin/i.test(l.id)) set("line-color", T.border);
@@ -58,6 +72,42 @@ function paintBasemap(T: (typeof THEMES)[ThemeName]) {
       set("text-color", /water|ocean|sea|lake/i.test(l.id) ? T.waterLabel : T.label);
       set("text-halo-color", T.halo);
     }
+  }
+}
+
+// Relief ombré (Terrarium, données ouvertes AWS / Mapzen) et imagerie : ajoutés à la demande sous les couches aéronautiques
+const firstAero = () => map.getStyle().layers[baseLayers.length]?.id;
+export function applyView() {
+  try { localStorage.setItem("nelixair-view", JSON.stringify(state.view)); } catch { /* stockage indisponible */ }
+  if (!state.mapReady) return;
+  const v = state.view;
+  for (const l of baseLayers) {
+    const g = baseGroup(l);
+    if (g) map.setLayoutProperty(l.id, "visibility", v[g] ? "visible" : "none");
+  }
+  if (v.relief && !map.getSource("relief")) {
+    map.addSource("relief", { type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: 14,
+      tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      attribution: 'Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Mapzen / AWS Terrain Tiles</a>' });
+    map.addLayer({ id: "relief", type: "hillshade", source: "relief",
+      paint: { "hillshade-exaggeration": 0.35, "hillshade-shadow-color": "rgba(0,0,0,.45)", "hillshade-highlight-color": "rgba(255,255,255,.25)" } }, firstAero());
+  }
+  if (map.getLayer("relief")) map.setLayoutProperty("relief", "visibility", v.relief ? "visible" : "none");
+  // Imagerie Esri (choix de l'association : usage non commercial). Insérée sous les routes, bâtiments et noms du fond.
+  const sat = v.base === "sat";
+  if (sat && !map.getSource("imagery")) {
+    map.addSource("imagery", { type: "raster", tileSize: 256, maxzoom: 19,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      attribution: 'Imagerie <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>, Maxar, Earthstar Geographics' });
+    const above = baseLayers.find((l) => baseGroup(l) && baseGroup(l) !== "landuse")?.id || firstAero();
+    map.addLayer({ id: "imagery", type: "raster", source: "imagery", paint: { "raster-fade-duration": 150 } }, above);
+  }
+  if (map.getLayer("imagery")) map.setLayoutProperty("imagery", "visibility", sat ? "visible" : "none");
+  // Sur l'imagerie, les fonds du plan au sol deviennent transparents : on voit la scène réelle sous les taxiways
+  if (map.getLayer("g-boundary")) {
+    map.setPaintProperty("g-boundary", "fill-opacity", sat ? 0 : ["interpolate", ["linear"], ["zoom"], 11, 0, 12.5, 0.85]);
+    map.setPaintProperty("g-apron", "fill-opacity", sat ? 0.25 : 1);
+    map.setPaintProperty("g-building", "fill-opacity", sat ? 0.3 : ["interpolate", ["linear"], ["zoom"], 13, 0.5, 15, 1]);
   }
 }
 
@@ -95,6 +145,20 @@ function addLayers(sources: Record<string, unknown>) {
 
   // Carte d'aéroport (plan au sol), sous les espaces et la navigation
   if (groundSrc) addGroundLayers(map, groundSrc, F, FB);
+  // Tracés eAIP (axe prolongé, ILS, seuils décalés, intersections) au-dessus du plan au sol
+  map.addSource("apt-draw", { type: "geojson", data: aptDrawData(state.eaip) });
+  addAptDrawLayers(map, F, FB);
+  // Itinéraire de roulage (calculé à la demande depuis la popup d'un poste)
+  map.addSource("taxi-route", { type: "geojson", data: EMPTY });
+  add({ id: "tr-casing", type: "line", source: "taxi-route", filter: ["==", ["geometry-type"], "LineString"],
+    layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 5, 17, 12] } });
+  add({ id: "tr-line", type: "line", source: "taxi-route", filter: ["==", ["geometry-type"], "LineString"],
+    layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#d6336c", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 3, 17, 7] } });
+  add({ id: "tr-hold", type: "circle", source: "taxi-route", filter: ["==", ["get", "t"], "hold"],
+    paint: { "circle-radius": 6, "circle-color": "#e0342f", "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+  add({ id: "tr-lbl", type: "symbol", source: "taxi-route", filter: ["has", "lbl"],
+    layout: { "text-field": ["get", "lbl"], "text-font": FB, "text-size": 12, "text-offset": [0, -1.3], "text-allow-overlap": true },
+    paint: { "text-color": "#d6336c", "text-halo-color": "#fff", "text-halo-width": 2 } });
 
   // Espaces aériens (sous les voies) : remplissage léger, contour, nom + limites le long du contour
   add({ id: "asp-fill", type: "fill", ...aspSrc, minzoom: 4, filter: ["!=", ["get", "group"], "fir"], paint: { "fill-opacity": 0.05 } });
@@ -241,6 +305,7 @@ export function applyTheme(name: ThemeName) {
   Lp("nav-lbl", "icon-image", ["case", isNdb, `${name}-box-ndb`, `${name}-box-nav`]);
   P("nav-lbl", "text-color", ["case", isNdb, T.ndb, T.navaid]);
   if (map.getLayer("g-runway")) themeGround(map, name, T);
+  themeAptDraw(map, T);
 }
 
 // Le symbole d'un aéroport s'efface quand son plan au sol est affiché (zoom ≥ 13)
@@ -289,6 +354,7 @@ export function applyFilters() {
   V("sat", on.sat);
   V("night", on.night);
   if (map.getLayer("g-runway")) for (const id of GROUND_LAYERS) V(id, on.ground);
+  for (const id of APT_DRAW_LAYERS) if (map.getLayer(id)) V(id, on.approach);
   fadeAirportsWithGround();
   const key = ["hazards", "pireps", "sat"].map((k) => +!!on[k]).join("");
   const changed = key !== overlayKey;
@@ -445,6 +511,114 @@ export function openAirportChart(ident: string) {
   map.fitBounds([[w, s], [e, n]], { padding: isMobile() ? 20 : 50, maxZoom: 16, duration: 1000 });
 }
 
+// Manche à air au point de référence du terrain affiché, orientée selon le METAR (la manche pointe sous le vent)
+let sock: maplibregl.Marker | null = null;
+export function setWindsock(apt: string, wdir: unknown, wspd: number | null | undefined) {
+  sock?.remove(); sock = null;
+  const g = state.ground[apt];
+  const at = state.eaip[apt]?.arp || (g ? [(g.bbox[0] + g.bbox[2]) / 2, (g.bbox[1] + g.bbox[3]) / 2] as LngLat : null);
+  if (!apt || !at || !state.mapReady || wspd == null) return;
+  const el = document.createElement("div");
+  el.className = "windsock";
+  const calm = !wspd, vrb = typeof wdir !== "number";
+  el.title = calm ? "Vent calme" : vrb ? `Vent variable ${wspd} kt` : `Vent ${String(wdir).padStart(3, "0")}° ${wspd} kt (vrai)`;
+  // 5 bandes = 15 kt ou plus (convention OACI : une bande par tranche de 3 kt)
+  const bands = Math.min(5, Math.max(1, Math.round(wspd / 3)));
+  el.innerHTML = calm || vrb ? `<span class="ws-calm">${calm ? "CALME" : "VRB"}</span>` :
+    `<svg viewBox="-4 -14 48 28" style="transform: rotate(${(Number(wdir) + 90) % 360}deg)"><line x1="-3" y1="0" x2="0" y2="0"/>` +
+    Array.from({ length: 5 }, (_, i) => `<path class="${i < bands ? (i % 2 ? "w" : "r") : "off"}" d="M${i * 8} ${-9 + i * 1.2} L${i * 8 + 8} ${-9 + (i + 1) * 1.2} L${i * 8 + 8} ${9 - (i + 1) * 1.2} L${i * 8} ${9 - i * 1.2}Z"/>`).join("") +
+    `</svg><span class="ws-lbl">${wspd} kt</span>`;
+  sock = new maplibregl.Marker({ element: el }).setLngLat(at).addTo(map);
+}
+
+// ---------- Itinéraire de roulage ----------
+export function clearTaxiRoute() {
+  (map.getSource("taxi-route") as maplibregl.GeoJSONSource | undefined)?.setData(EMPTY);
+}
+export async function showTaxiRoute(apt: string, at: LngLat, qfu: string) {
+  const g = await loadTaxi(CFG.taxiBase, apt);
+  if (!g) return;
+  const si = nearestStand(g, at);
+  const stand = si >= 0 ? g.stands[si][0] || "Poste" : "Poste";
+  const r = si >= 0 ? routeToRunway(g, si, qfu) : null;
+  const feats: GeoJSON.Feature[] = [];
+  if (r) {
+    feats.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: r.coords } });
+    for (const h of r.holds) feats.push({ type: "Feature", properties: { t: "hold", lbl: h.ref || "STOP" }, geometry: { type: "Point", coordinates: h.at } });
+    feats.push({ type: "Feature", properties: { lbl: qfu }, geometry: { type: "Point", coordinates: r.coords[r.coords.length - 1] } });
+  }
+  (map.getSource("taxi-route") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: feats });
+  const anchor = r ? r.coords[0] : at;
+  showPopup(anchor, routeHtml(stand, qfu, r));
+  if (r) {
+    const xs = r.coords.map((c) => c[0]), ys = r.coords.map((c) => c[1]);
+    const side = state.sidebarOpen && !isMobile() ? 380 : 40;
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
+      { padding: { top: 260, bottom: 60, left: side, right: 60 }, maxZoom: 16.5, duration: 800 });
+  }
+}
+
+/** Données eAIP chargées : tracés et caps vrais officiels. */
+export function setEaip(airports: Record<string, EaipApt>) {
+  state.eaip = airports;
+  (map?.getSource("apt-draw") as maplibregl.GeoJSONSource | undefined)?.setData(aptDrawData(airports));
+}
+
+// ---------- Objets du plan au sol pilotés depuis la fiche (puces pistes / taxiways) ----------
+type GKind = "runway" | "taxiway";
+let hoverPop: maplibregl.Popup | null = null;
+let focused: { apt: string; kind: GKind; ref: string } | null = null; // objet ouvert au clic (surbrillance gardée)
+function groundFeatures(apt: string, kind: GKind, ref: string) {
+  if (!groundSrc || !map.getSource(groundSrc.source)) return [];
+  const kinds = kind === "runway" ? ["runway"] : ["taxiway", "taxilane"];
+  return map.querySourceFeatures(groundSrc.source, { sourceLayer: groundSrc["source-layer"],
+    filter: ["all", ["==", ["get", "apt"], apt], ["==", ["get", "ref"], ref], ["in", ["get", "kind"], ["literal", kinds]]] as never });
+}
+/** Étendue et point d'ancrage (sommet le plus proche du centre) des tronçons chargés. */
+function groundExtent(apt: string, kind: GKind, ref: string) {
+  const fs = groundFeatures(apt, kind, ref);
+  const pts: LngLat[] = [];
+  const walk = (c: unknown): void => { if (typeof (c as number[])[0] === "number") pts.push(c as LngLat); else (c as unknown[]).forEach(walk); };
+  for (const f of fs) walk((f.geometry as GeoJSON.LineString | GeoJSON.Polygon).coordinates);
+  if (!pts.length) return null;
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+  const b: [number, number, number, number] = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  const cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+  const anchor = pts.reduce((a, p) => (Math.hypot(p[0] - cx, p[1] - cy) < Math.hypot(a[0] - cx, a[1] - cy) ? p : a));
+  return { bbox: b, anchor, props: fs[0].properties };
+}
+/** Survol d'une puce : surbrillance et bulle éphémère ; null = fin du survol. */
+export function groundPreview(apt: string, kind: GKind | null, ref = "") {
+  hoverPop?.remove(); hoverPop = null;
+  if (!state.mapReady) return;
+  if (!kind) { groundHighlight(map, focused); return; }
+  groundHighlight(map, { apt, kind, ref });
+  const ex = groundExtent(apt, kind, ref);
+  if (!ex) return;
+  hoverPop = new maplibregl.Popup({ closeButton: false, closeOnClick: false, className: "hover-pop", focusAfterOpen: false, offset: 8 })
+    .setLngLat(ex.anchor).setHTML(groundTip(ex.props, undefined, gndCtx(apt))).addTo(map);
+}
+/** Clic sur une puce : cadre l'objet et ouvre sa bulle détaillée (reste ouverte). */
+export function groundFocus(apt: string, kind: GKind, ref: string) {
+  hoverPop?.remove(); hoverPop = null;
+  const open = () => {
+    const ex = groundExtent(apt, kind, ref);
+    if (!ex) return false;
+    const side = state.sidebarOpen && !isMobile() ? 380 : 40;
+    map.fitBounds([[ex.bbox[0], ex.bbox[1]], [ex.bbox[2], ex.bbox[3]]],
+      { padding: { top: 90, bottom: 60, left: side, right: 60 }, maxZoom: 16.5, duration: 700 });
+    map.once("moveend", () => {
+      showPopup(ex.anchor, groundHtml(ex.props, undefined, gndCtx(apt)));
+      focused = { apt, kind, ref };
+      groundHighlight(map, focused);
+      popup?.on("close", () => { focused = null; groundHighlight(map, null); });
+    });
+    return true;
+  };
+  // Plan pas encore chargé à l'écran : on l'affiche d'abord, puis on réessaie une fois les tuiles prêtes
+  if (!open()) { openAirportChart(apt); map.once("idle", () => open()); }
+}
+
 // ---------- Liste des éléments visibles ----------
 export interface ListItem { p: Props; ll: LngLat; d: number }
 export interface AwyItem { ident: string; lv: Set<string>; rnav: boolean; n: number }
@@ -505,6 +679,10 @@ function propsAt(point: maplibregl.Point, layers: string[], b: number, keyOf: (p
 const airspacesAt = (pt: maplibregl.Point) => propsAt(pt, ["asp-fill", ...ASP_LINE_IDS], 3, (p) => `${p.name}|${p.type}|${p.lower}|${p.upper}`);
 const overlayAt = (pt: maplibregl.Point, layers: string[], b = 4) => propsAt(pt, layers, b, (p) => p.raw || JSON.stringify(p));
 
+/** Caps vrais officiels (eAIP) par QFU. */
+export const eaipEnds = (apt: string): Record<string, number> =>
+  Object.fromEntries(Object.entries(state.eaip[apt]?.rwys || {}).filter(([, r]) => r.true != null).map(([q, r]) => [q, r.true!]));
+
 // METAR des aérodromes à plan au sol, pour les composantes de vent dans les bulles (rafraîchi toutes les 10 min)
 const gndWx = new Map<string, { m: Metar | null; t: number }>();
 function gndCtx(apt: string): GndCtx {
@@ -513,7 +691,7 @@ function gndCtx(apt: string): GndCtx {
     gndWx.set(apt, { m: c?.m ?? null, t: Date.now() });
     metar(apt).then((m) => gndWx.set(apt, { m, t: Date.now() })).catch(() => {});
   }
-  return { ends: state.ground[apt]?.ends, m: gndWx.get(apt)?.m };
+  return { ends: { ...state.ground[apt]?.ends, ...eaipEnds(apt) }, m: gndWx.get(apt)?.m, eaip: state.eaip[apt], rwys: state.ground[apt]?.taxi?.rwys };
 }
 
 function onClick(e: maplibregl.MapMouseEvent) {
@@ -692,6 +870,18 @@ export async function initMap(container: HTMLElement): Promise<void> {
   });
   map.touchZoomRotate.disableRotation();
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+  // Bouton « Affichage » juste au-dessus du zoom : ouvre le menu MapOptions.vue
+  map.addControl({
+    onAdd() {
+      const d = document.createElement("div");
+      d.className = "maplibregl-ctrl maplibregl-ctrl-group";
+      d.innerHTML = `<button type="button" id="view-btn" title="Affichage de la carte" aria-label="Affichage de la carte">` +
+        `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>`;
+      d.querySelector("button")!.addEventListener("click", (e) => { e.stopPropagation(); state.viewMenu = !state.viewMenu; });
+      return d;
+    },
+    onRemove() { /* jamais retiré */ },
+  }, "bottom-right");
   map.addControl(new maplibregl.ScaleControl({ unit: "nautical" }), "bottom-right");
   map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
   (window as unknown as { nelixairMap: MlMap }).nelixairMap = map; // débogage et captures d'écran
@@ -722,7 +912,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     const f = fs[0];
     const gp = f?.layer.id.startsWith("g-") ? f.properties : null;
     const key = gp ? `${gp.apt}|${gp.kind}|${gp.ref}` : "";
-    if (key !== hlKey) { hlKey = key; groundHighlight(map, gp); }
+    if (key !== hlKey) { hlKey = key; groundHighlight(map, gp || focused); }
     if (!f) { tip.hidden = true; return; }
     const p = f.properties;
     if (gp) tip.innerHTML = groundTip(gp, f.geometry.type === "Point" ? (f.geometry as GeoJSON.Point).coordinates as LngLat : undefined, gndCtx(gp.apt));
@@ -733,7 +923,16 @@ export async function initMap(container: HTMLElement): Promise<void> {
     tip.style.transform = `translate(${e.point.x + 14}px, ${e.point.y + 14}px)`;
     tip.hidden = false;
   });
-  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, null); });
+  map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, focused); });
+  // Itinéraire de roulage depuis la popup d'un poste
+  map.getContainer().addEventListener("click", (ev) => {
+    const t = ev.target as HTMLElement;
+    if (t.closest?.("[data-route-clear]")) { clearTaxiRoute(); closePopup(); return; }
+    const b = t.closest?.("[data-route]") as HTMLElement | null;
+    if (!b) return;
+    const [apt, x, y, qfu] = (b.dataset.route || "").split("|");
+    showTaxiRoute(apt, [Number(x), Number(y)], qfu);
+  });
   // Boutons « copier » des popups (coordonnées d'un poste pour l'IRS/FMS)
   map.getContainer().addEventListener("click", (ev) => {
     const b = (ev.target as HTMLElement).closest?.("[data-copy]") as HTMLElement | null;
@@ -748,6 +947,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     addLayers(sources);
     state.mapReady = true;
     applyTheme(state.theme);
+    applyView();
     applyFilters();
     updateGroundInView();
     if (useGeojson) console.info("Mode GeoJSON (pas de PMTiles trouvées)");

@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { runwayWinds } from "../lib/wind";
 import { aptDetails, type AptDetails } from "../services/data";
 import { metar, wind, type Metar } from "../services/weather";
+import { setWindsock } from "../map/mapView";
 import { state } from "../store";
 
 // Cartouche « carte d'aéroport » quand le plan au sol d'un terrain pilote est à l'écran :
@@ -16,6 +17,8 @@ watch(() => state.groundInView, (id) => {
   aptDetails(id).then((d) => { if (state.groundInView === id) det.value = d; }).catch(() => {});
   metar(id).then((m) => { if (state.groundInView === id) mt.value = m; }).catch(() => {});
 }, { immediate: true });
+// Manche à air sur la carte, mise à jour avec le METAR du terrain affiché
+watch(mt, (m) => setWindsock(state.groundInView, m?.wdir, m ? m.wspd : null));
 
 const ORDER = ["ATIS", "DEL", "GND", "APRON", "TWR"];
 const LBL: Record<string, string> = { ATIS: "ATIS", DEL: "PRÉVOL", GND: "SOL", APRON: "TRAFIC", TWR: "TOUR" };

@@ -7,7 +7,7 @@ type Item = [string, string, string?];
 // Ordre de lecture d'un pilote : terrain et météo d'abord, puis navigation, espaces, fonds
 const SECTIONS: { id: string; title: string; grid?: boolean; open?: boolean; items: Item[] }[] = [
   { id: "f-apt", title: "Aéroports", grid: true, items: [["apt_large", "Grands"], ["apt_medium", "Moyens"], ["apt_small", "Petits"], ["apt_heli", "Héli / hydro"],
-    ["ground", "Plan au sol (OSM)", "sw-ground"]] },
+    ["ground", "Plan au sol (OSM)", "sw-ground"], ["approach", "Axes, ILS, seuils (eAIP)", "sw-appr"]] },
   { id: "f-wx", title: "Météo", items: [["wx", "METAR (catégorie de vol)", "sw-wx"], ["hazards", "SIGMET / AIRMET", "sw-hz"],
     ["pireps", "PIREP (comptes rendus pilotes)", "sw-pirep"], ["sat", "Satellite infrarouge", "sw-sat"]] },
   { id: "f-nav", title: "Navigation", items: [["H", "Voies hautes", "sw-h"], ["L", "Voies basses", "sw-l"], ["rnav", "RNAV (Q, T…)", "sw-rnav"],

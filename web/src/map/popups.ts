@@ -1,5 +1,5 @@
 // Contenu HTML des popups MapLibre (panneau latéral fermé). Le panneau ouvert utilise les composants Vue.
-import type { Props } from "../store";
+import type { EaipApt, Props } from "../store";
 import { runwayWinds, splitDesignator } from "../lib/wind";
 import { wind, type Metar } from "../services/weather";
 import {
@@ -56,7 +56,7 @@ export function pirepHtml(p: Props): string {
 }
 
 /** Contexte d'un objet au sol : caps vrais des QFU (plan OSM) et METAR de l'aérodrome. */
-export interface GndCtx { ends?: Record<string, number>; m?: Metar | null }
+export interface GndCtx { ends?: Record<string, number>; m?: Metar | null; eaip?: EaipApt; rwys?: string[] }
 
 const GKIND: Record<string, string> = { stand: "Poste de stationnement", gate: "Porte", taxiway: "Taxiway", taxilane: "Voie de desserte",
   runway: "Piste", holding: "Point d'attente", apron: "Aire de trafic", building: "Bâtiment", helipad: "Hélisurface" };
@@ -87,6 +87,21 @@ export function groundTip(p: Props, pt?: LngLat, ctx?: GndCtx): string {
   return head + (sub ? `<div class="tip-sub">${esc(sub)}</div>` : "");
 }
 
+/** Données officielles eAIP de chaque QFU d'une piste (distances déclarées, ILS, PAPI). */
+function rwyEaip(p: Props, ctx?: GndCtx): string {
+  const e = ctx?.eaip;
+  if (p.kind !== "runway" || !e) return "";
+  const qs = splitDesignator(p.ref || "").filter((q) => e.rwys[q]);
+  if (!qs.length) return "";
+  return `<table class="pop-wind pop-eaip"><thead><tr><th>QFU</th><th>TORA</th><th>LDA</th><th>ILS / PAPI</th></tr></thead><tbody>` +
+    qs.map((q) => {
+      const r = e.rwys[q];
+      const ils = r.ils?.freq ? `${r.ils.id || ""} ${r.ils.freq.toFixed(2)}` : "";
+      return `<tr><td>${esc(q)}<small> ${r.mag != null ? String(r.mag).padStart(3, "0") + "°" : ""}</small></td><td>${r.tora ?? "—"}</td><td>${r.lda ?? "—"}</td>` +
+        `<td>${esc(ils)}${r.papi ? `<small>${ils ? " · " : ""}PAPI ${r.papi}°</small>` : ""}</td></tr>`;
+    }).join("") + `</tbody></table><div class="src">eAIP SIA (Licence Ouverte) · distances en m</div>`;
+}
+
 const copyBtn = (v: string) => `<button class="pop-copy" data-copy="${esc(v)}" title="Copier">⧉</button>`;
 
 /** Objet de la carte d'aéroport (poste, taxiway, piste…). */
@@ -102,6 +117,22 @@ export function groundHtml(p: Props, pt?: LngLat, ctx?: GndCtx): string {
     rows([["Aérodrome", p.apt], ["Dimensions", p.kind === "runway" ? dim(p) : null],
       ["Longueur", p.kind !== "runway" && p.len ? `${Number(p.len).toLocaleString("fr-FR")} m` : null], ["Revêtement", p.surface]]) +
     (pos ? `<div class="pop-pos"><span>${esc(pos)}</span>${copyBtn(pos)}</div>` : "") +
+    (pos && pt && ctx?.rwys?.length ? `<div class="pop-route"><span>Roulage vers</span>` +
+      ctx.rwys.map((q) => `<button type="button" data-route="${esc(p.apt)}|${pt[0]}|${pt[1]}|${esc(q)}">${esc(q)}</button>`).join("") + `</div>` : "") +
     (p.kind === "holding" ? `<div class="pop-note">Point d'attente : arrêt obligatoire sauf clairance d'entrer ou de traverser.</div>` : "") +
-    wx + `<div class="src">OpenStreetMap (ODbL) · non certifié</div></div>`;
+    wx + rwyEaip(p, ctx) + `<div class="src">OpenStreetMap (ODbL) · non certifié</div></div>`;
+}
+
+/** Résumé d'un itinéraire de roulage (remplace le contenu de la popup du poste). */
+export function routeHtml(stand: string, qfu: string, r: { via: string[]; holds: { ref: string }[]; dist: number; fromThr: number } | null): string {
+  if (!r) return `<div class="pop"><h3>${esc(stand)} → ${esc(qfu)}</h3><p class="pop-note">Pas d'itinéraire trouvé : voies OSM non reliées à cette piste.</p>` +
+    `<button type="button" class="pop-btn" data-route-clear>Fermer</button></div>`;
+  const min = Math.max(1, Math.round(r.dist / 1852 / 15 * 60)); // ~15 kt de vitesse de roulage
+  return `<div class="pop"><h3>Roulage ${esc(stand)} → ${esc(qfu)} <small>indicatif</small></h3>` +
+    `<div class="route-via">${r.via.length ? r.via.map((v) => `<span class="twy">${esc(v)}</span>`).join("<i>›</i>") : "voies sans nom"}<i>›</i><span class="rwy">${esc(qfu)}</span></div>` +
+    rows([["Distance", `${(r.dist / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} km (${(r.dist / 1852).toFixed(1)} NM)`],
+      ["Durée", `≈ ${min} min à 15 kt`], ["Entrée", r.fromThr > 60 ? `à ${r.fromThr} m du seuil` : "seuil (pleine longueur)"],
+      ["Arrêts", r.holds.length ? r.holds.map((h) => h.ref || "point d'attente").join(", ") : null]]) +
+    `<div class="pop-note">Suivre la clairance de roulage (ATC, VATSIM, IVAO). Voies OSM non certifiées.</div>` +
+    `<button type="button" class="pop-btn" data-route-clear>Effacer l'itinéraire</button></div>`;
 }

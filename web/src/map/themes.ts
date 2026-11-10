@@ -9,7 +9,7 @@ export interface GroundTheme {
 
 export interface Theme {
   bg: string; water: string; waterLine: string; land: number; border: string;
-  label: string; waterLabel: string; halo: string;
+  label: string; waterLabel: string; halo: string; road: string; roadCase: string; bldg: string; landuse: string;
   high: string; low: string; both: string; sel: string;
   wpt: string; navaid: string; ndb: string; boxFill: string; textHalo: string;
   aptIfr: string; aptVfr: string; aspCtl: string; aspSpecial: string; aspFir: string; aspOther: string;
@@ -23,6 +23,7 @@ export const THEMES: Record<ThemeName, Theme> = {
   day: {
     bg: "#eceee9", water: "#cfe0e8", waterLine: "#b5cfda", land: 0.18, border: "#9aa3ad",
     label: "#7d8590", waterLabel: "#6a8ea0", halo: "#eceee9",
+    road: "#ffffff", roadCase: "#d3d7dd", bldg: "#d9dbe0", landuse: "#dfe6d6",
     high: "#5b4bc4", low: "#13897b", both: "#2f6fa6", sel: "#e8590c",
     wpt: "#4b5563", navaid: "#1764c9", ndb: "#9b2f86", boxFill: "#ffffff", textHalo: "#ffffff",
     aptIfr: "#1764c9", aptVfr: "#9b2f86", aspCtl: "#2b74c7", aspSpecial: "#c2265a", aspFir: "#5b6472", aspOther: "#8a6fc0",
@@ -37,6 +38,7 @@ export const THEMES: Record<ThemeName, Theme> = {
   night: {
     bg: "#0e1626", water: "#0a1220", waterLine: "#14233a", land: 0.08, border: "#33435f",
     label: "#6f7f9e", waterLabel: "#3f5878", halo: "#0e1626",
+    road: "#26334a", roadCase: "#1a2538", bldg: "#1c2638", landuse: "#132033",
     high: "#9d8cff", low: "#2fc7b1", both: "#5fb0ea", sel: "#ff8a3d",
     wpt: "#c3cde0", navaid: "#5aa8ff", ndb: "#e07ad0", boxFill: "#0e1626", textHalo: "#0e1626",
     aptIfr: "#5aa8ff", aptVfr: "#e07ad0", aspCtl: "#4f9bf0", aspSpecial: "#ff5c8a", aspFir: "#7d8aa5", aspOther: "#a993e6",
