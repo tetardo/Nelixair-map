@@ -86,6 +86,13 @@ export async function fetchOfp(user: string): Promise<Ofp> {
 }
 
 /** Durée en secondes -> « 2 h 05 » */
+/** Vol de démonstration fictif LFML → LFPG (sans compte SimBrief). */
+export async function demoOfp(): Promise<Ofp> {
+  const r = await fetch(import.meta.env.BASE_URL + "demo/simbrief-demo.json");
+  if (!r.ok) throw new Error(String(r.status));
+  return parseOfp(await r.json(), "démo");
+}
+
 export const hhmm = (s: number | null): string => {
   if (s == null) return "";
   const m = Math.round(s / 60);

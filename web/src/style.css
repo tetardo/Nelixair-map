@@ -513,3 +513,8 @@ details.taf summary { cursor: pointer; font: 600 10.5px var(--sans); letter-spac
 .ofp-log tr.note td { color: #e05a8f; font-family: var(--mono); }
 #sb-user { text-transform: none; font-family: var(--sans); }
 button.btn-ghost { background: none; cursor: pointer; }
+
+/* Confirmation éphémère (lien de partage copié) */
+.toast { position: fixed; left: calc(50% + var(--rail) / 2); bottom: 44px; transform: translateX(-50%); z-index: 30; padding: 8px 14px;
+  border-radius: var(--radius); background: var(--chrome-0); color: var(--chrome-ink); box-shadow: 0 4px 18px rgba(0, 0, 0, .35);
+  font-size: 13px; pointer-events: none; max-width: calc(100vw - var(--rail) - 32px); }

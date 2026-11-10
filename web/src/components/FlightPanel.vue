@@ -3,7 +3,7 @@ import { ArrowRight, Crosshair, Download, FlaskConical, Plane, Trash2 } from "@l
 import { computed, ref } from "vue";
 import { alt } from "../lib/format";
 import { fitOfp, flyTo, highlightLeg, openAirportByIdent, selectPoint, setOfp } from "../map/mapView";
-import { fetchOfp, hhmm, parseOfp } from "../services/simbrief";
+import { demoOfp, fetchOfp, hhmm } from "../services/simbrief";
 import { state } from "../store";
 import Section from "./Section.vue";
 
@@ -26,8 +26,7 @@ async function load() {
 async function demo() {
   busy.value = true; err.value = "";
   try {
-    const j = await (await fetch(import.meta.env.BASE_URL + "demo/simbrief-demo.json")).json();
-    setOfp(parseOfp(j, "démo"));
+    setOfp(await demoOfp());
   } catch { err.value = "Vol de démonstration indisponible."; }
   busy.value = false;
 }

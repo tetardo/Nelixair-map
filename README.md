@@ -51,6 +51,8 @@ Conséquences à connaître :
 - Plan de vol : import du dernier OFP [SimBrief](https://www.simbrief.com) d'un pilote (pseudo ou Pilot ID, lu
   directement par le navigateur), route en magenta avec TOC / TOD et dégagement, nav log (altitude, route
   magnétique, distances, temps, carburant), carburant et masses. Bouton « Vol de démo » sans compte.
+- Partager la vue (icône lien de la barre latérale) : copie un lien qui rouvre la carte à l'identique (position,
+  zoom, fond, calques, thème, panneau ouvert, objet sélectionné et plan de vol, compressé dans le lien).
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
   waypoints), liste triable des éléments à l'écran, fiche détaillée d'un point (voies qui y passent)
   et log d'une voie (MEA, route vraie, distance, cumul)
