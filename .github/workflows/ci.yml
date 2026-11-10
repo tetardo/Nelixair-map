@@ -32,14 +32,31 @@ jobs:
           CIFP: pipeline/tests/fixtures/FAACIFP18.sample
           OPENAIP: pipeline/tests/fixtures/openaip_navaids.json
           DTPP: pipeline/tests/fixtures/dtpp.xml
+          GROUND_RAW: pipeline/tests/fixtures/ground
         run: |
           scripts/build.sh
           test -s web/data/nav.pmtiles
           test -s web/data/airspaces.pmtiles
           test -s web/data/mora.geojson
           test -s web/data/apt/KA.json
+          test -s web/data/ground.pmtiles
+          test -s web/data/ground-index.json
           head -c 7 web/data/nav.pmtiles | grep -q PMTiles
-      - name: Syntaxe JS
+      # Plan au sol réel des terrains pilotes : informatif (Overpass peut être saturé), ne bloque pas la CI
+      - name: Qualité OSM des terrains pilotes (Overpass)
+        continue-on-error: true
         run: |
-          for f in web/*.js; do node --check "$f"; done
+          python3 pipeline/ground.py fetch --raw /tmp/ground-raw
+          python3 pipeline/ground.py build --raw /tmp/ground-raw --out /tmp/ground-out
+          python3 -c "import json; d=json.load(open('/tmp/ground-out/ground-index.json'))['airports']; [print(k, v['osm'], v['counts'], 'taxiways:', len(v['taxiways'])) for k, v in d.items()]" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Front (Vue + TypeScript) : typage et build
+        run: |
+          npm ci
+          npm run build
+          test -s dist/index.html
+          test -s dist/data/ground.pmtiles
           node --check scripts/screenshots.mjs

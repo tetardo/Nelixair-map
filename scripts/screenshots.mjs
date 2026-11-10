@@ -1,7 +1,7 @@
-// Captures d'écran du site construit (données réelles), publiées avec le site dans web/screenshots/.
+// Captures d'écran du site construit (données réelles), publiées avec le site dans dist/screenshots/.
 // Le README les affiche depuis GitHub Pages : elles se mettent à jour à chaque déploiement.
 //
-//   node scripts/screenshots.mjs            (après scripts/build.sh ; nécessite playwright)
+//   node scripts/screenshots.mjs            (après scripts/build.sh puis npm run build ; nécessite playwright)
 //
 // Petit serveur statique intégré avec prise en charge des requêtes Range (indispensable à PMTiles).
 import { createServer } from "node:http";
@@ -9,7 +9,7 @@ import { createReadStream, statSync, mkdirSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { chromium } from "playwright";
 
-const ROOT = new URL("../web/", import.meta.url).pathname;
+const ROOT = new URL("../dist/", import.meta.url).pathname;
 const OUT = join(ROOT, "screenshots");
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json",
   ".geojson": "application/json", ".png": "image/png", ".svg": "image/svg+xml" };
@@ -44,6 +44,8 @@ const SHOTS = [
   ["europe-nuit.png", "#map=7.2/48.9/2.4", "night", null],
   ["fiche-aeroport.png", "?sel=KSFO#map=10/37.62/-122.38", "day", "detail"],
   ["log-voie.png", "?sel=J80#map=5/39.5/-98", "night", "detail"],
+  ["carte-aeroport-lfml.png", "?sel=LFML#map=14.4/43.4364/5.2153", "day", "detail"],
+  ["carte-aeroport-lfml-nuit.png", "#map=16/43.4405/5.2120", "night", null],
 ];
 
 mkdirSync(OUT, { recursive: true });
