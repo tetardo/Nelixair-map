@@ -53,7 +53,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - name: Front (Vue + TypeScript) : typage et build
+      - name: "Front (Vue + TypeScript) : typage et build"
         run: |
           npm ci
           npm run build
