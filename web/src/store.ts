@@ -94,6 +94,8 @@ export const state = reactive({
   groundInView: "" as string,
   mapReady: false,
   viewMenu: false,
+  profileOpen: false, // profil vertical du plan de vol (bandeau bas)
+  ruler: false, // outil règle actif
   listTick: 0,
 });
 

@@ -1,14 +1,14 @@
 // Lien de partage : reproduit la vue exacte (position, fond, calques, thème, panneau, sélection, plan de vol).
 // Position et zoom sont déjà dans le hash (#map=zoom/lat/lon, géré par MapLibre) et la sélection dans ?sel=.
 // Ce module ajoute le reste en paramètres courts, relatifs aux réglages par défaut :
-//   th=night  b=sat  v=relief,roads  f=+sat,-wx  p=airports  ofp=<plan compressé>|demo
+//   th=night  b=sat  v=relief,roads  f=+sat,-wx  p=airports  ofp=<plan compressé>|demo  pf=1 (profil vertical)
 import { DEFAULT_FILTERS, DEFAULT_VIEW, state, type MapView, type Tab } from "../store";
 import { THEMES, type ThemeName } from "../map/themes";
 import type { Ofp } from "../services/simbrief";
 
 const TOGGLES: (keyof MapView)[] = ["relief", "roads", "buildings", "landuse", "places"];
 const TABS: Tab[] = ["detail", "flight", "airports", "list", "filters"];
-const KEYS = ["th", "b", "v", "f", "p", "ofp"];
+const KEYS = ["th", "b", "v", "f", "p", "ofp", "pf"];
 /** Au-delà, le plan de vol est retiré du lien (certaines messageries tronquent les URL longues). */
 const MAX_URL = 8000;
 
@@ -40,6 +40,7 @@ export async function shareUrl(): Promise<{ url: string; ofpDropped: boolean }> 
     .map((k) => (state.filters[k] ? "+" : "-") + k);
   q.set("f", f.join(","));
   if (state.sidebarOpen) q.set("p", state.tab);
+  if (state.ofp && state.profileOpen) q.set("pf", "1");
   let ofpDropped = false;
   if (state.ofp) {
     if (state.ofp.user === "démo") q.set("ofp", "demo");
@@ -81,6 +82,7 @@ export async function applySharedAfterMap(open: (tab: Tab | null) => void, setOf
   if (!KEYS.some((k) => q.has(k))) return;
   const p = q.get("p") as Tab | null;
   open(p && TABS.includes(p) ? p : null);
+  if (q.get("pf") === "1") state.profileOpen = true;
   const o = q.get("ofp");
   try {
     if (o === "demo") setOfp(await demo());

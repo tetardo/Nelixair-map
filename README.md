@@ -18,7 +18,7 @@ PMTiles, interface Vue 3 + TypeScript (Vite), hébergeable sur GitHub Pages ou n
 | [NOAA AWC](https://aviationweather.gov/data/api/) | METAR / TAF (monde), SIGMET (monde), AIRMET / G-AIRMET et PIREP (surtout US) ; relais toutes les 10 min | monde | domaine public |
 | [OpenStreetMap](https://www.openstreetmap.org/copyright) (via Overpass) | plans au sol : pistes, taxiways, aires de trafic, postes de stationnement, points d'attente, bâtiments | 35 terrains français : les 25 plus grands et 10 petits (liste dans `pipeline/airports_fr.py`) | **ODbL 1.0** |
 | [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a4) | imagerie aérienne et satellite (vue Satellite du menu Affichage), tuiles chargées par le navigateur | monde | conditions Esri, **usage non commercial** avec attribution |
-| [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen) | relief ombré (vue Relief) | monde | données ouvertes, attribution |
+| [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen) | relief ombré (vue Relief), relief du profil vertical | monde | données ouvertes, attribution |
 | [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | satellite infrarouge GOES-East, GOES-West, Himawari (Amériques, Pacifique, Asie ; **pas l'Europe ni l'Afrique**) | partielle | données NASA ouvertes |
 | [SimBrief](https://developers.navigraph.com/docs/simbrief/fetching-ofp-data) (Navigraph) | plan de vol du pilote (OFP), lu à la demande par son navigateur ; rien n'est stocké côté serveur | monde | [conditions développeurs Navigraph](https://developers.navigraph.com) — à vérifier avant tout usage commercial |
 
@@ -51,6 +51,12 @@ Conséquences à connaître :
 - Plan de vol : import du dernier OFP [SimBrief](https://www.simbrief.com) d'un pilote (pseudo ou Pilot ID, lu
   directement par le navigateur), route en magenta avec TOC / TOD et dégagement, nav log (altitude, route
   magnétique, distances, temps, carburant), carburant et masses. Bouton « Vol de démo » sans compte.
+- Profil vertical du plan de vol : altitude prévue au-dessus du relief, relief maximal et marge minimale en route,
+  survol synchronisé avec la carte.
+- Météo de la route : METAR / TAF du départ, de l'arrivée et des dégagements, SIGMET / AIRMET en vigueur traversés
+  par la route (avec recoupement des niveaux).
+- Règle : distance en NM, route magnétique et vraie de chaque tronçon (orthodromie), total. Déclinaison calculée
+  avec le modèle mondial WMM de la NOAA (paquet [geomagnetism](https://github.com/naturalatlas/geomagnetism), Apache-2.0).
 - Partager la vue (icône lien de la barre latérale) : copie un lien qui rouvre la carte à l'identique (position,
   zoom, fond, calques, thème, panneau ouvert, objet sélectionné et plan de vol, compressé dans le lien).
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
