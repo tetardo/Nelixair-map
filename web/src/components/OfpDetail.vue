@@ -12,6 +12,7 @@ import { state } from "../store";
 import Section from "./Section.vue";
 import RouteWeather from "./RouteWeather.vue";
 import RouteAirspaces from "./RouteAirspaces.vue";
+import RouteAlternates from "./RouteAlternates.vue";
 import FlightChecks from "./FlightChecks.vue";
 const o = computed(() => state.ofp);
 const isDemo = computed(() => !!o.value?.user.startsWith("démo"));
@@ -61,6 +62,7 @@ useMapHotScroll(() => logEl.value?.closest(".apt-pane, .tabpanel") as HTMLElemen
     <RouteWeather :ofp="o" />
     <FlightChecks />
     <RouteAirspaces />
+    <RouteAlternates />
 
     <Section id="ofp-route" title="Route" :open="false">
       <p class="wx-raw">{{ o.route || "—" }}</p>

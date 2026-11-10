@@ -15,7 +15,7 @@ export interface Check { id: string; title: string; status: CheckStatus; text: s
 
 const n = (v: number) => Math.round(v).toLocaleString("fr-FR");
 const flTxt = (ft: number) => (ft >= 18000 ? "FL" + Math.round(ft / 100) : n(ft) + " ft");
-const PISTON = /^(C1[5-8]\d|C20\d|C210|PA(18|28|32|34|44|46)|DR\d+|DR40|TB\d+|SR2[02]|DA(20|40|42|62)|BE(33|35|36|55|58)|M20P|M20T|P28[AB]|PC6|J3|RV\d+|CAP\d+|ROBN|R(22|44))$/i;
+export const PISTON = /^(C1[5-8]\d|C20\d|C210|PA(18|28|32|34|44|46)|DR\d+|DR40|TB\d+|SR2[02]|DA(20|40|42|62)|BE(33|35|36|55|58)|M20P|M20T|P28[AB]|PC6|J3|RV\d+|CAP\d+|ROBN|R(22|44))$/i;
 
 /** Niveau correct pour une route magnétique (OACI, IFR) : impair vers l'est (000–179°), pair vers l'ouest. */
 function levelOk(ft: number, magTrk: number): boolean | null {

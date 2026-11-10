@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { elevationsFt } from "../lib/elevation";
 import { alt } from "../lib/format";
 import { along, routeVertices, samples } from "../lib/routeGeom";
-import { ASP_COLORS, fmtFt, routeAsp, useRouteAsp } from "../lib/routeAsp";
+import { ASP_COLORS, ZONE_TYPES, fmtFt, routeAsp, useRouteAsp } from "../lib/routeAsp";
 import { flyTo, selectPoint } from "../map/mapView";
 import { pauseReplay, playReplay, replayInfo, seekReplayD, stopReplay } from "../map/replay";
 import { hhmm } from "../services/simbrief";
@@ -164,9 +164,10 @@ const fmt = (v: number) => Math.round(v).toLocaleString("fr-FR");
           <text :x="PAD.l - 6" :y="y(g) + 3" text-anchor="end">{{ g >= 18000 ? "FL" + g / 100 : fmt(g) }}</text>
         </template>
       </g>
+      <defs><pattern id="pf-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#e5484d" stroke-width="2" /></pattern></defs>
       <g class="pf-asp">
         <g v-for="b in bands" :key="b.c.key">
-          <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" :fill="b.color" :stroke="b.color" :class="{ in: b.c.inside }"><title>{{ b.c.name }} · {{ fmtFt(b.c.lowerFt) }} – {{ fmtFt(b.c.upperFt) }}</title></rect>
+          <rect :x="b.x" :y="b.y" :width="b.w" :height="b.h" :fill="ZONE_TYPES.has(b.c.type) ? 'url(#pf-hatch)' : b.color" :stroke="b.color" :class="{ in: b.c.inside, zone: ZONE_TYPES.has(b.c.type) }"><title>{{ b.c.name }} · {{ fmtFt(b.c.lowerFt) }} – {{ fmtFt(b.c.upperFt) }}</title></rect>
           <text v-if="b.label" :x="b.x + 4" :y="b.y + 10" :fill="b.color">{{ b.label }}</text>
         </g>
       </g>

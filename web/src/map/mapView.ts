@@ -25,6 +25,7 @@ import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml
 import { registerSymbols } from "./symbols";
 import { flyToFx, initFx } from "./fx";
 import { initReplay } from "./replay";
+import { initAlternates } from "./alternatesLayer";
 import { THEMES, type ThemeName } from "./themes";
 
 // Icône Lucide « map » (ISC), en HTML brut car le contrôle MapLibre n'est pas un composant Vue
@@ -44,6 +45,7 @@ const src = (layer: string) => (useGeojson ? { source: layer } : { source: "nav"
 let aspSrc: { source: string; "source-layer"?: string } = { source: "asp" };
 /** Espaces aériens en PMTiles (null : repli GeoJSON), lus aussi hors carte pour la coupe le long de la route. */
 export let aspPmtilesUrl: string | null = null;
+export let navPmtilesUrl: string | null = null;
 let groundSrc: { source: string; "source-layer"?: string } | null = null;
 
 // ---------- Fond de carte : style libre, épuré façon carte en route ----------
@@ -186,6 +188,11 @@ function addLayers(sources: Record<string, unknown>) {
     add({ id, type: "line", ...aspSrc, filter: ASP_LINE_BASE[id], layout: { "line-join": "round" },
       paint: { "line-width": width, "line-opacity": 0.75, ...(dash ? { "line-dasharray": dash } : {}) } });
   }
+  // zones R / D / P traversées par le plan de vol : hachures rouges
+  if (!map.hasImage("hatch-red")) map.addImage("hatch-red", hatchImage("#e5484d"), { pixelRatio: 2 });
+  add({ id: "asp-route-zone", type: "fill", ...aspSrc, filter: ["in", ["get", "name"], ["literal", []]], paint: { "fill-pattern": "hatch-red", "fill-opacity": 0.8 } });
+  add({ id: "asp-route-zone-line", type: "line", ...aspSrc, filter: ["in", ["get", "name"], ["literal", []]],
+    layout: { "line-join": "round" }, paint: { "line-color": "#e5484d", "line-width": 2.2 } });
   // secteur survolé depuis la fiche (fréquence TWR / APP)
   add({ id: "asp-hot-fill", type: "fill", ...aspSrc, filter: ["==", ["get", "name"], ""], paint: { "fill-color": "#3d8bfd", "fill-opacity": 0.14 } });
   add({ id: "asp-hot", type: "line", ...aspSrc, filter: ["==", ["get", "name"], ""],
@@ -652,6 +659,21 @@ export function highlightSector(ll: LngLat | null, kind = "") {
 }
 
 /** Survol d'un espace de la liste « espaces traversés » : contour allumé sur la carte. */
+/** Motif hachuré (fill-pattern) pour les zones réglementées. */
+function hatchImage(color: string): ImageData {
+  const n = 16, c = document.createElement("canvas");
+  c.width = c.height = n;
+  const g = c.getContext("2d")!;
+  g.strokeStyle = color; g.globalAlpha = 0.55; g.lineWidth = 2;
+  for (const o of [-n, 0, n]) { g.beginPath(); g.moveTo(o, n); g.lineTo(o + n, 0); g.stroke(); }
+  return g.getImageData(0, 0, n, n);
+}
+/** Zones R / D / P traversées par le plan de vol, hachurées sur la carte. */
+export function markRouteZones(names: string[]) {
+  if (!map?.getLayer("asp-route-zone")) return;
+  const flt = ["in", ["get", "name"], ["literal", names]] as never;
+  map.setFilter("asp-route-zone", flt); map.setFilter("asp-route-zone-line", flt);
+}
 export function highlightAirspace(name: string | null) {
   if (!map?.getLayer("asp-hot")) return;
   const flt = ["==", ["get", "name"], name || ""] as never;
@@ -1096,6 +1118,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
   sources.asp = hasAspPm ? { type: "vector", url: "pmtiles://" + abs(CFG.airspacesPmtiles) } : { type: "geojson", data: CFG.geojson.airspaces };
   aspSrc = hasAspPm ? { source: "asp", "source-layer": "airspaces" } : { source: "asp" };
   aspPmtilesUrl = hasAspPm ? abs(CFG.airspacesPmtiles) : null;
+  navPmtilesUrl = hasNavPm ? abs(CFG.pmtiles) : null;
   if (hasGroundPm) {
     sources.ground = { type: "vector", url: "pmtiles://" + abs(CFG.groundPmtiles), attribution: CFG.groundAttribution };
     groundSrc = { source: "ground", "source-layer": "ground" };
@@ -1215,6 +1238,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     initLogbook(map);
     initFx(map);
     initReplay(map);
+    initAlternates(map);
     state.mapReady = true;
     updateAutoTheme();
     applyTheme(state.theme);
