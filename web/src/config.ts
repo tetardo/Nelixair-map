@@ -18,6 +18,7 @@ export const CFG = {
   groundGeojson: "data/ground.geojson",
   groundIndex: "data/ground-index.json",
   eaip: "data/eaip.json",
+  taxiBase: "data/",
   search: "data/search.json",
   routes: "data/routes.json",
   meta: "data/meta.json",

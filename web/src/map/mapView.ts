@@ -7,13 +7,14 @@ import { Protocol } from "pmtiles";
 import { CFG } from "../config";
 import { CLS, dms, esc, type LngLat } from "../lib/format";
 import { distNm } from "../lib/geo";
+import { loadTaxi, nearestStand, routeToRunway } from "../lib/taxiRoute";
 import { airwaysThrough, exists, getRoute, loadIndex, loadRoutes, search, hitIdent, type Hit } from "../services/data";
 import { nightPolygon } from "../services/sun";
 import { WX_COLORS, flightCat, loadJson, metar, metarsInBbox, wxAge, type Metar } from "../services/weather";
 import { isMobile, state, type EaipApt, type GroundAirport, type MapView, type PickItem, type Props, type Tab } from "../store";
 import { APT_DRAW_LAYERS, addAptDrawLayers, aptDrawData, themeAptDraw } from "./aptDraw";
 import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, themeGround } from "./ground";
-import { aspHtml, fixHtml, groundHtml, groundTip, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
+import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
 import { THEMES, type ThemeName } from "./themes";
 
@@ -147,6 +148,17 @@ function addLayers(sources: Record<string, unknown>) {
   // Tracés eAIP (axe prolongé, ILS, seuils décalés, intersections) au-dessus du plan au sol
   map.addSource("apt-draw", { type: "geojson", data: aptDrawData(state.eaip) });
   addAptDrawLayers(map, F, FB);
+  // Itinéraire de roulage (calculé à la demande depuis la popup d'un poste)
+  map.addSource("taxi-route", { type: "geojson", data: EMPTY });
+  add({ id: "tr-casing", type: "line", source: "taxi-route", filter: ["==", ["geometry-type"], "LineString"],
+    layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 5, 17, 12] } });
+  add({ id: "tr-line", type: "line", source: "taxi-route", filter: ["==", ["geometry-type"], "LineString"],
+    layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#d6336c", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 3, 17, 7] } });
+  add({ id: "tr-hold", type: "circle", source: "taxi-route", filter: ["==", ["get", "t"], "hold"],
+    paint: { "circle-radius": 6, "circle-color": "#e0342f", "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+  add({ id: "tr-lbl", type: "symbol", source: "taxi-route", filter: ["has", "lbl"],
+    layout: { "text-field": ["get", "lbl"], "text-font": FB, "text-size": 12, "text-offset": [0, -1.3], "text-allow-overlap": true },
+    paint: { "text-color": "#d6336c", "text-halo-color": "#fff", "text-halo-width": 2 } });
 
   // Espaces aériens (sous les voies) : remplissage léger, contour, nom + limites le long du contour
   add({ id: "asp-fill", type: "fill", ...aspSrc, minzoom: 4, filter: ["!=", ["get", "group"], "fir"], paint: { "fill-opacity": 0.05 } });
@@ -519,6 +531,33 @@ export function setWindsock(apt: string, wdir: unknown, wspd: number | null | un
   sock = new maplibregl.Marker({ element: el }).setLngLat(at).addTo(map);
 }
 
+// ---------- Itinéraire de roulage ----------
+export function clearTaxiRoute() {
+  (map.getSource("taxi-route") as maplibregl.GeoJSONSource | undefined)?.setData(EMPTY);
+}
+export async function showTaxiRoute(apt: string, at: LngLat, qfu: string) {
+  const g = await loadTaxi(CFG.taxiBase, apt);
+  if (!g) return;
+  const si = nearestStand(g, at);
+  const stand = si >= 0 ? g.stands[si][0] || "Poste" : "Poste";
+  const r = si >= 0 ? routeToRunway(g, si, qfu) : null;
+  const feats: GeoJSON.Feature[] = [];
+  if (r) {
+    feats.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: r.coords } });
+    for (const h of r.holds) feats.push({ type: "Feature", properties: { t: "hold", lbl: h.ref || "STOP" }, geometry: { type: "Point", coordinates: h.at } });
+    feats.push({ type: "Feature", properties: { lbl: qfu }, geometry: { type: "Point", coordinates: r.coords[r.coords.length - 1] } });
+  }
+  (map.getSource("taxi-route") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: feats });
+  const anchor = r ? r.coords[0] : at;
+  showPopup(anchor, routeHtml(stand, qfu, r));
+  if (r) {
+    const xs = r.coords.map((c) => c[0]), ys = r.coords.map((c) => c[1]);
+    const side = state.sidebarOpen && !isMobile() ? 380 : 40;
+    map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
+      { padding: { top: 260, bottom: 60, left: side, right: 60 }, maxZoom: 16.5, duration: 800 });
+  }
+}
+
 /** Données eAIP chargées : tracés et caps vrais officiels. */
 export function setEaip(airports: Record<string, EaipApt>) {
   state.eaip = airports;
@@ -652,7 +691,7 @@ function gndCtx(apt: string): GndCtx {
     gndWx.set(apt, { m: c?.m ?? null, t: Date.now() });
     metar(apt).then((m) => gndWx.set(apt, { m, t: Date.now() })).catch(() => {});
   }
-  return { ends: { ...state.ground[apt]?.ends, ...eaipEnds(apt) }, m: gndWx.get(apt)?.m, eaip: state.eaip[apt] };
+  return { ends: { ...state.ground[apt]?.ends, ...eaipEnds(apt) }, m: gndWx.get(apt)?.m, eaip: state.eaip[apt], rwys: state.ground[apt]?.taxi?.rwys };
 }
 
 function onClick(e: maplibregl.MapMouseEvent) {
@@ -885,6 +924,15 @@ export async function initMap(container: HTMLElement): Promise<void> {
     tip.hidden = false;
   });
   map.getCanvas().addEventListener("mouseleave", () => { tip.hidden = true; hlKey = ""; groundHighlight(map, focused); });
+  // Itinéraire de roulage depuis la popup d'un poste
+  map.getContainer().addEventListener("click", (ev) => {
+    const t = ev.target as HTMLElement;
+    if (t.closest?.("[data-route-clear]")) { clearTaxiRoute(); closePopup(); return; }
+    const b = t.closest?.("[data-route]") as HTMLElement | null;
+    if (!b) return;
+    const [apt, x, y, qfu] = (b.dataset.route || "").split("|");
+    showTaxiRoute(apt, [Number(x), Number(y)], qfu);
+  });
   // Boutons « copier » des popups (coordonnées d'un poste pour l'IRS/FMS)
   map.getContainer().addEventListener("click", (ev) => {
     const b = (ev.target as HTMLElement).closest?.("[data-copy]") as HTMLElement | null;

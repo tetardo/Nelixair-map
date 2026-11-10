@@ -24,6 +24,7 @@ export interface GroundAirport {
   name: string; bbox: [number, number, number, number]; osm: string;
   counts: Record<string, number>; runways: string[]; taxiways: string[];
   ends?: Record<string, number>; // QFU -> cap vrai
+  taxi?: { nodes: number; stands: number; rwys: string[] }; // graphe de roulage disponible
 }
 
 // Données officielles eAIP SIA (France), voir pipeline/eaip.py

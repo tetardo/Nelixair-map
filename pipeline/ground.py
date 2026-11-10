@@ -24,6 +24,8 @@ import time
 import urllib.parse
 import urllib.request
 
+import taxigraph
+
 log = logging.getLogger("ground")
 
 # Terrains pilotes (élargir quand la qualité OSM est validée)
@@ -364,6 +366,14 @@ def build(raw_dir: str, out_dir: str) -> dict:
                 n += 1
             index[icao] = summary
             log.info("%s : %s", icao, summary["counts"])
+            # Graphe de roulage (itinéraire poste -> piste dans le navigateur)
+            g = taxigraph.build_graph(data.get("elements", []), runway_ends)
+            if g:
+                os.makedirs(os.path.join(out_dir, "taxi"), exist_ok=True)
+                with open(os.path.join(out_dir, "taxi", f"{icao}.json"), "w", encoding="utf-8") as tf:
+                    json.dump(g, tf, ensure_ascii=False, separators=(",", ":"))
+                summary["taxi"] = {"nodes": len(g["n"]), "stands": len(g["stands"]),
+                                   "rwys": sorted(q for q, r in g["rwys"].items() if r["entries"])}
         out.write("\n]}\n")
     if not n:  # rien à tuiler : pas de fichiers vides (tippecanoe échoue dessus), le site masque la fonction
         for fn in ("ground.geojson", "ground-index.json"):

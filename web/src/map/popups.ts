@@ -56,7 +56,7 @@ export function pirepHtml(p: Props): string {
 }
 
 /** Contexte d'un objet au sol : caps vrais des QFU (plan OSM) et METAR de l'aérodrome. */
-export interface GndCtx { ends?: Record<string, number>; m?: Metar | null; eaip?: EaipApt }
+export interface GndCtx { ends?: Record<string, number>; m?: Metar | null; eaip?: EaipApt; rwys?: string[] }
 
 const GKIND: Record<string, string> = { stand: "Poste de stationnement", gate: "Porte", taxiway: "Taxiway", taxilane: "Voie de desserte",
   runway: "Piste", holding: "Point d'attente", apron: "Aire de trafic", building: "Bâtiment", helipad: "Hélisurface" };
@@ -117,6 +117,22 @@ export function groundHtml(p: Props, pt?: LngLat, ctx?: GndCtx): string {
     rows([["Aérodrome", p.apt], ["Dimensions", p.kind === "runway" ? dim(p) : null],
       ["Longueur", p.kind !== "runway" && p.len ? `${Number(p.len).toLocaleString("fr-FR")} m` : null], ["Revêtement", p.surface]]) +
     (pos ? `<div class="pop-pos"><span>${esc(pos)}</span>${copyBtn(pos)}</div>` : "") +
+    (pos && pt && ctx?.rwys?.length ? `<div class="pop-route"><span>Roulage vers</span>` +
+      ctx.rwys.map((q) => `<button type="button" data-route="${esc(p.apt)}|${pt[0]}|${pt[1]}|${esc(q)}">${esc(q)}</button>`).join("") + `</div>` : "") +
     (p.kind === "holding" ? `<div class="pop-note">Point d'attente : arrêt obligatoire sauf clairance d'entrer ou de traverser.</div>` : "") +
     wx + rwyEaip(p, ctx) + `<div class="src">OpenStreetMap (ODbL) · non certifié</div></div>`;
+}
+
+/** Résumé d'un itinéraire de roulage (remplace le contenu de la popup du poste). */
+export function routeHtml(stand: string, qfu: string, r: { via: string[]; holds: { ref: string }[]; dist: number; fromThr: number } | null): string {
+  if (!r) return `<div class="pop"><h3>${esc(stand)} → ${esc(qfu)}</h3><p class="pop-note">Pas d'itinéraire trouvé : voies OSM non reliées à cette piste.</p>` +
+    `<button type="button" class="pop-btn" data-route-clear>Fermer</button></div>`;
+  const min = Math.max(1, Math.round(r.dist / 1852 / 15 * 60)); // ~15 kt de vitesse de roulage
+  return `<div class="pop"><h3>Roulage ${esc(stand)} → ${esc(qfu)} <small>indicatif</small></h3>` +
+    `<div class="route-via">${r.via.length ? r.via.map((v) => `<span class="twy">${esc(v)}</span>`).join("<i>›</i>") : "voies sans nom"}<i>›</i><span class="rwy">${esc(qfu)}</span></div>` +
+    rows([["Distance", `${(r.dist / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} km (${(r.dist / 1852).toFixed(1)} NM)`],
+      ["Durée", `≈ ${min} min à 15 kt`], ["Entrée", r.fromThr > 60 ? `à ${r.fromThr} m du seuil` : "seuil (pleine longueur)"],
+      ["Arrêts", r.holds.length ? r.holds.map((h) => h.ref || "point d'attente").join(", ") : null]]) +
+    `<div class="pop-note">Suivre la clairance de roulage (ATC, VATSIM, IVAO). Voies OSM non certifiées.</div>` +
+    `<button type="button" class="pop-btn" data-route-clear>Effacer l'itinéraire</button></div>`;
 }

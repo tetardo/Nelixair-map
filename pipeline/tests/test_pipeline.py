@@ -373,6 +373,31 @@ class TestGround(unittest.TestCase):
             self.assertEqual(os.listdir(out), [])
 
 
+class TestTaxiGraph(unittest.TestCase):
+    """Graphe de roulage : raccordement des voies, postes, entrées de piste."""
+
+    def test_graph(self):
+        import ground
+        import taxigraph
+        with open(os.path.join(FIX, "ground", "LFML.json"), encoding="utf-8") as f:
+            g = taxigraph.build_graph(json.load(f)["elements"], ground.runway_ends)
+        # A1..A4 rejoignent l'axe 13L/31R (extrémités raccordées), triées depuis le seuil
+        e = g["rwys"]["13L"]["entries"]
+        self.assertEqual(len(e), 4)
+        self.assertEqual([d for _, d in e], sorted(d for _, d in e))
+        self.assertEqual(len(g["stands"]), 8)
+        self.assertEqual(sorted(r for r, _ in g["holds"]), ["A1", "A2", "A3", "A4"])
+        # longueurs d'arêtes positives, références valides
+        self.assertTrue(all(x[3] > 0 and 0 <= x[2] < len(g["refs"]) for x in g["e"]))
+
+    def test_build_writes_graph(self):
+        import ground
+        with tempfile.TemporaryDirectory() as d:
+            idx = ground.build(os.path.join(FIX, "ground"), d)
+            self.assertTrue(os.path.exists(os.path.join(d, "taxi", "LFML.json")))
+            self.assertEqual(idx["LFML"]["taxi"]["rwys"], ["13L", "31R"])  # 13R/31L non reliées dans la fixture
+
+
 class TestEaip(unittest.TestCase):
     """Lecture de l'eAIP SIA (AD 2) sur un extrait à la structure réelle."""
 

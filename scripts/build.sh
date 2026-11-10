@@ -83,6 +83,7 @@ fi
 
 mkdir -p "$SITE_DATA"
 [[ -s "$OUT/ground.pmtiles" ]] && cp "$OUT/ground.pmtiles" "$OUT/ground-index.json" "$SITE_DATA/"
+[[ -d "$OUT/taxi" ]] && mkdir -p "$SITE_DATA/taxi" && cp "$OUT"/taxi/*.json "$SITE_DATA/taxi/"
 [[ -s "$OUT/eaip.json" ]] && cp "$OUT/eaip.json" "$SITE_DATA/"
 cp "$OUT/nav.pmtiles" "$OUT/airspaces.pmtiles" "$OUT/search.json" "$OUT/routes.json" \
    "$OUT/mora.geojson" "$OUT/meta.json" "$SITE_DATA/"
