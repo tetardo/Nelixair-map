@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // Profil vertical du plan de vol : altitude prévue (magenta) au-dessus du relief le long de la route.
-import { X } from "@lucide/vue";
+import { Pause, Play, X } from "@lucide/vue";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { elevationsFt } from "../lib/elevation";
 import { alt } from "../lib/format";
 import { along, routeVertices, samples } from "../lib/routeGeom";
 import { ASP_COLORS, fmtFt, routeAsp, useRouteAsp } from "../lib/routeAsp";
 import { flyTo, selectPoint } from "../map/mapView";
+import { pauseReplay, playReplay, replayInfo, seekReplayD, stopReplay } from "../map/replay";
+import { hhmm } from "../services/simbrief";
 import { ROUTE_COLOR } from "../map/flightRoute";
 import { state } from "../store";
 
@@ -90,7 +92,9 @@ const hv = computed(() => {
   return { d, alt: a.alt, ll: a.ll, terr: t?.ft ?? null, asp };
 });
 watch(() => state.profileAt, (d) => { if (d != null && hover.value == null) selectPoint(hv.value?.ll ?? null); });
-watch(() => [state.ofp, state.profileOpen], () => { if (!state.profileOpen) state.profileAt = null; });
+watch(() => [state.ofp, state.profileOpen], () => { if (!state.profileOpen) { state.profileAt = null; stopReplay(); } });
+const rp = computed(() => (state.replay.on ? replayInfo() : null));
+const SPEEDS = [30, 120, 300];
 function move(e: PointerEvent) {
   const r = (e.currentTarget as SVGElement).getBoundingClientRect();
   const px = ((e.clientX - r.left) * W.value) / r.width;
@@ -99,7 +103,7 @@ function move(e: PointerEvent) {
   selectPoint(hv.value!.ll);
 }
 function leave() { hover.value = null; selectPoint(hv.value?.ll ?? null); }
-function click() { if (hv.value) flyTo(hv.value.ll, 8); }
+function click() { if (!hv.value) return; if (state.replay.on) seekReplayD(hv.value.d); else flyTo(hv.value.ll, 8); }
 
 // le bandeau n'existe qu'une fois ouvert : on observe sa largeur dès qu'il apparaît
 const ro = new ResizeObserver(([e]) => (W.value = Math.max(300, Math.round(e.contentRect.width))));
@@ -116,6 +120,16 @@ const fmt = (v: number) => Math.round(v).toLocaleString("fr-FR");
       <span v-if="loading" class="muted">relief en cours…</span>
       <span v-else-if="peak" class="muted">relief max {{ fmt(peak.ft) }} ft à {{ fmt(peak.d) }} NM</span>
       <span v-if="minMargin" :class="minMargin.ft < 2000 ? 'warn' : 'muted'">marge mini en route {{ fmt(minMargin.ft) }} ft</span>
+      <span class="pf-replay">
+        <button type="button" class="btn-ghost" :aria-label="state.replay.playing ? 'Mettre en pause' : 'Rejouer le vol'" :title="state.replay.playing ? 'Pause' : 'Rejouer le vol'"
+          @click="state.replay.playing ? pauseReplay() : playReplay()"><Pause v-if="state.replay.playing" :size="15" aria-hidden="true" /><Play v-else :size="15" aria-hidden="true" /></button>
+        <template v-if="state.replay.on">
+          <select v-model.number="state.replay.speed" aria-label="Vitesse de relecture"><option v-for="s in SPEEDS" :key="s" :value="s">×{{ s }}</option></select>
+          <label class="pf-follow"><input v-model="state.replay.follow" type="checkbox">Suivre</label>
+          <span v-if="rp" class="profile-read">{{ hhmm(state.replay.t) }} / {{ hhmm(state.replay.total) }} · {{ alt(Math.round(rp.alt / 100) * 100) }} · {{ rp.gs }} kt</span>
+          <button type="button" class="btn-ghost" aria-label="Arrêter la relecture" title="Arrêter la relecture" @click="stopReplay()"><X :size="14" aria-hidden="true" /></button>
+        </template>
+      </span>
       <span class="sp"></span>
       <span v-if="hv" class="profile-read">{{ fmt(hv.d) }} NM · prévu {{ alt(Math.round(hv.alt / 100) * 100) }}<template v-if="hv.terr != null"> · relief {{ fmt(hv.terr) }} ft</template><template v-if="hv.asp.length"> · {{ hv.asp.join(", ") }}</template></span>
       <button type="button" class="btn-ghost pf-asp-tg" :aria-pressed="showAsp" title="Afficher les espaces aériens traversés" @click="showAsp = !showAsp">Espaces</button>

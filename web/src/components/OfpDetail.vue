@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Détail d'un plan de vol chargé (onglet Plan de vol et volet de Mes vols).
-import { ArrowRight, ChartArea, Crosshair, Plane, Trash2 } from "@lucide/vue";
+import { ArrowRight, ChartArea, Crosshair, Play, Plane, Trash2 } from "@lucide/vue";
+import { playReplay } from "../map/replay";
 import { computed, ref } from "vue";
 import { alt } from "../lib/format";
 import { fitOfp, flyTo, highlightLeg, openAirportByIdent, selectPoint, setOfp } from "../map/mapView";
@@ -52,6 +53,7 @@ useMapHotScroll(() => logEl.value?.closest(".apt-pane, .tabpanel") as HTMLElemen
       <div class="apt-actions">
         <button class="primary" type="button" @click="fitOfp"><Crosshair :size="14" aria-hidden="true" />Voir toute la route</button>
         <button class="btn-ghost" type="button" :aria-pressed="state.profileOpen" @click="state.profileOpen = !state.profileOpen"><ChartArea :size="14" aria-hidden="true" />Profil vertical</button>
+        <button class="btn-ghost" type="button" title="Rejouer le vol en accéléré sur la carte et le profil" @click="playReplay"><Play :size="14" aria-hidden="true" />Rejouer</button>
         <button class="btn-ghost" type="button" title="Retirer le plan de vol" @click="setOfp(null)"><Trash2 :size="14" aria-hidden="true" /></button>
       </div>
     </div>

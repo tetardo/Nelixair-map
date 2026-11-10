@@ -24,6 +24,7 @@ import { GROUND_CLICKABLE, GROUND_LAYERS, addGroundLayers, groundHighlight, them
 import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml, pirepHtml, type GndCtx } from "./popups";
 import { registerSymbols } from "./symbols";
 import { flyToFx, initFx } from "./fx";
+import { initReplay } from "./replay";
 import { THEMES, type ThemeName } from "./themes";
 
 // Icône Lucide « map » (ISC), en HTML brut car le contrôle MapLibre n'est pas un composant Vue
@@ -1191,6 +1192,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
     initTraffic(map);
     initLogbook(map);
     initFx(map);
+    initReplay(map);
     state.mapReady = true;
     updateAutoTheme();
     applyTheme(state.theme);

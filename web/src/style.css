@@ -803,3 +803,7 @@ body.side-resizing .sidebar { transition: none; }
 
 /* Mes vols, liste à côté du volet : statistiques sur deux colonnes */
 #tab-flights.apt-split.wide.open .lb-stats { grid-template-columns: repeat(2, 1fr); }
+/* Relecture animée dans l'en-tête du profil */
+.pf-replay { display: inline-flex; align-items: center; gap: 6px; }
+.pf-replay select { font: 600 11px var(--mono); padding: 2px 4px; border-radius: 6px; border: 1px solid var(--chrome-line); background: var(--chrome-2); color: inherit; }
+.pf-follow { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--chrome-soft); }
