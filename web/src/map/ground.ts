@@ -67,7 +67,7 @@ export function addGroundLayers(map: MlMap, src: { source: string; "source-layer
 
 export function themeGround(map: MlMap, name: string, T: Theme) {
   const g = T.g;
-  const P = (id: string, k: string, v: unknown) => map.setPaintProperty(id, k, v);
+  const P = (id: string, k: string, v: unknown) => map.setPaintProperty(id, k as never, v as never);
   P("g-boundary", "fill-color", g.boundary);
   P("g-apron", "fill-color", g.apron); P("g-apron-line", "line-color", g.apronLine);
   P("g-taxi-edge", "line-color", g.taxiEdge); P("g-taxi", "line-color", g.taxi); P("g-taxi-center", "line-color", g.taxiCenter);

@@ -1,6 +1,8 @@
 // Carte MapLibre : sources, couches, thèmes, filtres, interactions. Pilote l'état partagé (store) ;
 // les composants Vue appellent les actions exportées (openFix, openAirway, setSidebar…).
-import maplibregl, { type Map as MlMap, type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { type Map as MlMap, type MapGeoJSONFeature, type PointLike, type StyleSpecification } from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { Protocol } from "pmtiles";
 import { CFG } from "../config";
 import { CLS, dms, esc, type LngLat } from "../lib/format";
@@ -46,7 +48,7 @@ async function basemap(): Promise<StyleSpecification> {
 }
 function paintBasemap(T: (typeof THEMES)[ThemeName]) {
   for (const l of baseLayers) {
-    const set = (k: string, v: unknown) => { try { map.setPaintProperty(l.id, k, v); } catch { /* propriété absente */ } };
+    const set = (k: string, v: unknown) => { try { map.setPaintProperty(l.id, k as never, v as never); } catch { /* propriété absente */ } };
     if (l.type === "background") set("background-color", T.bg);
     else if (l.type === "fill" && /water/i.test(l.id)) set("fill-color", T.water);
     else if (l.type === "fill") set("fill-opacity", T.land);
@@ -217,8 +219,8 @@ export function applyTheme(name: ThemeName) {
   if (!state.mapReady) return;
   paintBasemap(T);
   registerSymbols(map, name, T);
-  const P = (id: string, k: string, v: unknown) => map.setPaintProperty(id, k, v);
-  const Lp = (id: string, k: string, v: unknown) => map.setLayoutProperty(id, k, v);
+  const P = (id: string, k: string, v: unknown) => map.setPaintProperty(id, k as never, v as never);
+  const Lp = (id: string, k: string, v: unknown) => map.setLayoutProperty(id, k as never, v as never);
   P("awy-H", "line-color", T.high); P("awy-L", "line-color", T.low); P("awy-B", "line-color", T.both);
   P("awy-sel", "line-color", T.sel); P("sel-pt", "circle-stroke-color", T.sel);
   for (const lv of ["L", "B", "H"]) {
@@ -249,7 +251,7 @@ function fadeAirportsWithGround() {
     return;
   }
   const has = ["in", ["get", "ident"], ["literal", idents]];
-  const op = ["interpolate", ["linear"], ["zoom"], 12, 1, 13, ["case", has, 0, 1]];
+  const op: any = ["interpolate", ["linear"], ["zoom"], 12, 1, 13, ["case", has, 0, 1]];
   map.setPaintProperty("apt", "icon-opacity", op); map.setPaintProperty("apt", "text-opacity", op);
 }
 
@@ -630,6 +632,7 @@ function updateGroundInView() {
 
 // ---------- Initialisation ----------
 export async function initMap(container: HTMLElement): Promise<void> {
+  maplibregl.setWorkerUrl(workerUrl); // MapLibre 6 (ESM) : le bundler doit fournir l'URL du worker
   const protocol = new Protocol();
   maplibregl.addProtocol("pmtiles", protocol.tile);
   const abs = (u: string) => new URL(u, location.href).href;
