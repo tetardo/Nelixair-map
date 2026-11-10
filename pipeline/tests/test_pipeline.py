@@ -519,5 +519,33 @@ class TestAirportsFr(unittest.TestCase):
         self.assertTrue(set(airports_fr.CI_SAMPLE) <= set(airports_fr.ALL))
 
 
+class TestGroundCache(unittest.TestCase):
+    """Cache du déploiement : un terrain récent n'est pas retéléchargé."""
+
+    def test_fresh_airports_skipped(self):
+        import tempfile, time as _t
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        import ground
+        calls = []
+        orig = ground._query
+        ground._query = lambda icao: (calls.append(icao), b'{"elements": [1, 2]}')[1]
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                ground.fetch(["LFML", "LFPG"], d, pause=0, max_age_days=7)
+                self.assertEqual(calls, ["LFML", "LFPG"])
+                ground.fetch(["LFML", "LFPG", "LFLL"], d, pause=0, max_age_days=7)
+                self.assertEqual(calls, ["LFML", "LFPG", "LFLL"])  # seul LFLL est nouveau
+                ground.fetch(["LFML"], d, pause=0, max_age_days=0)  # 0 : toujours retélécharger
+                self.assertEqual(calls[-1], "LFML")
+                # date trop ancienne : retéléchargé
+                with open(os.path.join(d, ground.FETCHED), "w") as fh:
+                    fh.write("LFPG\t2000-01-01T00:00:00+00:00\n")
+                ground.fetch(["LFPG"], d, pause=0, max_age_days=7)
+                self.assertEqual(calls[-1], "LFPG")
+                self.assertIn("LFPG.json", os.listdir(d))
+        finally:
+            ground._query = orig
+
+
 if __name__ == "__main__":
     unittest.main()

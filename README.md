@@ -127,7 +127,7 @@ web/                 front Vue 3 + TypeScript (Vite)
 
 ## Captures d'écran
 
-Générées automatiquement à chaque déploiement, sur les données réelles du cycle en cours. Cliquer une vignette pour l'agrandir.
+Générées automatiquement sur les données réelles, chaque semaine (jeudi) ou au lancement manuel du déploiement (Actions → « Build données + déploiement Pages » → Run workflow). Cliquer une vignette pour l'agrandir.
 
 <table>
 <tr>

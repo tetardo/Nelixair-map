@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import urllib.parse
+from datetime import datetime, timezone
 import urllib.request
 
 import airports_fr
@@ -78,18 +79,51 @@ def _query(icao: str, attempts: int = 2, pause: float = 15.0) -> bytes:
     raise RuntimeError(f"{icao} : Overpass indisponible ({last})")
 
 
-def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0, budget: float = 3600.0) -> dict[str, int]:
+FETCHED = "fetched.tsv"  # journal des téléchargements : ICAO <tab> date ISO (UTC)
+
+
+def _fetched(raw_dir: str) -> dict[str, float]:
+    """Date (epoch) du dernier téléchargement réussi de chaque terrain."""
+    out = {}
+    try:
+        with open(os.path.join(raw_dir, FETCHED), encoding="utf-8") as fh:
+            for line in fh:
+                icao, _, iso = line.strip().partition("\t")
+                try:
+                    out[icao] = datetime.fromisoformat(iso).timestamp()
+                except ValueError:
+                    pass
+    except FileNotFoundError:
+        pass
+    return out
+
+
+def _save_fetched(raw_dir: str, done: dict[str, float]) -> None:
+    with open(os.path.join(raw_dir, FETCHED), "w", encoding="utf-8") as fh:
+        for icao in sorted(done):
+            fh.write(f"{icao}\t{datetime.fromtimestamp(done[icao], timezone.utc).isoformat()}\n")
+
+
+def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0, budget: float = 3600.0, max_age_days: float = 0.0) -> dict[str, int]:
     """Une requête Overpass par terrain (politesse : pause entre les requêtes).
 
     Un terrain en échec n'empêche pas les autres ; l'ancien fichier éventuel est conservé.
-    Échoue seulement si aucun terrain n'a pu être téléchargé. `budget` (s) borne la durée totale.
+    Échoue seulement si aucun terrain n'est disponible. `budget` (s) borne la durée totale.
+    `max_age_days` > 0 : un terrain téléchargé il y a moins de N jours (cache du déploiement) n'est pas redemandé.
     """
     os.makedirs(raw_dir, exist_ok=True)
     counts = {}
+    done = _fetched(raw_dir)
+    now = time.time()
+    fresh = [i for i in icaos if max_age_days > 0 and os.path.exists(os.path.join(raw_dir, f"{i}.json"))
+             and now - done.get(i, 0) < max_age_days * 86400]
+    if fresh:
+        log.info("cache : %d terrain(s) de moins de %g jours conservés (%s)", len(fresh), max_age_days, " ".join(fresh))
+    todo = [i for i in icaos if i not in fresh]
     start = time.monotonic()
-    for i, icao in enumerate(icaos):
+    for i, icao in enumerate(todo):
         if time.monotonic() - start > budget:
-            log.error("budget Overpass dépassé : %s ignorés", ", ".join(icaos[i:]))
+            log.error("budget Overpass dépassé : %s ignorés", ", ".join(todo[i:]))
             break
         if i:
             time.sleep(pause)
@@ -101,8 +135,10 @@ def fetch(icaos: list[str], raw_dir: str, pause: float = 5.0, budget: float = 36
         with open(os.path.join(raw_dir, f"{icao}.json"), "wb") as fh:
             fh.write(raw)
         counts[icao] = len(json.loads(raw).get("elements", []))
+        done[icao] = time.time()
+        _save_fetched(raw_dir, done)
         log.info("%s : %d éléments OSM", icao, counts[icao])
-    if not counts:
+    if not counts and not fresh:
         raise RuntimeError("aucun terrain téléchargé")
     return counts
 
@@ -392,10 +428,12 @@ def main(argv=None) -> None:
     p.add_argument("--raw", default="data/raw/ground")
     p.add_argument("--out", default="build")
     p.add_argument("--icao", default=",".join(PILOT), help="idents OACI séparés par des virgules")
+    p.add_argument("--max-age-days", type=float, default=float(os.environ.get("GROUND_MAX_AGE_DAYS", "0")),
+                   help="ne pas retélécharger un terrain plus récent que N jours (0 : toujours)")
     a = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     if a.command == "fetch":
-        fetch([s.strip().upper() for s in a.icao.split(",") if s.strip()], a.raw)
+        fetch([s.strip().upper() for s in a.icao.split(",") if s.strip()], a.raw, max_age_days=a.max_age_days)
     else:
         idx = build(a.raw, a.out)
         if not idx:
