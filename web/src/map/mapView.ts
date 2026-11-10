@@ -18,6 +18,9 @@ import { aspHtml, fixHtml, groundHtml, groundTip, routeHtml, hazardHtml, legHtml
 import { registerSymbols } from "./symbols";
 import { THEMES, type ThemeName } from "./themes";
 
+// Icône Lucide « map » (ISC), en HTML brut car le contrôle MapLibre n'est pas un composant Vue
+const LUCIDE_MAP = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>`;
+
 type L = any; // spécifications de couche MapLibre
 const EMPTY = { type: "FeatureCollection" as const, features: [] };
 const F = CFG.font, FB = CFG.fontBold;
@@ -876,7 +879,7 @@ export async function initMap(container: HTMLElement): Promise<void> {
       const d = document.createElement("div");
       d.className = "maplibregl-ctrl maplibregl-ctrl-group";
       d.innerHTML = `<button type="button" id="view-btn" title="Affichage de la carte" aria-label="Affichage de la carte">` +
-        `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg></button>`;
+        LUCIDE_MAP + `</button>`;
       d.querySelector("button")!.addEventListener("click", (e) => { e.stopPropagation(); state.viewMenu = !state.viewMenu; });
       return d;
     },

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { X } from "@lucide/vue";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { DEFAULT_VIEW, state, type MapView } from "../store";
 
@@ -16,7 +17,7 @@ const setDetails = (v: boolean) => DETAILS.forEach(([k]) => ((state.view[k] as b
 const reset = () => Object.assign(state.view, DEFAULT_VIEW);
 
 // Fermeture au clic hors du menu ou sur Échap
-const outside = (e: MouseEvent) => { if (state.viewMenu && el.value && !el.value.contains(e.target as Node) && (e.target as HTMLElement).closest?.("#view-btn") == null) state.viewMenu = false; };
+const outside = (e: MouseEvent) => { if (state.viewMenu && el.value && !el.value.contains(e.target as Node) && (e.target as HTMLElement).closest?.("#view-btn, .rail") == null) state.viewMenu = false; };
 const esc = (e: KeyboardEvent) => { if (e.key === "Escape") state.viewMenu = false; };
 onMounted(() => { document.addEventListener("click", outside); document.addEventListener("keydown", esc); });
 onBeforeUnmount(() => { document.removeEventListener("click", outside); document.removeEventListener("keydown", esc); });
@@ -25,7 +26,7 @@ onBeforeUnmount(() => { document.removeEventListener("click", outside); document
 <template>
   <Transition name="pop-in">
     <div v-if="state.viewMenu" ref="el" class="view-menu" role="dialog" aria-label="Affichage de la carte">
-      <div class="vm-h"><b>Affichage</b><button type="button" class="vm-x" title="Fermer" @click="state.viewMenu = false">×</button></div>
+      <div class="vm-h"><b>Affichage</b><button type="button" class="vm-x" title="Fermer" @click="state.viewMenu = false"><X :size="16" aria-hidden="true" /></button></div>
 
       <div class="vm-l">Vue</div>
       <div class="vm-seg">

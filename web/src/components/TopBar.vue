@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { CLS } from "../lib/format";
-import { choose, setSidebar } from "../map/mapView";
+import { Search } from "@lucide/vue";
+import { choose } from "../map/mapView";
 import { hitIdent, indexLoaded, loadIndex, search, type Hit } from "../services/data";
-import { state } from "../store";
 
-const logo = import.meta.env.BASE_URL + "img/nelixair-logo.svg";
-const emit = defineEmits<{ about: [] }>();
 const input = ref<HTMLInputElement | null>(null);
 const q = ref("");
 const hits = ref<Hit[]>([]);
@@ -43,24 +41,9 @@ defineExpose({ focus: () => input.value?.focus() });
 
 <template>
   <header class="toolbar">
-    <button id="side-btn" class="tbtn icon" type="button" :aria-pressed="state.sidebarOpen" aria-controls="sidebar"
-      title="Panneau latéral" @click="setSidebar(!state.sidebarOpen)">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
-    </button>
-    <div class="brand"><img :src="logo" alt="" width="22" height="22">NELIXAIR<span>MAP</span></div>
-    <div class="tools">
-      <button id="theme-btn" class="tbtn icon" type="button" :aria-pressed="state.theme === 'night'"
-        :title="state.theme === 'night' ? 'Passer en mode jour' : 'Passer en mode nuit'"
-        @click="state.theme = state.theme === 'night' ? 'day' : 'night'">
-        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>
-        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-      </button>
-      <button id="about-btn" class="tbtn icon" type="button" title="Sources &amp; licences" @click="emit('about')">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.01"/></svg>
-      </button>
-    </div>
+    <div class="brand">NELIXAIR<span>MAP</span></div>
     <form id="search" class="search" autocomplete="off" role="search" @submit.prevent="submit">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <Search :size="16" aria-hidden="true" />
       <input id="q" ref="input" v-model="q" type="search" placeholder="Ident ou voie" aria-label="Rechercher un ident" spellcheck="false"
         @focus="loadIndex" @input="onInput" @keydown="onKey" @blur="blur">
       <ul v-show="open" id="results" class="results" role="listbox">

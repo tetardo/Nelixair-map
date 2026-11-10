@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { ASP_GROUP, pairs } from "../lib/format";
-import { openAirportChart } from "../map/mapView";
+import { ChevronRight, PlaneLanding } from "@lucide/vue";
+import { setTab } from "../map/mapView";
 import { hazardHtml, pirepHtml } from "../map/popups";
 import { state } from "../store";
 import AirportDetail from "./AirportDetail.vue";
@@ -10,6 +11,7 @@ import FixDetail from "./FixDetail.vue";
 import KeyValues from "./KeyValues.vue";
 
 const el = ref<HTMLElement | null>(null);
+const nGround = computed(() => Object.keys(state.ground).length);
 // Nouvelle fiche : retour en haut du panneau
 watch(() => state.detail, () => { if (el.value) el.value.scrollTop = 0; });
 
@@ -20,14 +22,10 @@ const sortedAsp = (list: Record<string, any>[]) => list.slice().sort((a, b) => (
   <section id="tab-detail" ref="el" class="tabpanel" role="tabpanel">
     <template v-if="state.detail.kind === 'empty'">
       <p class="muted">Clique un aéroport, un point ou une voie sur la carte, ou tape un ident dans la recherche (<kbd>/</kbd>).</p>
-      <template v-if="Object.keys(state.ground).length">
-        <h3>Cartes d'aéroport disponibles</h3>
-        <div class="quick-apt">
-          <button v-for="(g, id) in state.ground" :key="id" type="button" :title="'Ouvrir le plan au sol de ' + id" @click="openAirportChart(String(id))">
-            <b>{{ id }}</b><small>{{ g.name || "" }}</small>
-          </button>
-        </div>
-      </template>
+      <button v-if="nGround" type="button" class="empty-cta" @click="setTab('airports')">
+        <PlaneLanding :size="18" aria-hidden="true" /><span><b>Cartes d'aéroport</b><small>{{ nGround }} terrain{{ nGround > 1 ? "s" : "" }} avec plan au sol</small></span>
+        <ChevronRight :size="16" aria-hidden="true" />
+      </button>
     </template>
 
     <AirportDetail v-else-if="state.detail.kind === 'airport'" :key="'a' + state.detail.p.ident" :p="state.detail.p" :ll="state.detail.ll" />
