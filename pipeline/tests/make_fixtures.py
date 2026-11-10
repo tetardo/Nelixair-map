@@ -280,3 +280,64 @@ wx_pireps = "\n".join([
 ]) + "\n"
 with open(os.path.join(HERE, "fixtures", "wx_pireps.csv"), "w") as fh:
     fh.write(wx_pireps)
+
+
+# ---------- Plan au sol : réponse Overpass SYNTHÉTIQUE (géométrie inventée, inspirée d'un grand aéroport) ----------
+def _off(lon0, lat0, brg_deg, dist_m):
+    import math
+    b = math.radians(brg_deg)
+    dlat = dist_m * math.cos(b) / 111195.0
+    dlon = dist_m * math.sin(b) / (111195.0 * math.cos(math.radians(lat0)))
+    return round(lon0 + dlon, 7), round(lat0 + dlat, 7)
+
+
+def _geom(pts):
+    return [{"lon": x, "lat": y} for x, y in pts]
+
+
+def ground_fixture():
+    lon0, lat0 = 5.2050, 43.4480          # seuil nord-ouest de la grande piste
+    hdg = 134.0
+    r1a = (lon0, lat0); r1b = _off(lon0, lat0, hdg, 3500)
+    r2a = _off(lon0, lat0, hdg + 90, 300); r2b = _off(*r2a, hdg, 2370)
+    els = []
+    nid = [1000]
+
+    def way(tags, pts, closed=False):
+        nid[0] += 1
+        g = pts + ([pts[0]] if closed else [])
+        els.append({"type": "way", "id": nid[0], "tags": tags, "geometry": _geom(g)})
+
+    def node(tags, p):
+        nid[0] += 1
+        els.append({"type": "node", "id": nid[0], "lon": p[0], "lat": p[1], "tags": tags})
+
+    # contour d'aérodrome
+    c = [_off(*r1a, hdg - 90, 900), _off(*r1b, hdg - 90, 900), _off(*r1b, hdg + 90, 700), _off(*r1a, hdg + 90, 700)]
+    c = [_off(*c[0], hdg + 180, 300), _off(*c[1], hdg, 300), _off(*c[2], hdg, 300), _off(*c[3], hdg + 180, 300)]
+    way({"aeroway": "aerodrome", "icao": "LFML", "name": "Aéroport synthétique"}, c, closed=True)
+    way({"aeroway": "runway", "ref": "13L/31R", "width": "45", "surface": "asphalt"}, [r1a, r1b])
+    way({"aeroway": "runway", "ref": "13R/31L", "surface": "asphalt"}, [r2a, r2b])
+    # taxiway parallèle côté nord-est + bretelles
+    t0 = _off(*r1a, hdg - 90, 180)
+    way({"aeroway": "taxiway", "ref": "A"}, [t0, _off(*t0, hdg, 3500)])
+    for i, ref in enumerate(["A1", "A2", "A3", "A4"]):
+        p = _off(*r1a, hdg, 200 + i * 1000)
+        way({"aeroway": "taxiway", "ref": ref}, [p, _off(*p, hdg - 90, 180)])
+        node({"aeroway": "holding_position", "ref": ref}, _off(*p, hdg - 90, 90))
+    # aire de trafic + postes de stationnement
+    a0 = _off(*t0, hdg - 90, 80)
+    ap = [_off(*a0, hdg, 1200), _off(*a0, hdg, 2200), _off(*_off(*a0, hdg, 2200), hdg - 90, 250), _off(*_off(*a0, hdg, 1200), hdg - 90, 250)]
+    way({"aeroway": "apron", "ref": "P1"}, ap, closed=True)
+    for i in range(8):
+        node({"aeroway": "parking_position", "ref": str(10 + i)}, _off(*_off(*a0, hdg, 1300 + i * 110), hdg - 90, 160))
+    # aérogare
+    b0 = _off(*_off(*a0, hdg, 1250), hdg - 90, 260)
+    way({"aeroway": "terminal", "building": "yes", "name": "Terminal 1"},
+        [b0, _off(*b0, hdg, 900), _off(*_off(*b0, hdg, 900), hdg - 90, 80), _off(*b0, hdg - 90, 80)], closed=True)
+    return {"version": 0.6, "generator": "fixture", "osm3s": {"timestamp_osm_base": "2026-11-01T00:00:00Z"}, "elements": els}
+
+
+os.makedirs(os.path.join(HERE, "fixtures", "ground"), exist_ok=True)
+with open(os.path.join(HERE, "fixtures", "ground", "LFML.json"), "w") as fh:
+    json.dump(ground_fixture(), fh, indent=1)

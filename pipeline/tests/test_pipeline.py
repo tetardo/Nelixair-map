@@ -293,5 +293,59 @@ class TestCifpUrl(unittest.TestCase):
         self.assertTrue(build.pick_cifp_url(html, dt.date(2025, 12, 1)).endswith("CIFP_251127.zip"))
 
 
+class TestGround(unittest.TestCase):
+    """Plan au sol OSM (pipeline/ground.py) sur la réponse Overpass synthétique."""
+
+    @classmethod
+    def setUpClass(cls):
+        import ground
+        cls.g = ground
+        cls.feats, cls.summary = ground.parse(_load(os.path.join(FIX, "ground", "LFML.json")), "LFML")
+
+    def kinds(self, k):
+        return [f for f in self.feats if f["properties"]["kind"] == k]
+
+    def test_counts(self):
+        c = self.summary["counts"]
+        self.assertEqual(c["runway"], 2)
+        self.assertEqual(c["stand"], 8)
+        self.assertEqual(self.summary["taxiways"], ["A", "A1", "A2", "A3", "A4"])
+        self.assertEqual(self.summary["runways"], ["13L/31R", "13R/31L"])
+
+    def test_runway_ends(self):
+        ends = {f["properties"]["ref"]: f for f in self.kinds("rwy_end")}
+        self.assertEqual(set(ends), {"13L", "31R", "13R", "31L"})
+        # 13L = extrémité nord-ouest (on décolle au 134°), 31R = sud-est
+        self.assertGreater(ends["13L"]["geometry"]["coordinates"][1], ends["31R"]["geometry"]["coordinates"][1])
+        self.assertAlmostEqual(ends["13L"]["properties"]["hdg"], 134, delta=1)
+
+    def test_runway_ends_reversed_way(self):
+        # Une piste dessinée dans l'autre sens dans OSM garde les bonnes désignations
+        a, b = (5.0, 43.0), (5.03, 42.98)
+        ends = dict((d, p) for d, p, _ in self.g.runway_ends("13/31", [b, a]))
+        self.assertEqual(ends["13"], a)
+        self.assertEqual(ends["31"], b)
+
+    def test_runway_polygon_width(self):
+        rw = next(f for f in self.kinds("runway") if f["properties"]["ref"] == "13L/31R")
+        ring = rw["geometry"]["coordinates"][0]
+        self.assertEqual(ring[0], ring[-1])
+        self.assertAlmostEqual(self.g.length_m([tuple(ring[0]), tuple(ring[3])]), 45, delta=0.5)
+        self.assertAlmostEqual(rw["properties"]["len"], 3500, delta=5)
+
+    def test_taxiway_pixel_width(self):
+        tw = self.kinds("taxiway")[0]["properties"]
+        # 18 m au zoom 18 vers 43,4° N : ~0,3 m/px * cos(lat) -> ~83 px
+        self.assertAlmostEqual(tw["w18"], 18 / (0.29858 * 0.7262), delta=1)
+
+    def test_build_index(self):
+        with tempfile.TemporaryDirectory() as d:
+            idx = self.g.build(os.path.join(FIX, "ground"), d)
+            self.assertIn("LFML", idx)
+            fc = _load(os.path.join(d, "ground.geojson"))
+            self.assertEqual(len(fc["features"]), len(self.feats))
+            self.assertEqual(_load(os.path.join(d, "ground-index.json"))["airports"]["LFML"]["osm"], "2026-11-01T00:00:00Z")
+
+
 if __name__ == "__main__":
     unittest.main()
