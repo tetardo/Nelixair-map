@@ -1,6 +1,6 @@
 <img src="web/public/img/nelixair-logo.svg" alt="Nelixair" width="64" align="right">
 
-# VAYO
+# TROPO
 
 > Carte et sacoche de vol électronique des pilotes de l'association Nelixair (MSFS).
 > Dépôt historique `nelixair-map` : le nom du dépôt et l'adresse du site restent inchangés pour ne pas casser les liens.
