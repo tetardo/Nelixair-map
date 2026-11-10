@@ -557,3 +557,14 @@ body.side-open .profile { left: calc(var(--rail) + var(--side) + 12px); }
 .btn-ghost[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 #ruler-btn[aria-pressed="true"] { background: #ffb020; }
 #ruler-btn[aria-pressed="true"] svg { stroke: #1a1200; }
+
+/* Trafic en ligne */
+.sw-vatsim { width: 12px; height: 12px; border-radius: 50%; background: #2fbf71; }
+.sw-ivao { width: 12px; height: 12px; border-radius: 50%; background: #3d8bfd; }
+.trf-route { margin: 8px 0; }
+.trf-atc { display: grid; grid-template-columns: 4px 1fr auto; gap: 4px 8px; align-items: center; margin-bottom: 8px; }
+.trf-atc i { align-self: stretch; border-radius: 2px; }
+.trf-atc small { color: var(--chrome-soft); }
+.trf-atc code { font: 600 12px var(--mono); }
+.trf-atc .wx-raw { grid-column: 2 / -1; margin: 0; }
+.trf-ctr { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 11.5px var(--mono); margin-top: 6px; }

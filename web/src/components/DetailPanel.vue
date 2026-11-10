@@ -9,6 +9,7 @@ import AirportDetail from "./AirportDetail.vue";
 import AirwayDetail from "./AirwayDetail.vue";
 import FixDetail from "./FixDetail.vue";
 import KeyValues from "./KeyValues.vue";
+import TrafficDetail from "./TrafficDetail.vue";
 
 const el = ref<HTMLElement | null>(null);
 const nGround = computed(() => Object.keys(state.ground).length);
@@ -44,6 +45,9 @@ const sortedAsp = (list: Record<string, any>[]) => list.slice().sort((a, b) => (
     <!-- Avis météo : même rendu que les popups (contenu échappé dans popups.ts) -->
     <div v-else-if="state.detail.kind === 'hazard'" class="ov-detail" v-html="hazardHtml(state.detail.p)"></div>
     <div v-else-if="state.detail.kind === 'pirep'" class="ov-detail" v-html="pirepHtml(state.detail.p)"></div>
+
+    <TrafficDetail v-else-if="state.detail.kind === 'traffic'" :p="state.detail.p" />
+    <TrafficDetail v-else-if="state.detail.kind === 'atc'" :icao="state.detail.icao" :list="state.detail.list" />
 
     <template v-else-if="state.detail.kind === 'picker'">
       <div class="d-head"><h2>À cet endroit</h2><span class="badge">{{ state.detail.items.length }}</span></div>

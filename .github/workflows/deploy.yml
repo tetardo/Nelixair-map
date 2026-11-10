@@ -27,9 +27,18 @@ jobs:
         with:
           python-version: "3.12"
       - uses: ./.github/actions/tippecanoe
+      # Plans au sol OSM : un terrain téléchargé il y a moins de 6 jours est repris du cache
+      # (~1 min par terrain sinon). Le passage hebdomadaire du jeudi les rafraîchit tous.
+      - name: Cache des plans au sol OSM
+        uses: actions/cache@v4
+        with:
+          path: data/raw/ground
+          key: ground-osm-${{ github.run_id }}
+          restore-keys: ground-osm-
       - name: Fetch + build
         env:
           OPENAIP_API_KEY: ${{ secrets.OPENAIP_API_KEY }}
+          GROUND_MAX_AGE_DAYS: ${{ github.event_name == 'schedule' && '0' || '6' }}
         run: scripts/build.sh
       - name: Résumé
         run: cat build/meta.json >> "$GITHUB_STEP_SUMMARY"
@@ -43,12 +52,29 @@ jobs:
           npm ci
           npm run build
       # Captures d'écran sur les données réelles (affichées par le README) ; un échec ne bloque pas le déploiement.
+      # ~9 min : refaites seulement au passage hebdomadaire ou au lancement manuel ; sinon on reprend les dernières.
+      - name: Dernières captures d'écran
+        id: shots
+        if: github.event_name == 'push'
+        uses: actions/cache/restore@v4
+        with:
+          path: dist/screenshots
+          key: screenshots-${{ github.run_id }}
+          restore-keys: screenshots-
       - name: Captures d'écran
+        id: newshots
+        if: github.event_name != 'push' || steps.shots.outputs.cache-matched-key == ''
         continue-on-error: true
         run: |
           npm install --no-save --no-package-lock playwright@1.48.2
           npx playwright install --with-deps chromium
           node scripts/screenshots.mjs
+      - name: Mémoriser les captures
+        if: steps.newshots.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: dist/screenshots
+          key: screenshots-${{ github.run_id }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

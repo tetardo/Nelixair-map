@@ -23,6 +23,7 @@ PMTiles, interface Vue 3 + TypeScript (Vite), hébergeable sur GitHub Pages ou n
 | [Esri World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a4) | imagerie aérienne et satellite (vue Satellite du menu Affichage), tuiles chargées par le navigateur | monde | conditions Esri, **usage non commercial** avec attribution |
 | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen) | relief ombré (vue Relief), relief du profil vertical | monde | données ouvertes, attribution |
 | [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) | satellite infrarouge GOES-East, GOES-West, Himawari (Amériques, Pacifique, Asie ; **pas l'Europe ni l'Afrique**) | partielle | données NASA ouvertes |
+| [VATSIM](https://vatsim.dev/api/data-api) / [IVAO](https://wiki.ivao.aero/en/home/devops/api) | trafic et contrôleurs en ligne, lus en direct par le navigateur | monde | flux publics, conditions des réseaux à vérifier |
 | [SimBrief](https://developers.navigraph.com/docs/simbrief/fetching-ofp-data) (Navigraph) | plan de vol du pilote (OFP), lu à la demande par son navigateur ; rien n'est stocké côté serveur | monde | [conditions développeurs Navigraph](https://developers.navigraph.com) — à vérifier avant tout usage commercial |
 
 Conséquences à connaître :
@@ -60,6 +61,9 @@ Conséquences à connaître :
   par la route (avec recoupement des niveaux).
 - Règle : distance en NM, route magnétique et vraie de chaque tronçon (orthodromie), total. Déclinaison calculée
   avec le modèle mondial WMM de la NOAA (paquet [geomagnetism](https://github.com/naturalatlas/geomagnetism), Apache-2.0).
+- Trafic en ligne VATSIM et IVAO (calques, rafraîchis toutes les 30 s) : avions orientés avec indicatif, fiche du vol
+  (appareil, altitude, vitesse, plan de vol déposé, trajet départ → position → arrivée), terrains contrôlés
+  (DEL, GND, TWR, APP, ATIS avec fréquences) et liste des centres en route. Noms des membres jamais affichés.
 - Partager la vue (icône lien de la barre latérale) : copie un lien qui rouvre la carte à l'identique (position,
   zoom, fond, calques, thème, panneau ouvert, objet sélectionné et plan de vol, compressé dans le lien).
 - Panneau latéral : filtres (voies hautes/basses, RNAV/conventionnelles, chaque classe de navaid,
@@ -123,7 +127,7 @@ web/                 front Vue 3 + TypeScript (Vite)
 
 ## Captures d'écran
 
-Générées automatiquement à chaque déploiement, sur les données réelles du cycle en cours. Cliquer une vignette pour l'agrandir.
+Générées automatiquement sur les données réelles, chaque semaine (jeudi) ou au lancement manuel du déploiement (Actions → « Build données + déploiement Pages » → Run workflow). Cliquer une vignette pour l'agrandir.
 
 <table>
 <tr>

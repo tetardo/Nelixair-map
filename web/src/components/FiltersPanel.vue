@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { enrouteAtc } from "../map/trafficLayer";
 import { state } from "../store";
 import Section from "./Section.vue";
 
@@ -10,6 +12,7 @@ const SECTIONS: { id: string; title: string; grid?: boolean; open?: boolean; ite
     ["ground", "Plan au sol (OSM)", "sw-ground"], ["approach", "Axes, ILS, seuils (eAIP)", "sw-appr"]] },
   { id: "f-wx", title: "Météo", items: [["wx", "METAR (catégorie de vol)", "sw-wx"], ["hazards", "SIGMET / AIRMET", "sw-hz"],
     ["pireps", "PIREP (comptes rendus pilotes)", "sw-pirep"], ["sat", "Satellite infrarouge", "sw-sat"]] },
+  { id: "f-traffic", title: "Trafic en ligne", items: [["vatsim", "VATSIM (avions et contrôleurs)", "sw-vatsim"], ["ivao", "IVAO (avions et contrôleurs)", "sw-ivao"]] },
   { id: "f-nav", title: "Navigation", items: [["H", "Voies hautes", "sw-h"], ["L", "Voies basses", "sw-l"], ["rnav", "RNAV (Q, T…)", "sw-rnav"],
     ["conv", "Conventionnelles (J, V…)", "sw-conv"], ["waypoint", "Waypoints", "sw-wpt"]] },
   { id: "f-navaid", title: "Navaids", grid: true, items: [["vor", "VOR"], ["vordme", "VOR/DME"], ["vortac", "VORTAC"], ["tacan", "TACAN"], ["dme", "DME"], ["ndb", "NDB"]] },
@@ -17,6 +20,8 @@ const SECTIONS: { id: string; title: string; grid?: boolean; open?: boolean; ite
     ["asp_fir", "FIR / UIR", "sw-fir"], ["asp_other", "Autres (TMZ, RMZ, vol à voile…)", "sw-oth"]] },
   { id: "f-misc", title: "Relief et repères", items: [["night", "Zone de nuit", "sw-night"], ["mora", "Grid MORA (US)", "sw-mora"]] },
 ];
+// contrôleurs en route, recalculés à chaque rafraîchissement (trafficStatus change)
+const ctr = computed(() => (state.trafficStatus, enrouteAtc()).slice().sort((a, b) => a.callsign.localeCompare(b.callsign)));
 const on = (it: Item[]) => `${it.filter(([k]) => state.filters[k]).length}/${it.length}`;
 const setAll = (it: Item[], v: boolean) => it.forEach(([k]) => (state.filters[k] = v));
 </script>
@@ -34,6 +39,10 @@ const setAll = (it: Item[], v: boolean) => it.forEach(([k]) => (state.filters[k]
       </div>
     </Section>
     <p v-if="state.wxStatus" id="wx-status" class="muted small">{{ state.wxStatus }}</p>
+    <p v-if="state.trafficStatus" class="muted small">{{ state.trafficStatus }} · rafraîchi toutes les 30 s</p>
+    <details v-if="ctr.length" class="taf"><summary>Contrôleurs en route en ligne ({{ ctr.length }})</summary>
+      <div class="trf-ctr"><span v-for="a in ctr" :key="a.net + a.callsign"><b>{{ a.callsign }}</b> {{ a.freq }}</span></div>
+    </details>
     <p class="muted small">Raccourcis : <kbd>/</kbd> chercher un ident · <kbd>F</kbd> afficher / masquer le panneau · <kbd>Échap</kbd> effacer la sélection.
       Cliquer un objet ouvre sa fiche ; l'adresse de la page permet de la partager.</p>
   </section>
