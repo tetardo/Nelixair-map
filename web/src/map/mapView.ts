@@ -597,6 +597,25 @@ export function openAirportChart(ident: string) {
   map.fitBounds([[w, s], [e, n]], { padding: isMobile() ? 20 : 50, maxZoom: 16, duration: 1000 });
 }
 
+/** Onglet Aéroports : cadre le terrain et ouvre sa fiche à côté de la liste (la liste reste en place). */
+export async function openAirportInList(ident: string) {
+  openAirportChart(ident);
+  await loadIndex();
+  const h = search(ident).find((x) => x.t === "fix" && x.r[0] === ident && x.r[1] === "airport");
+  const ll = airportLL(ident) || (h?.t === "fix" ? [h.r[2], h.r[3]] as LngLat : null);
+  if (!ll) return;
+  setSel(ident); selectAirway(null); selectPoint(ll); closePopup();
+  state.aptPane = { p: { ident, cls: "airport", name: h?.t === "fix" ? h.r[4] : state.ground[ident]?.name, region: h?.t === "fix" ? h.r[5] : "", src: "", freq: null }, ll };
+  // complète la fiche (altitude, piste, source…) une fois la tuile chargée
+  map.once("idle", () => {
+    const f = map.querySourceFeatures(useGeojson ? "airports" : "nav", {
+      ...(useGeojson ? {} : { sourceLayer: "airports" }), filter: ["==", ["get", "ident"], ident],
+    })[0];
+    if (f && state.aptPane?.p.ident === ident) state.aptPane = { p: f.properties, ll };
+  });
+}
+export function closeAirportPane() { state.aptPane = null; selectPoint(null); setSel(null); }
+
 // Manche à air au point de référence du terrain affiché, orientée selon le METAR (la manche pointe sous le vent)
 let sock: maplibregl.Marker | null = null;
 
