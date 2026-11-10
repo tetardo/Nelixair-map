@@ -34,9 +34,11 @@ onBeforeUnmount(() => { document.removeEventListener("click", outside); document
         <button type="button" :aria-pressed="state.view.base === 'sat'" @click="state.view.base = 'sat'">Satellite</button>
         <button type="button" :aria-pressed="state.view.relief" :disabled="state.view.base === 'sat'" @click="state.view.relief = !state.view.relief">Relief</button>
       </div>
-      <div class="vm-seg vm-seg2">
-        <button type="button" :aria-pressed="state.theme === 'day'" @click="state.theme = 'day'">Jour</button>
-        <button type="button" :aria-pressed="state.theme === 'night'" @click="state.theme = 'night'">Nuit</button>
+      <div class="vm-l">Thème</div>
+      <div class="vm-seg" role="group" aria-label="Thème de l'application">
+        <button type="button" :aria-pressed="state.themeMode === 'day'" @click="state.themeMode = 'day'">Jour</button>
+        <button type="button" :aria-pressed="state.themeMode === 'night'" @click="state.themeMode = 'night'">Nuit</button>
+        <button type="button" :aria-pressed="state.themeMode === 'auto'" title="Selon le soleil à la position affichée" @click="state.themeMode = 'auto'">Auto</button>
       </div>
 
       <div class="vm-l">Détails du fond <button type="button" class="vm-link" @click="setDetails(!allDetails())">{{ allDetails() ? "Aucun" : "Tout" }}</button></div>

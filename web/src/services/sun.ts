@@ -54,3 +54,12 @@ export function nightPolygon(date = new Date()): FeatureCollection<Polygon> {
   ring.push([180, pole], [-180, pole], ring[0]);
   return { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } }] };
 }
+
+/** Hauteur du soleil (degrés) au-dessus de l'horizon en un point, à une date donnée. */
+export function sunElevation(lat: number, lon: number, date = new Date()): number {
+  const { decl, eot } = solar(date);
+  const utcMin = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+  const ha = ((utcMin + eot + 4 * lon) / 4 - 180) * RAD;
+  const s = Math.sin(lat * RAD) * Math.sin(decl * RAD) + Math.cos(lat * RAD) * Math.cos(decl * RAD) * Math.cos(ha);
+  return Math.asin(Math.max(-1, Math.min(1, s))) / RAD;
+}

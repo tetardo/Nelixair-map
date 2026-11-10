@@ -10,7 +10,7 @@ import StatusBar from "./components/StatusBar.vue";
 import TopBar from "./components/TopBar.vue";
 import { CFG } from "./config";
 import { applySharedAfterMap, applySharedState } from "./lib/share";
-import { applyFilters, applyTheme, applyView, clearSelection, initMap, setEaip, setOfp, setSidebar, setTab } from "./map/mapView";
+import { applyFilters, applyTheme, applyView, clearSelection, initMap, setEaip, setOfp, setSidebar, setTab, updateAutoTheme } from "./map/mapView";
 import { demoOfp } from "./services/simbrief";
 import { isMobile, state } from "./store";
 
@@ -21,6 +21,10 @@ const search = ref<InstanceType<typeof TopBar> | null>(null);
 const shared = applySharedState(); // lien partagé : ses réglages priment sur ceux mémorisés
 applyTheme(state.theme);
 watch(() => state.theme, applyTheme);
+watch(() => state.themeMode, (m) => {
+  try { localStorage.setItem("tropo-theme-mode", m); } catch { /* stockage indisponible */ }
+  updateAutoTheme();
+}, { immediate: true }); // mémorisé dès le départ : sinon le dernier thème affiché passerait pour un choix explicite
 watch(() => state.filters, applyFilters, { deep: true });
 watch(() => state.view, applyView, { deep: true });
 

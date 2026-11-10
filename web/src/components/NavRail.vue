@@ -1,9 +1,19 @@
 <script setup lang="ts">
-import { BookOpen, Check, FileText, Link2, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, type LucideIcon } from "@lucide/vue";
-import { ref } from "vue";
+import { BookOpen, Check, FileText, Link2, Route, Layers, List, Map as MapIcon, Moon, PlaneLanding, Sun, SunMoon, type LucideIcon } from "@lucide/vue";
+import { computed, ref } from "vue";
 import { shareUrl } from "../lib/share";
 import { setSidebar, setTab } from "../map/mapView";
-import { state, type Tab } from "../store";
+import { state, type Tab, type ThemeMode } from "../store";
+
+// Thème : Auto → Jour → Nuit → Auto
+const MODES: ThemeMode[] = ["auto", "day", "night"];
+const NAME: Record<ThemeMode, string> = { auto: "Auto", day: "Jour", night: "Nuit" };
+const themeTip = computed(() => {
+  const now = state.themeMode === "auto" ? `Auto (${state.theme === "night" ? "nuit" : "jour"})` : NAME[state.themeMode];
+  const next = MODES[(MODES.indexOf(state.themeMode) + 1) % MODES.length];
+  return `Thème : ${now} · passer en ${NAME[next]}`;
+});
+function nextTheme() { state.themeMode = MODES[(MODES.indexOf(state.themeMode) + 1) % MODES.length]; }
 
 // Barre de navigation verticale : une icône par grande section du panneau.
 // Cliquer la section déjà ouverte referme le panneau.
@@ -56,10 +66,9 @@ async function share() {
     <button id="share-btn" type="button" class="rail-btn" aria-label="Partager la vue" @click="share">
       <component :is="toast ? Check : Link2" :size="20" :stroke-width="1.8" aria-hidden="true" /><span class="rail-tip">Partager la vue</span>
     </button>
-    <button id="theme-btn" type="button" class="rail-btn" :aria-label="state.theme === 'night' ? 'Mode jour' : 'Mode nuit'"
-      @click="state.theme = state.theme === 'night' ? 'day' : 'night'">
-      <component :is="state.theme === 'night' ? Sun : Moon" :size="20" :stroke-width="1.8" aria-hidden="true" />
-      <span class="rail-tip">{{ state.theme === "night" ? "Mode jour" : "Mode nuit" }}</span>
+    <button id="theme-btn" type="button" class="rail-btn" :aria-label="themeTip" @click="nextTheme">
+      <component :is="state.themeMode === 'auto' ? SunMoon : state.themeMode === 'night' ? Moon : Sun" :size="20" :stroke-width="1.8" aria-hidden="true" />
+      <span class="rail-tip">{{ themeTip }}</span>
     </button>
     <button id="about-btn" type="button" class="rail-btn" aria-label="Sources et licences" @click="emit('about')">
       <BookOpen :size="20" :stroke-width="1.8" aria-hidden="true" /><span class="rail-tip">Sources et licences</span>
