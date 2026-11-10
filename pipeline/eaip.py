@@ -36,7 +36,7 @@ log = logging.getLogger("eaip")
 UA = "nelixair-map-eaip (+https://github.com/tetardo/Nelixair-map)"
 MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
 AIRAC_REF = dt.date(2026, 1, 22)  # cycle 2601
-DEFAULT_ICAO = ["LFML", "LFMN", "LFLL", "LFBO", "LFPO"]
+DEFAULT_ICAO = ["LFML", "LFMN", "LFLL", "LFBO", "LFPO", "LFPG"]
 
 
 # ---------- Cycle AIRAC et URL ----------

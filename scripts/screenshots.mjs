@@ -45,7 +45,7 @@ const SHOTS = [
   ["accueil-france.png", "", "day", "filters"],
   // Panneau Aéroports : cartes au sol disponibles
   ["aeroports.png", "#map=6/46.6/2.5", "night", "airports"],
-  // Plan de vol : vol de démo SimBrief (LFML -> LFPO) tracé, nav log dans le panneau
+  // Plan de vol : vol de démo SimBrief (LFML -> LFPG) tracé, nav log dans le panneau
   ["plan-de-vol.png", "", "night", "flight", null, false, { demo: true }],
   ["carte.png", "#map=5.3/37.6/-99.5", "day", null],
   ["europe-nuit.png", "#map=7.2/48.9/2.4", "night", null],

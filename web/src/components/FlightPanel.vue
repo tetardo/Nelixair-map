@@ -63,7 +63,7 @@ function go(i: number) {
       <p v-if="err" class="sb-err small">{{ err }}</p>
       <p class="muted small">Récupère le dernier plan de vol généré sur SimBrief (compte Navigraph gratuit).</p>
       <button type="button" class="sb-demo" :disabled="busy" @click="demo">
-        <FlaskConical :size="16" aria-hidden="true" /><span><b>Vol de démo</b><small>LFML → LFPO, sans compte SimBrief</small></span>
+        <FlaskConical :size="16" aria-hidden="true" /><span><b>Vol de démo</b><small>LFML → LFPG, sans compte SimBrief</small></span>
       </button>
     </form>
 

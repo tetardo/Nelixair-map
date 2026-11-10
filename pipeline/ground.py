@@ -29,7 +29,7 @@ import taxigraph
 log = logging.getLogger("ground")
 
 # Terrains pilotes (élargir quand la qualité OSM est validée)
-PILOT = ["LFML", "LFMN", "LFLL", "LFBO", "LFPO"]
+PILOT = ["LFML", "LFMN", "LFLL", "LFBO", "LFPO", "LFPG"]
 # Serveur principal puis miroirs publics (Overpass répond souvent 429 / 504 quand il est chargé)
 OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter",
             "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]

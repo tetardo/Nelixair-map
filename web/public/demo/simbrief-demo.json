@@ -11,8 +11,8 @@
   "route": "MTL UM976 LSE UN852 DJL DCT",
   "initial_altitude": "36000",
   "costindex": "30",
-  "route_distance": "374",
-  "air_distance": "386"
+  "route_distance": "380",
+  "air_distance": "392"
  },
  "origin": {
   "icao_code": "LFML",
@@ -25,16 +25,6 @@
   "metar": ""
  },
  "destination": {
-  "icao_code": "LFPO",
-  "iata_code": "ORY",
-  "name": "PARIS ORLY",
-  "pos_lat": "48.723333",
-  "pos_long": "2.379444",
-  "plan_rwy": "06",
-  "elevation": "291",
-  "metar": ""
- },
- "alternate": {
   "icao_code": "LFPG",
   "iata_code": "CDG",
   "name": "PARIS CHARLES DE GAULLE",
@@ -44,28 +34,38 @@
   "elevation": "392",
   "metar": ""
  },
+ "alternate": {
+  "icao_code": "LFPO",
+  "iata_code": "ORY",
+  "name": "PARIS ORLY",
+  "pos_lat": "48.723333",
+  "pos_long": "2.379444",
+  "plan_rwy": "06",
+  "elevation": "291",
+  "metar": ""
+ },
  "aircraft": {
   "icaocode": "A320",
   "name": "A320-200",
   "reg": "F-NLXA"
  },
  "times": {
-  "est_time_enroute": "4733"
+  "est_time_enroute": "4739"
  },
  "fuel": {
   "plan_ramp": "7800",
   "plan_takeoff": "7600",
-  "plan_landing": "6254",
-  "enroute_burn": "1346",
+  "plan_landing": "6228",
+  "enroute_burn": "1372",
   "reserve": "1150",
   "contingency": "150",
-  "alternate_burn": "1050",
+  "alternate_burn": "900",
   "extra": "300"
  },
  "weights": {
   "est_zfw": "60500",
   "est_tow": "68100",
-  "est_ldw": "66754",
+  "est_ldw": "66728",
   "pax_count": "160"
  },
  "navlog": {
@@ -164,43 +164,43 @@
     "type": "ltlg",
     "icao_region": "LF",
     "frequency": "",
-    "pos_lat": "47.950000",
-    "pos_long": "3.750000",
+    "pos_lat": "48.300000",
+    "pos_long": "3.900000",
     "stage": "CRZ",
     "via_airway": "UN852",
     "is_sid_star": "0",
-    "distance": "68",
-    "track_true": "307",
-    "track_mag": "305",
+    "distance": "78",
+    "track_true": "323",
+    "track_mag": "321",
     "altitude_feet": "36000",
     "true_airspeed": "451",
     "wind_dir": "280",
     "wind_spd": "50",
     "oat": "-56",
-    "time_total": "3012",
-    "fuel_plan_onboard": "6512"
+    "time_total": "3095",
+    "fuel_plan_onboard": "6475"
    },
    {
-    "ident": "LFPO",
-    "name": "PARIS ORLY",
+    "ident": "LFPG",
+    "name": "PARIS CHARLES DE GAULLE",
     "type": "apt",
     "icao_region": "LF",
     "frequency": "",
-    "pos_lat": "48.723300",
-    "pos_long": "2.379400",
+    "pos_lat": "49.009722",
+    "pos_long": "2.547778",
     "stage": "DSC",
     "via_airway": "DCT",
     "is_sid_star": "0",
-    "distance": "72",
-    "track_true": "311",
-    "track_mag": "309",
-    "altitude_feet": "291",
+    "distance": "68",
+    "track_true": "309",
+    "track_mag": "307",
+    "altitude_feet": "392",
     "true_airspeed": "150",
     "wind_dir": "250",
     "wind_spd": "12",
     "oat": "12",
-    "time_total": "4733",
-    "fuel_plan_onboard": "6254"
+    "time_total": "4739",
+    "fuel_plan_onboard": "6228"
    }
   ]
  }
