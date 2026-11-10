@@ -128,6 +128,7 @@ export const state = reactive({
   viewMenu: false,
   profileAt: null as number | null, // curseur du profil placé par un clic sur la route (NM)
   logbookMap: false, // « Mes vols » : tous les trajets affichés sur la carte
+  aptPane: null as { p: Props; ll: LngLat } | null, // fiche ouverte dans l'onglet Aéroports (liste gardée)
   profileOpen: false, // profil vertical du plan de vol (bandeau bas)
   ruler: false, // outil règle actif
   listTick: 0,
